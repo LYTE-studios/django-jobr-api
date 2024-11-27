@@ -114,40 +114,114 @@ pip install pipenv
 ![Login API](https://awesomescreenshot.s3.amazonaws.com/image/2631307/51764682-ae8fecb59cc85cbc980be220c40f3dd9.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJSCJQ2NM3XLFPVKA%2F20241126%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241126T185950Z&X-Amz-Expires=28800&X-Amz-SignedHeaders=host&X-Amz-Signature=4fb1ad0b6943f34e44faa45077f5aae0da4455622cd2d938af8f103547454cd0)
 
 
-### 3. Get User Details
+### 3. Employee Registration
+- **Endpoint**: `/register/employee/`
+- **Method**: `POST`
 
-- **GET** `/api/accounts/users/<user_id>/`
-
-**Response:**
-
-- **200 OK** with user details if the user is logged in.
-
-### 4. Update User Details
-
-- **PUT** `/api/accounts/users/<user_id>/`
-
-**Request Body:**
-
+#### Request Body
 ```json
 {
-    "username": "updateduser",
-    "email": "updated@example.com",
-    "password": "newsecurepassword"
+    "date_of_birth": "YYYY-MM-DD",
+    "gender": "string", // (male, female, other)
+    "phone_number": "string",
+    "city_name": "string",
+    "biography": "string",
+    "username": "string",
+    "email": "string",
+    "password": "string"
 }
 ```
 
-**Response:**
+- **Response**:
+  - **Success (201 Created)**:
+    ```json
+    {
+        "success": true,
+        "message": "Employee registered successfully."
+    }
+    ```
+  - **Error (400 Bad Request)**:
+    ```json
+    {
+        "non_field_errors": ["Invalid data."],
+        "username": ["This field may not be blank."],
+        "email": ["This field may not be blank."],
+        "password": ["This field may not be blank."]
+    }
+    ```
 
-- **200 OK** with updated user details.
+### 4. Employer Registration
+- **Endpoint**: `/register/employer/`
+- **Method**: `POST`
 
-### 5. Delete User Account
+#### Request Body
+```json
+{
+    "vat_number": "string",
+    "company_name": "string",
+    "street_name": "string",
+    "house_number": "string",
+    "city": "string",
+    "postal_code": "string",
+    "coordinates": {"latitude": 12.34, "longitude": 56.78},
+    "website": "url",
+    "biography": "string",
+    "username": "string",
+    "email": "sample@gmail.com",
+    "password": "string"
+}
+```
 
-- **DELETE** `/api/accounts/users/<user_id>/`
+- **Response**:
+  - **Success (201 Created)**:
+    ```json
+    {
+        "success": true,
+        "message": "Employer registered successfully."
+    }
+    ```
+  - **Error (400 Bad Request)**:
+    ```json
+    {
+        "non_field_errors": ["Invalid data."],
+        "username": ["This field may not be blank."],
+        "email": ["This field may not be blank."],
+        "password": ["This field may not be blank."]
+    }
+    ```
 
-**Response:**
+### 5. Admin Registration
+- **Endpoint**: `/register/admin/`
+- **Method**: `POST`
 
-- **204 No Content** on successful deletion of the user account.
+#### Request Body
+```json
+{
+    "full_name": "string",
+    "username": "string",
+    "email": "string",
+    "password": "string"
+}
+```
 
+- **Response**:
+  - **Success (201 Created)**:
+    ```json
+    {
+        "success": true,
+        "message": "Admin registered successfully."
+    }
+    ```
+  - **Error (400 Bad Request)**:
+    ```json
+    {
+        "non_field_errors": ["Invalid data."],
+        "username": ["This field may not be blank."],
+        "email": ["This field may not be blank."],
+        "password": ["This field may not be blank."]
+    }
+    ```
+    
 ## Swagger Documentation
 
 Swagger documentation is available at the following URL:

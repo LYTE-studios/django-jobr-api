@@ -8,3 +8,5 @@ venv
 jobr_api_backend/accounts/__pycache__/
 jobr_api_backend/accounts/migrations/__pycache__/
 jobr_api_backend/jobr_api_backend/__pycache__/
+jobr_api_backend/vacancies/__pycache__/
+jobr_api_backend/vacancies/migrations/__pycache__/

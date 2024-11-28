@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from accounts.models import Employer
+from accounts.models import Employer, Employee
 from .models import ContractType, Function, Question, Skill, Extra, Vacancy, Language, ApplyVacancy
 
 
@@ -40,6 +40,7 @@ class ExtraSerializer(serializers.ModelSerializer):
 
 
 class VacancySerializer(serializers.ModelSerializer):
+    employer = serializers.PrimaryKeyRelatedField(queryset=Employer.objects.all(), many=False)
     contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), many=False)
     function = serializers.PrimaryKeyRelatedField(queryset=Function.objects.all(), many=False)
     skill = serializers.PrimaryKeyRelatedField(queryset=Skill.objects.all(), many=True)
@@ -48,14 +49,14 @@ class VacancySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vacancy
-        fields = ['title', 'contract_type', 'function', 'location', 'skill', 'week_day', 'salary', 'description',
+        fields = ['employer', 'title', 'contract_type', 'function', 'location', 'skill', 'week_day', 'salary', 'description',
                   'language', 'question']
 
 
 class ApplySerializer(serializers.ModelSerializer):
-    employer = serializers.PrimaryKeyRelatedField(queryset=Employer.objects.all(), many=False)
+    employee = serializers.PrimaryKeyRelatedField(queryset=Employee.objects.all(), many=False)
     vacancy = serializers.PrimaryKeyRelatedField(queryset=Vacancy.objects.all(), many=False)
 
     class Meta:
         model = ApplyVacancy
-        fields = ['employer', 'vacancy']
+        fields = ['employee', 'vacancy']

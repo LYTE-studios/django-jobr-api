@@ -305,6 +305,7 @@ pip install pipenv
   - **Request Body:**
     ```json
     {
+      "employer_id" : "<employer_id>",
       "title": "<vacancy_title>",
       "contract_type": "<contract_type_id>",
       "function": "<function_id>",

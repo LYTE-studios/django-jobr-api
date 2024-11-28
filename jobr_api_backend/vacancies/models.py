@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import Employer
+from accounts.models import Employer, Employee
 
 
 # Create your models here.
@@ -59,8 +59,9 @@ class Vacancy(models.Model):
     description = models.TextField()
     language = models.ManyToManyField(Language)
     question = models.ManyToManyField(Question)
+    employer = models.OneToOneField(Employer, on_delete=models.CASCADE)
 
 
 class ApplyVacancy(models.Model):
-    employer = models.OneToOneField(Employer, on_delete=models.CASCADE)
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE)
     vacancy = models.OneToOneField(Vacancy, on_delete=models.CASCADE)

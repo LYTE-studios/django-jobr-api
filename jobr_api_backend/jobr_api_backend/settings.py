@@ -128,3 +128,8 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+FIREBASE_CREDENTIALS_PATH = BASE_DIR / 'jobr-test-5d9e5-firebase-adminsdk-u84ov-3aa06cd2c1.json'
+GOOGLE_CLIENT_ID = 'Google_client_id'  # From Firebase console
+APPLE_CLIENT_ID = 'Apple_client_id' 

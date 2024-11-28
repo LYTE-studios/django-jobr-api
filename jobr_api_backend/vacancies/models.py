@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import CustomUser
+from accounts.models import Employer
 
 
 # Create your models here.
@@ -53,14 +53,14 @@ class Vacancy(models.Model):
     location = models.CharField(max_length=10,
                                 choices=[('location', 'Location'), ('hybrid', 'Hybrid'), ('distance', 'Distance')],
                                 default='location')
-    skill = models.ManyToManyField(Skill, blank=True, null=True)
+    skill = models.ManyToManyField(Skill)
     week_day = models.CharField(max_length=255)
     salary = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    language = models.ManyToManyField(Language, blank=True, null=True)
-    question = models.ManyToManyField(Question, blank=True, null=True)
+    language = models.ManyToManyField(Language)
+    question = models.ManyToManyField(Question)
 
 
 class ApplyVacancy(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    employer = models.OneToOneField(Employer, on_delete=models.CASCADE)
     vacancy = models.OneToOneField(Vacancy, on_delete=models.CASCADE)

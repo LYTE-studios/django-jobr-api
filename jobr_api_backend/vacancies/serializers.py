@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from accounts.models import CustomUser
+from accounts.models import Employer
 from .models import ContractType, Function, Question, Skill, Extra, Vacancy, Language, ApplyVacancy
 
 
@@ -53,9 +53,9 @@ class VacancySerializer(serializers.ModelSerializer):
 
 
 class ApplySerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=False)
+    employer = serializers.PrimaryKeyRelatedField(queryset=Employer.objects.all(), many=False)
     vacancy = serializers.PrimaryKeyRelatedField(queryset=Vacancy.objects.all(), many=False)
 
     class Meta:
         model = ApplyVacancy
-        fields = ['user', 'vacancy']
+        fields = ['employer', 'vacancy']

@@ -331,7 +331,7 @@ pip install pipenv
   - **Request Body:**
     ```json
     {
-      "user": "<user_id>",
+      "employer": "<employer_id>",
       "vacancy": "<vacancy_id>"
     }
     ```

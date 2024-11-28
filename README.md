@@ -204,6 +204,139 @@ pip install pipenv
 }
 ```
 
+## CRUD Endpoints for Vacancy
+
+### 1. Contract Types
+
+- **List all contract types**
+  
+  - **Endpoint:** `GET /contract-types/`
+  - **Response:** Returns a list of all contract types.
+
+- **Create a new contract type**
+  
+  - **Endpoint:** `POST /contract-types/`
+  - **Request Body:**
+    ```json
+    {
+      "contract_type": "<contract_type_name>"
+    }
+    ```
+
+### 2. Functions
+
+- **List all functions**
+  
+  - **Endpoint:** `GET /functions/`
+  - **Response:** Returns a list of all functions.
+
+- **Create a new function**
+  
+  - **Endpoint:** `POST /functions/`
+  - **Request Body:**
+    ```json
+    {
+      "function": "<function_name>"
+    }
+    ```
+
+### 3. Questions
+
+- **List all questions**
+  
+  - **Endpoint:** `GET /questions/`
+  - **Response:** Returns a list of all questions.
+
+- **Create a new question**
+  
+  - **Endpoint:** `POST /questions/`
+  - **Request Body:**
+    ```json
+    {
+      "question": "<question_text>"
+    }
+    ```
+
+### 4. Languages
+
+- **List all languages**
+  
+  - **Endpoint:** `GET /languages/`
+  - **Response:** Returns a list of all languages.
+
+- **Create a new language**
+  
+  - **Endpoint:** `POST /languages/`
+  - **Request Body:**
+    ```json
+    {
+      "language": "<language_name>"
+    }
+    ```
+
+### 5. Skills
+
+- **List all skills**
+  
+  - **Endpoint:** `GET /skills/`
+  - **Response:** Returns a list of all skills.
+
+- **Create a new skill**
+  
+  - **Endpoint:** `POST /skills/`
+  - **Request Body:**
+    ```json
+    {
+      "skill": "<skill_name>",
+      "category": "<hard_or_soft>"  // must be either 'hard' or 'soft'
+    }
+    ```
+
+### 6. Vacancies
+
+- **List all vacancies**
+  
+  - **Endpoint:** `GET /vacancies/`
+  - **Response:** Returns a list of all vacancies.
+
+- **Create a new vacancy**
+  
+  - **Endpoint:** `POST /vacancies/`
+  - **Request Body:**
+    ```json
+    {
+      "title": "<vacancy_title>",
+      "contract_type": "<contract_type_id>",
+      "function": "<function_id>",
+      "location": "<location_type>",  // 'location', 'hybrid', or 'distance'
+      "skill": [<skill_id_1>, <skill_id_2>, ...],
+      "week_day": "<week_days>",
+      "salary": <salary_amount>,
+      "description": "<vacancy_description>",
+      "language": [<language_id_1>, <language_id_2>, ...],
+      "question": [<question_id_1>, <question_id_2>, ...]
+    }
+    ```
+
+### 7. Apply for a Vacancy
+
+- **List all applications**
+  
+  - **Endpoint:** `GET /apply/`
+  - **Response:** Returns a list of all user applications.
+
+- **Create a new application**
+  
+  - **Endpoint:** `POST /apply/`
+  - **Request Body:**
+    ```json
+    {
+      "user": "<user_id>",
+      "vacancy": "<vacancy_id>"
+    }
+    ```
+
+
 - **Response**:
   - **Success (201 Created)**:
     ```json

@@ -355,6 +355,39 @@ pip install pipenv
         "password": ["This field may not be blank."]
     }
     ```
+
+### 6. Chats
+
+- **Create a chat room**
+
+  - **Endpoint:** `POST /chat/start-chat/`
+  - **Request Body:**
+    ```json
+    {
+      "employee_id": 1,
+      "employer_id": 2
+    }
+    ```
+
+- **Send Message**
+
+  - **Endpoint:** `POST /chat/send-message/`
+  - **Request Body:**
+    ```json
+    {
+      "chat_room_id": 1,
+      "content": "Hello! How can I help you today?"
+    }
+    ```
+
+- **Get Chat History(for a specific ID)**  
+
+  - **Endpoint:** `GET /chat/1/history/`
+
+- **Get All Chat History**  
+
+  - **Endpoint:** `GET /chat/history/`
+
     
 ## Swagger Documentation
 

@@ -35,8 +35,12 @@ class SendMessageView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
 class GetMessagesView(APIView):
-    def get(self, request, chatroom_id):
-        chat_room = get_object_or_404(ChatRoom, id=chatroom_id)
-        messages = Message.objects.filter(chatroom=chat_room).order_by('timestamp')
+    def get(self, request, chatroom_id=None):
+        if chatroom_id:
+            chat_room = get_object_or_404(ChatRoom, id=chatroom_id)
+            messages = Message.objects.filter(chatroom=chat_room).order_by('timestamp')
+        else:
+            messages = Message.objects.all().order_by('timestamp')
+            
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)

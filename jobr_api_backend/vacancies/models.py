@@ -48,8 +48,8 @@ class Extra(models.Model):
 
 class Vacancy(models.Model):
     title = models.CharField(max_length=255)
-    contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
-    function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
+    contract_type = models.ForeignKey(ContractType, on_delete=models.CASCADE, blank=True, null=True)
+    function = models.ForeignKey(Function, on_delete=models.CASCADE, blank=True, null=True)
     location = models.CharField(max_length=10,
                                 choices=[('location', 'Location'), ('hybrid', 'Hybrid'), ('distance', 'Distance')],
                                 default='location')
@@ -59,9 +59,11 @@ class Vacancy(models.Model):
     description = models.TextField()
     language = models.ManyToManyField(Language)
     question = models.ManyToManyField(Question)
-    employer = models.OneToOneField(Employer, on_delete=models.CASCADE)
+    employer = models.ForeignKey(Employer, on_delete=models.CASCADE)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Latitude field
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Longitude field
 
 
 class ApplyVacancy(models.Model):
-    employee = models.OneToOneField(Employee, on_delete=models.CASCADE)
-    vacancy = models.OneToOneField(Vacancy, on_delete=models.CASCADE)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE)

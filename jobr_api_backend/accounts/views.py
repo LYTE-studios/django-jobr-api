@@ -4,7 +4,16 @@ from rest_framework.response import Response
 from .serializers import UserSerializer, LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer
 from .models import CustomUser, Employee, Employer, Admin
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from django.conf import settings
+from firebase_admin import auth as firebase_auth
+import requests
+import google.auth.transport.requests
+import google.oauth2.id_token
 
+from .models import CustomUser
+from .serializers import UserSerializer
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -95,3 +104,104 @@ class AdminRegistration(generics.CreateAPIView):
                 user.delete()
                 return Response(admin_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class GoogleSignInView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            # Get the ID token from the request
+            id_token = request.data.get('id_token')
+            
+            if not id_token:
+                return Response({
+                    'error': 'ID token is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Verify Google ID token
+            request_google = google.auth.transport.requests.Request()
+            try:
+                id_info = google.oauth2.id_token.verify_firebase_token(
+                    id_token, 
+                    request_google, 
+                    settings.GOOGLE_CLIENT_ID
+                )
+            except ValueError as e:
+                return Response({
+                    'error': 'Invalid token',
+                    'details': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Extract user information
+            email = id_info.get('email')
+            name = id_info.get('name', '')
+
+            # Check if user exists, if not create
+            user, created = CustomUser.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': email,
+                    'first_name': name.split()[0] if name else '',
+                    'last_name': name.split()[-1] if len(name.split()) > 1 else ''
+                }
+            )
+
+            # Return response
+            return Response({
+                "message": "Google Login successful", 
+                "user": user.username,
+                "created": created
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': 'Google Authentication failed',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AppleSignInView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            # Get the ID token from the request
+            id_token = request.data.get('id_token')
+            
+            if not id_token:
+                return Response({
+                    'error': 'ID token is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Verify Apple ID token using Firebase
+            try:
+                decoded_token = firebase_auth.verify_id_token(id_token)
+            except (ValueError, firebase_auth.InvalidIdTokenError) as e:
+                return Response({
+                    'error': 'Invalid token',
+                    'details': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Extract user information
+            email = decoded_token.get('email')
+            apple_uid = decoded_token.get('uid')
+
+            # Check if user exists, if not create
+            user, created = CustomUser.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': f'apple_{apple_uid}',
+                }
+            )
+
+            # Return response
+            return Response({
+                "message": "Apple Login successful", 
+                "user": user.username,
+                "created": created
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': 'Apple Authentication failed',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

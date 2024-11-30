@@ -1,7 +1,7 @@
 # accounts/serializers.py
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import CustomUser, Employee, Employer, Admin
+from .models import CustomUser, Employee, Employer, Admin, Review
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -52,3 +52,21 @@ class AdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Admin
         fields = ['full_name', 'user']
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['employee', 'employer', 'anonymous_name', 'rating', 'comment', 'reviewer_type']
+
+    def validate(self, attrs):
+        # Ensure either employee or anonymous_name is provided
+        if not attrs.get('employee') and not attrs.get('anonymous_name'):
+            raise serializers.ValidationError("Either an employee or an anonymous name must be provided.")
+
+        # Additional validation rules can be added here (e.g., rating range)
+        if attrs.get('rating') not in range(1, 6):
+            raise serializers.ValidationError("Rating must be between 1 and 5.")
+
+        return attrs
+

@@ -1,8 +1,7 @@
 # accounts/views.py
 from rest_framework import generics, status
 from rest_framework.response import Response
-from .serializers import UserSerializer, LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer
-from .models import CustomUser, Employee, Employer, Admin
+from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -14,6 +13,7 @@ import google.oauth2.id_token
 
 from .models import CustomUser
 from .serializers import UserSerializer
+
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -105,6 +105,7 @@ class AdminRegistration(generics.CreateAPIView):
                 return Response(admin_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class GoogleSignInView(APIView):
     permission_classes = [AllowAny]
 
@@ -112,7 +113,7 @@ class GoogleSignInView(APIView):
         try:
             # Get the ID token from the request
             id_token = request.data.get('id_token')
-            
+
             if not id_token:
                 return Response({
                     'error': 'ID token is required'
@@ -122,8 +123,8 @@ class GoogleSignInView(APIView):
             request_google = google.auth.transport.requests.Request()
             try:
                 id_info = google.oauth2.id_token.verify_firebase_token(
-                    id_token, 
-                    request_google, 
+                    id_token,
+                    request_google,
                     settings.GOOGLE_CLIENT_ID
                 )
             except ValueError as e:
@@ -148,7 +149,7 @@ class GoogleSignInView(APIView):
 
             # Return response
             return Response({
-                "message": "Google Login successful", 
+                "message": "Google Login successful",
                 "user": user.username,
                 "created": created
             }, status=status.HTTP_200_OK)
@@ -159,6 +160,7 @@ class GoogleSignInView(APIView):
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class AppleSignInView(APIView):
     permission_classes = [AllowAny]
 
@@ -166,7 +168,7 @@ class AppleSignInView(APIView):
         try:
             # Get the ID token from the request
             id_token = request.data.get('id_token')
-            
+
             if not id_token:
                 return Response({
                     'error': 'ID token is required'
@@ -195,7 +197,7 @@ class AppleSignInView(APIView):
 
             # Return response
             return Response({
-                "message": "Apple Login successful", 
+                "message": "Apple Login successful",
                 "user": user.username,
                 "created": created
             }, status=status.HTTP_200_OK)
@@ -205,3 +207,23 @@ class AppleSignInView(APIView):
                 'error': 'Apple Authentication failed',
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ReviewCreateView(generics.CreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [AllowAny]  # Allow anyone to post a review
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        # Determine reviewer type and save accordingly
+        if hasattr(user, 'employee'):
+            reviewer_type = 'employee'
+            serializer.save(employee=user.employee, reviewer_type=reviewer_type)
+        elif hasattr(user, 'employer'):
+            reviewer_type = 'employer'
+            serializer.save(employer=user.employer, reviewer_type=reviewer_type)
+        else:
+            # For anonymous users
+            reviewer_type = 'anonymous'
+            serializer.save(reviewer_type=reviewer_type)

@@ -50,7 +50,7 @@ class VacancySerializer(serializers.ModelSerializer):
     class Meta:
         model = Vacancy
         fields = ['employer', 'title', 'contract_type', 'function', 'location', 'skill', 'week_day', 'salary', 'description',
-                  'language', 'question']
+                  'language', 'question', 'latitude', 'longitude']
 
 
 class ApplySerializer(serializers.ModelSerializer):

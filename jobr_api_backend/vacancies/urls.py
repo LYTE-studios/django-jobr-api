@@ -1,7 +1,7 @@
 # vacancies/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ContractTypeViewSet, FunctionViewSet, QuestionViewSet, SkillViewSet, VacancyViewSet, LanguageViewSet, ApplyViewSet
+from .views import ContractTypeViewSet, FunctionViewSet, QuestionViewSet, SkillViewSet, VacancyViewSet, LanguageViewSet, ApplyViewSet, VacancyFilterView
 
 router = DefaultRouter()
 router.register(r'contract-types', ContractTypeViewSet, basename='contract_type')
@@ -14,5 +14,6 @@ router.register(r'vacancies', VacancyViewSet, basename='vacancy')
 router.register(r'apply', ApplyViewSet, basename='apply')
 urlpatterns = [
     path('', include(router.urls)),
+    path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),
 ]
 

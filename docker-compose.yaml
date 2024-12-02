@@ -1,5 +1,5 @@
 services:
   api:
     network_mode: "host"
-    build: .
+    build: jobr_api_backend
     restart: on-failure

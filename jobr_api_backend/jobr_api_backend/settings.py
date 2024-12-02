@@ -10,6 +10,21 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import sentry_sdk
+
+sentry_sdk.init(
+    dsn="https://4035ff24b049015af1b2a354e86bc4fb@o4506789659475968.ingest.us.sentry.io/4508399363096576",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for tracing.
+    traces_sample_rate=1.0,
+    _experiments={
+        # Set continuous_profiling_auto_start to True
+        # to automatically start the profiler on when
+        # possible.
+        "continuous_profiling_auto_start": True,
+    },
+)
+
 from pathlib import Path
 import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,7 +40,9 @@ SECRET_KEY = 'django-insecure-)hnxv=8^k_)epg-l+7-=e#0u9aet2kapybaf@10qhglat%oh2@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "api.jobr.lytestudios.be",
+]
 
 
 # Application definition

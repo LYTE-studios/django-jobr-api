@@ -1,7 +1,6 @@
 .env
 env
 .venv
-pipfile.lock
 jobr_api_backend/db.sqlite3
 .idea
 venv

@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+psycopg2-binary = "*"
 sentry-sdk = "*"
 channels = "*"
 gunicorn = "20.1.0"

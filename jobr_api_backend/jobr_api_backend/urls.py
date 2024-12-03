@@ -23,9 +23,9 @@ from drf_yasg import openapi
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="User Authentication API",
+        title="Jobr API",
         default_version='v1',
-        description="API documentation for user authentication",
+        description="API documentation for the Jobr REST API",
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),

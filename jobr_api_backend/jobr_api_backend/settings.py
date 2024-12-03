@@ -44,6 +44,11 @@ ALLOWED_HOSTS = [
     "api.jobr.lytestudios.be",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://api.jobr.lytestudios.be',
+    'http://api.jobr.lytestudios.be'  # if you also use http
+]
+
 
 # Application definition
 
@@ -96,11 +101,15 @@ ASGI_APPLICATION = 'jobr_api_backend.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+from .my_secrets import database
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': database,
+    # DEV
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # }
 }
 
 CHANNEL_LAYERS = {
@@ -147,7 +156,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = '/var/www/jobr_api_backend/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -159,6 +169,5 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
-FIREBASE_CREDENTIALS_PATH = BASE_DIR / 'firebase_secrets.json'
 GOOGLE_CLIENT_ID = 'Google_client_id'  # From Firebase console
 APPLE_CLIENT_ID = 'Apple_client_id' 

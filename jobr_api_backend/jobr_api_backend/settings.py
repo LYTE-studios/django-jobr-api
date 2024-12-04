@@ -41,7 +41,7 @@ SECRET_KEY = 'django-insecure-)hnxv=8^k_)epg-l+7-=e#0u9aet2kapybaf@10qhglat%oh2@
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    "api.jobr.lytestudios.be",
+    "api.jobr.lytestudios.be"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'drf_yasg',
     'accounts',
     'vacancies',
@@ -156,8 +157,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = '/var/www/jobr_api_backend/static/'
+STATIC_URL = '/static/'
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -170,4 +171,25 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 GOOGLE_CLIENT_ID = 'Google_client_id'  # From Firebase console
-APPLE_CLIENT_ID = 'Apple_client_id' 
+APPLE_CLIENT_ID = 'Apple_client_id'
+
+# settings.py
+from datetime import timedelta # import this library top of the settings.py file
+
+# put on your settings.py file below INSTALLED_APPS
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME': timedelta(days=30),
+    'SLIDING_TOKEN_REFRESH_LIFETIME_LATE_USER': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME_LATE_USER': timedelta(days=30),
+}

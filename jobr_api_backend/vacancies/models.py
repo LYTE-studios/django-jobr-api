@@ -1,6 +1,6 @@
 from django.db import models
 from accounts.models import Employer, Employee
-
+from accounts.models import CustomUser
 
 # Create your models here.
 class ContractType(models.Model):
@@ -62,7 +62,6 @@ class Vacancy(models.Model):
     employer = models.ForeignKey(Employer, on_delete=models.CASCADE)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Latitude field
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Longitude field
-
 
 class ApplyVacancy(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)

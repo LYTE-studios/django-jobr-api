@@ -16,6 +16,7 @@ class Employee(models.Model):
     biography = models.TextField(blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Latitude field
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Longitude field
+    phone_session_counts = models.IntegerField(default=0)
 
 
 class Employer(models.Model):

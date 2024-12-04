@@ -1,7 +1,7 @@
 # accounts/views.py
 from rest_framework import generics, status
 from rest_framework.response import Response
-from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer
+from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer, EmployeeStatisticsSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -11,7 +11,7 @@ import requests
 import google.auth.transport.requests
 import google.oauth2.id_token
 
-from .models import CustomUser
+from .models import CustomUser, Employee
 from .serializers import UserSerializer
 
 
@@ -227,3 +227,32 @@ class ReviewCreateView(generics.CreateAPIView):
             # For anonymous users
             reviewer_type = 'anonymous'
             serializer.save(reviewer_type=reviewer_type)
+
+class EmployeeStatisticsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            # Get the Employee instance for the current user
+            employee = Employee.objects.get(user=request.user)
+            serializer = EmployeeStatisticsSerializer(employee)
+            return Response(serializer.data)
+        except Employee.DoesNotExist:
+            return Response(
+                {"detail": "Employee profile not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def post(self, request):
+        try:
+            employee = Employee.objects.get(user=request.user)
+            employee.phone_session_counts += 1
+            employee.save()
+            
+            serializer = EmployeeStatisticsSerializer(employee)
+            return Response(serializer.data)
+        except Employee.DoesNotExist:
+            return Response(
+                {"detail": "Employee profile not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )

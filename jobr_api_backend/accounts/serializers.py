@@ -70,3 +70,24 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         return attrs
 
+class EmployeeStatisticsSerializer(serializers.ModelSerializer):
+    vacancies_count = serializers.SerializerMethodField()
+    chats_count = serializers.SerializerMethodField()
+    phone_session_counts = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Employee
+        fields = [
+            'user', 
+            'vacancies_count', 
+            'chats_count', 
+            'phone_session_counts'
+        ]
+
+    def get_vacancies_count(self, obj):
+        from vacancies.models import ApplyVacancy
+        return ApplyVacancy.objects.filter(employee=obj).count()
+
+    def get_chats_count(self, obj):
+        from chat.models import Message
+        return Message.objects.filter(sender=obj.user).count()

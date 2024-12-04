@@ -40,6 +40,28 @@ SECRET_KEY = 'django-insecure-)hnxv=8^k_)epg-l+7-=e#0u9aet2kapybaf@10qhglat%oh2@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+AWS_STORAGE_BUCKET_NAME = 'jobr-api'
+AWS_S3_REGION_NAME = 'eu-central-1'
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_VERIFY = True
+AWS_S3_ADDRESSING_STYLE = 'virtual'
+AWS_DEFAULT_ACL = 'public-read'
+STORAGES_DEBUG = True
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+# Tell Django to use S3 for static files storage
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+# Local path for collectstatic to gather files before uploading to S3
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# URL that your static files will be accessible from
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+
+
 ALLOWED_HOSTS = [
     "api.jobr.lytestudios.be",
 ]
@@ -65,6 +87,7 @@ INSTALLED_APPS = [
     'vacancies',
     'chat',
     'channels',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -151,13 +174,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
-STATIC_URL = 'static/'
-STATIC_ROOT = '/var/www/jobr_api_backend/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

@@ -125,17 +125,13 @@ ASGI_APPLICATION = 'jobr_api_backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-"""
+
 from .my_secrets import database
 
 DATABASES = {
     'default': database,
-    # DEV
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
 }
+
 """
 DATABASES = {
     'default': {
@@ -143,7 +139,7 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
+"""
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",

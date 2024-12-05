@@ -1,12 +1,13 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from .models import CustomUser
+from .models import CustomUser, Employee
 
 from django.test import TestCase
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from unittest.mock import patch, MagicMock
+from datetime import date
 
 User = get_user_model()
 
@@ -56,7 +57,6 @@ class UserTests(APITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(CustomUser.objects.filter(id=self.user.id).exists())  # Verify user no longer exists
-
 
 
 class SocialAuthenticationTests(TestCase):
@@ -227,3 +227,26 @@ class SocialAuthenticationTests(TestCase):
         response_apple = self.client.post(self.apple_login_url, {}, format='json')
         self.assertEqual(response_apple.status_code, 400)
         self.assertEqual(response_apple.data['error'], 'ID token is required')
+
+class EmployeeStatisticsTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='testpass')
+        self.client.force_authenticate(user=self.user)
+
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = CustomUser.objects.create_user(username='testuser', password='testpass')
+        self.employee = Employee.objects.create(
+            user=self.user, 
+            date_of_birth=date(1990, 1, 1)  # Added a sample date of birth haha
+        )
+        self.client.force_authenticate(user=self.user)
+    def test_get_statistics(self):
+        response = self.client.get(reverse('employee-statistics'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_increment_phone_sessions(self):
+        response = self.client.post(reverse('employee-statistics'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

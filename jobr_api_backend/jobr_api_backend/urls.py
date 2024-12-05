@@ -37,7 +37,7 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/accounts/', include('accounts.urls')),
     path('api/vacancies/', include('vacancies.urls')),
-    path('api/chat/', include('chat.urls'))
+    path('api/chat/', include('chat.urls')),
 ]
 
 urlpatterns += [

@@ -1,6 +1,8 @@
 # accounts/views.py
 from rest_framework import generics, status
 from rest_framework.response import Response
+
+from .services import TokenService
 from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer, EmployeeStatisticsSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -10,10 +12,13 @@ from firebase_admin import auth as firebase_auth
 import requests
 import google.auth.transport.requests
 import google.oauth2.id_token
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 from .models import CustomUser, Employee
 from .serializers import UserSerializer
-
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -22,18 +27,40 @@ class UserRegistrationView(generics.CreateAPIView):
 class UserLoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="Login successful",
+                examples={
+                    "application/json": {
+                        "message": "Login successful",
+                        "user": "username",
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string"
+                    }
+                }
+            )
+        }
+    )
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data
-            return Response({"message": "Login successful", "user": user.username}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        tokens = TokenService.get_tokens_for_user(user)
+        
+        return Response({
+            "message": "Login successful",
+            "user": user.username,
+            "access": tokens['access'],
+            "refresh": tokens['refresh']
+        }, status=status.HTTP_200_OK)
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
@@ -46,8 +73,24 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class EmployeeRegistration(generics.CreateAPIView):
+    permission_classes = [AllowAny]
     serializer_class = EmployeeSerializer
 
+    @swagger_auto_schema(
+        responses={
+            201: openapi.Response(
+                description="Employee registration successful",
+                examples={
+                    "application/json": {
+                        "success": True,
+                        "message": "Employee registered successfully.",
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string"
+                    }
+                }
+            )
+        }
+    )
     def create(self, request, *args, **kwargs):
         user_serializer = UserSerializer(data=request.data)
         if user_serializer.is_valid():
@@ -57,7 +100,7 @@ class EmployeeRegistration(generics.CreateAPIView):
             employee_serializer = self.get_serializer(data=employee_data)
             if employee_serializer.is_valid():
                 employee_serializer.save()
-                return Response({"success": True, "message": "Employee registered successfully."},
+                return Response({"success": True, "message": "Employee registered successfully."} | TokenService.get_tokens_for_user(user),
                                 status=status.HTTP_201_CREATED)
             else:
                 # delete user
@@ -67,8 +110,24 @@ class EmployeeRegistration(generics.CreateAPIView):
 
 
 class EmployerRegistration(generics.CreateAPIView):
+    permission_classes = [AllowAny]
     serializer_class = EmployerSerializer
 
+    @swagger_auto_schema(
+        responses={
+            201: openapi.Response(
+                description="Employer registration successful",
+                examples={
+                    "application/json": {
+                        "success": True,
+                        "message": "Employer registered successfully.",
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string"
+                    }
+                }
+            )
+        }
+    )
     def create(self, request, *args, **kwargs):
         user_serializer = UserSerializer(data=request.data)
         if user_serializer.is_valid():
@@ -78,7 +137,7 @@ class EmployerRegistration(generics.CreateAPIView):
             employer_serializer = self.get_serializer(data=employer_data)
             if employer_serializer.is_valid():
                 employer_serializer.save()
-                return Response({"success": True, "message": "Employer registered successfully."},
+                return Response({"success": True, "message": "Employer registered successfully."}  | TokenService.get_tokens_for_user(user),
                                 status=status.HTTP_201_CREATED)
             else:
                 user.delete()
@@ -89,6 +148,21 @@ class EmployerRegistration(generics.CreateAPIView):
 class AdminRegistration(generics.CreateAPIView):
     serializer_class = AdminSerializer
 
+    @swagger_auto_schema(
+        responses={
+            201: openapi.Response(
+                description="Admin registration successful",
+                examples={
+                    "application/json": {
+                        "success": True,
+                        "message": "Admin registered successfully.",
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string"
+                    }
+                }
+            )
+        }
+    )
     def create(self, request, *args, **kwargs):
         user_serializer = UserSerializer(data=request.data)
         if user_serializer.is_valid():
@@ -98,7 +172,7 @@ class AdminRegistration(generics.CreateAPIView):
             admin_serializer = self.get_serializer(data=admin_data)
             if admin_serializer.is_valid():
                 admin_serializer.save()
-                return Response({"success": True, "message": "Admin registered successfully."},
+                return Response({"success": True, "message": "Admin registered successfully."}  | TokenService.get_tokens_for_user(user),
                                 status=status.HTTP_201_CREATED)
             else:
                 user.delete()
@@ -109,6 +183,22 @@ class AdminRegistration(generics.CreateAPIView):
 class GoogleSignInView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="Google Login successful",
+                examples={
+                    "application/json": {
+                        "message": "Google Login successful",
+                        "created": "01/01/2000 00:00:00",
+                        "user": "username",
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string"
+                    }
+                }
+            )
+        }
+    )
     def post(self, request):
         try:
             # Get the ID token from the request
@@ -152,7 +242,7 @@ class GoogleSignInView(APIView):
                 "message": "Google Login successful",
                 "user": user.username,
                 "created": created
-            }, status=status.HTTP_200_OK)
+            }  | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
@@ -164,6 +254,22 @@ class GoogleSignInView(APIView):
 class AppleSignInView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(   
+        responses={
+            200: openapi.Response(
+                description="Apple Login successful",
+                examples={
+                    "application/json": {
+                        "message": "Apple Login successful",
+                        "created": "01/01/2000 00:00:00",
+                        "user": "username",
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string"
+                    }
+                }
+            )
+        }
+    )
     def post(self, request):
         try:
             # Get the ID token from the request
@@ -200,7 +306,7 @@ class AppleSignInView(APIView):
                 "message": "Apple Login successful",
                 "user": user.username,
                 "created": created
-            }, status=status.HTTP_200_OK)
+            }  | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
@@ -229,6 +335,7 @@ class ReviewCreateView(generics.CreateAPIView):
             serializer.save(reviewer_type=reviewer_type)
 
 class EmployeeStatisticsView(APIView):
+    authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
 
     def get(self, request):

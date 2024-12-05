@@ -6,49 +6,69 @@ from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
 from accounts.models import Employee
 from rest_framework.exceptions import NotFound
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 
 class ContractTypeViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = ContractType.objects.all()
     serializer_class = ContractTypeSerializer
 
 
 class FunctionViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = Function.objects.all()
     serializer_class = FunctionSerializer
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
 
 
 class LanguageViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = Language.objects.all()
     serializer_class = LanguageSerializer
 
 
 class SkillViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = Skill.objects.all()
     serializer_class = SkillSerializer
 
 
 class ExtraViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = Extra.objects.all()
     serializer_class = ExtraSerializer
 
 
 class VacancyViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = Vacancy.objects.all()
     serializer_class = VacancySerializer
 
 
 class ApplyViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+
     queryset = ApplyVacancy.objects.all()
     serializer_class = ApplySerializer
 
 
 class VacancyFilterView(generics.ListAPIView):
+    authentication_classes = [JWTAuthentication]
+
     serializer_class = VacancySerializer
 
     def get_queryset(self):

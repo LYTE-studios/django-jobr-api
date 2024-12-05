@@ -4,10 +4,17 @@ from rest_framework.views import APIView
 from rest_framework import status
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer, MessageSerializer
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.response import Response
+
 
 # Create your views here.
 
 class StartChatView(APIView):
+    authentication_classes = [JWTAuthentication]
+
     def post(self, request):
         employer_id = request.data.get('employee_id')
         employee_id = request.data.get('employer_id')
@@ -21,6 +28,8 @@ class StartChatView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
     
 class SendMessageView(APIView):
+    authentication_classes = [JWTAuthentication]
+
     def post(self, request):
         chat_room_id = request.data.get('chat_room_id')
         sender_id = request.data.get('sender_id')
@@ -35,6 +44,8 @@ class SendMessageView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
 class GetMessagesView(APIView):
+    authentication_classes = [JWTAuthentication]
+
     def get(self, request, chatroom_id=None):
         if chatroom_id:
             chat_room = get_object_or_404(ChatRoom, id=chatroom_id)

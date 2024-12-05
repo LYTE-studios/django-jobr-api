@@ -7,25 +7,53 @@ from .models import CustomUser, Employee, Employer, Admin, Review
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'password']  # Include user_type
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ['id', 'username', 'email', 'password']
+        extra_kwargs = {
+            'password': {'write_only': True, 'required': False},  # Make password optional for updates
+            'email': {'required': False},  # Make email optional for updates
+            'username': {'required': False}  # Make username optional for updates
+        }
 
     def create(self, validated_data):
         user = CustomUser(**validated_data)
-        user.set_password(validated_data['password'])  # Hash the password
+        user.set_password(validated_data['password'])
         user.save()
         return user
+
+    def update(self, instance, validated_data):
+        # Handle password separately if it's provided
+        if 'password' in validated_data:
+            password = validated_data.pop('password')
+            instance.set_password(password)
+        
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
 
-    def validate(self, data):
-        user = authenticate(**data)
-        if user is None:
-            raise serializers.ValidationError("Invalid username/password")
-        return user
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if user:
+                if user.is_active:
+                    attrs['user'] = user
+                    return attrs
+                else:
+                    raise serializers.ValidationError('User account is disabled.')
+            else:
+                raise serializers.ValidationError('Invalid credentials.')
+        else:
+            raise serializers.ValidationError('Must include "username" and "password".')
 
 
 class EmployeeSerializer(serializers.ModelSerializer):

@@ -15,45 +15,102 @@ User = get_user_model()
 class UserTests(APITestCase):
 
     def setUp(self):
-        self.user = CustomUser.objects.create_user(username='testuser', email='test@example.com',password='securepassword')
+        self.user = CustomUser.objects.create_user(
+            username='testuser', 
+            email='test@example.com',
+            password='securepassword'
+        )
 
-    def test_user_registration(self):
-        url = reverse('register')
-        data = {
-            'username': 'newuser',
-            'email': 'new@example.com',
-            'password': 'newpassword'
+    def test_employee_registration_cycle(self):
+        register_url = reverse('employee-registration')
+        register_data = {
+            'username': 'newemployee',
+            'email': 'employee@example.com',
+            'password': 'newpassword',
+            'date_of_birth': '1990-01-01',  # Add required employee fields
+            'gender': 'male',
+            'phone_number': '1234567890'
         }
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['username'], 'newuser')
+        register_response = self.client.post(register_url, register_data)
+        self.assertEqual(register_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue('access' in register_response.data)
+        self.assertTrue('refresh' in register_response.data)
 
-    def test_user_login(self):
-        url = reverse('login')
-        data = {
+    def test_login_and_access(self):
+        login_url = reverse('login')
+        login_data = {
             'username': 'testuser',
             'password': 'securepassword'
         }
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['message'], 'Login successful')
+        login_response = self.client.post(login_url, login_data)
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertTrue('access' in login_response.data)
+        self.assertTrue('refresh' in login_response.data)
+
+    def test_token_refresh(self):
+        # First login
+        login_url = reverse('login')
+        login_response = self.client.post(login_url, {
+            'username': 'testuser',
+            'password': 'securepassword'
+        })
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        
+        # Extract refresh token
+        refresh_token = login_response.data.get('refresh')
+        self.assertIsNotNone(refresh_token, "No refresh token in response")
+
+        # Try refresh
+        refresh_url = reverse('token_refresh')
+        refresh_response = self.client.post(refresh_url, {
+            'refresh': refresh_token
+        })
+        self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(refresh_response.data.get('access'))
+
+    def test_protected_endpoint_without_token(self):
+        # Try to access protected endpoint without token
+        url = reverse('user-detail', kwargs={'pk': self.user.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_update(self):
+        # First get tokens through login
+        login_url = reverse('login')
+        login_response = self.client.post(login_url, {
+            'username': 'testuser',
+            'password': 'securepassword'
+        }, format='json')
+        
+        token = login_response.data['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        
         url = reverse('user-detail', kwargs={'pk': self.user.id})
-        self.client.login(username='testuser', password='securepassword')
-        data = {
+        
+        update_data = {
             'username': 'updateduser',
-            'email': 'updated@example.com',
-            'password': 'newsecurepassword'  # Note that password is not updated here; modify as necessary
+            'email': 'updated@example.com'
         }
-        response = self.client.put(url, data)
+        
+        response = self.client.patch(url, update_data, format='json')  # Using PATCH instead of PUT
+        
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertEqual(self.user.username, 'updateduser')
+        self.assertEqual(self.user.email, 'updated@example.com')
 
     def test_user_delete(self):
+        # Get token first
+        login_url = reverse('login')
+        login_response = self.client.post(login_url, {
+            'username': 'testuser',
+            'password': 'securepassword'
+        })
+        token = login_response.data['access']
+        
+        # Use token for delete
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         url = reverse('user-detail', kwargs={'pk': self.user.id})
-        self.client.login(username='testuser', password='securepassword')
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(CustomUser.objects.filter(id=self.user.id).exists())  # Verify user no longer exists
@@ -87,6 +144,8 @@ class SocialAuthenticationTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data['message'], 'Google Login successful')
             self.assertTrue(response.data['created'])
+            self.assertIsNotNone(response.data['access'])
+            self.assertIsNotNone(response.data['refresh'])
             
             # Verify user was created
             user = User.objects.get(email='newuser@gmail.com')
@@ -122,6 +181,8 @@ class SocialAuthenticationTests(TestCase):
             self.assertEqual(response.data['message'], 'Google Login successful')
             self.assertEqual(response.data['user'], 'existinguser@gmail.com')
             self.assertFalse(response.data['created'])
+            self.assertIsNotNone(response.data['access'])
+            self.assertIsNotNone(response.data['refresh'])
 
     def test_apple_signin_new_user(self):
         # Mock the Firebase token verification
@@ -144,6 +205,8 @@ class SocialAuthenticationTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data['message'], 'Apple Login successful')
             self.assertTrue(response.data['created'])
+            self.assertIsNotNone(response.data['access'])
+            self.assertIsNotNone(response.data['refresh'])
             
             # Verify user was created
             user = User.objects.get(email='newappleuser@example.com')
@@ -179,6 +242,8 @@ class SocialAuthenticationTests(TestCase):
             self.assertEqual(response.data['message'], 'Apple Login successful')
             self.assertEqual(response.data['user'], 'existingappleuser@example.com')
             self.assertFalse(response.data['created'])
+            self.assertIsNotNone(response.data['access'])
+            self.assertIsNotNone(response.data['refresh'])
 
     def test_google_signin_invalid_token(self):
         # Mock the Google token verification to raise an error
@@ -243,10 +308,13 @@ class EmployeeStatisticsTestCase(TestCase):
             date_of_birth=date(1990, 1, 1)  # Added a sample date of birth haha
         )
         self.client.force_authenticate(user=self.user)
+        
     def test_get_statistics(self):
+        self.client.force_authenticate(user=self.user)
         response = self.client.get(reverse('employee-statistics'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_increment_phone_sessions(self):
+        self.client.force_authenticate(user=self.user)
         response = self.client.post(reverse('employee-statistics'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)

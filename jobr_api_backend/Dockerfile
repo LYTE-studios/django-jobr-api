@@ -6,8 +6,6 @@ COPY . .
 RUN pip install pipenv 
 RUN pipenv sync
 
-RUN pipenv run python manage.py collectstatic --noinput
-
 EXPOSE 8000
 
 # Command to run the Python script

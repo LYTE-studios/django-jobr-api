@@ -6,3 +6,4 @@ jobr_api_backend/db.sqlite3
 venv
 __pycache__/
 my_secrets.py
+jobr_api_backend/static

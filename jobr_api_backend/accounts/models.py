@@ -19,6 +19,11 @@ class Employee(models.Model):
     phone_session_counts = models.IntegerField(default=0)
 
 
+class EmployeeGallery(models.Model):
+    employees = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='employees_gallery')
+    gallery = models.ImageField(upload_to='galleries/', blank=False)
+
+
 class Employer(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     vat_number = models.CharField(max_length=30)
@@ -30,6 +35,11 @@ class Employer(models.Model):
     coordinates = models.JSONField()  # Stores latitude and longitude as JSON
     website = models.URLField(blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
+
+
+class EmployerGallery(models.Model):
+    employers = models.ForeignKey(Employer, on_delete=models.CASCADE, related_name='employers_gallery')
+    gallery = models.ImageField(upload_to='galleries/', blank=False)
 
 
 class Admin(models.Model):

@@ -63,7 +63,7 @@ STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 
 
 ALLOWED_HOSTS = [
-    "api.jobr.lytestudios.be",
+    "api.jobr.lytestudios.be"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -82,6 +82,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
     'accounts',
     'vacancies',
@@ -123,7 +125,7 @@ ASGI_APPLICATION = 'jobr_api_backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
+"""
 from .my_secrets import database
 
 DATABASES = {
@@ -133,6 +135,13 @@ DATABASES = {
     #     'ENGINE': 'django.db.backends.sqlite3',
     #     'NAME': BASE_DIR / 'db.sqlite3',
     # }
+}
+"""
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 CHANNEL_LAYERS = {
@@ -186,4 +195,25 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 GOOGLE_CLIENT_ID = 'Google_client_id'  # From Firebase console
-APPLE_CLIENT_ID = 'Apple_client_id' 
+APPLE_CLIENT_ID = 'Apple_client_id'
+
+# settings.py
+from datetime import timedelta # import this library top of the settings.py file
+
+# put on your settings.py file below INSTALLED_APPS
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+}

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from accounts.models import Employer, Employee
-from .models import ContractType, Function, Question, Skill, Extra, Vacancy, Language, ApplyVacancy
+from .models import Vacancy, ApplyVacancy
+from common.models import ContractType, Function, Question, Skill, Extra, Language
 
 
 class ContractTypeSerializer(serializers.ModelSerializer):

@@ -1,5 +1,6 @@
 from rest_framework import viewsets
-from .models import ContractType, Function, Question, Skill, Extra, Vacancy, Language, ApplyVacancy
+from common.models import ContractType, Function, Question, Skill, Extra, Language
+from .models import Vacancy, ApplyVacancy
 from .serializers import ContractTypeSerializer, LanguageSerializer, QuestionSerializer, SkillSerializer, \
     ExtraSerializer, VacancySerializer, ApplySerializer, FunctionSerializer
 from math import radians, cos, sin, asin, sqrt

@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'accounts',
     'vacancies',
+    'common',
     'chat',
     'channels',
     'storages',
@@ -132,14 +133,14 @@ DATABASES = {
     'default': database,
 }
 
-"""
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-"""
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",

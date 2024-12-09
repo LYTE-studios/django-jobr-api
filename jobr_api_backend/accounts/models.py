@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from common.models import Language, ContractType, Function, Skill
 
 
 class CustomUser(AbstractUser):
@@ -17,6 +18,10 @@ class Employee(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Latitude field
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Longitude field
     phone_session_counts = models.IntegerField(default=0)
+    language = models.ManyToManyField(Language)
+    contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
+    function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
+    skill = models.ManyToManyField(Skill)
 
 
 class EmployeeGallery(models.Model):

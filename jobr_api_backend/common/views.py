@@ -30,7 +30,6 @@ def generate_matchmaking_prompt(entity_type, data, preferences):
         - Contract Type: {data['contract_type']}
         - Function: {data['function']}
         - Preferred Languages: {', '.join(data['languages'])}
-        - Week Day Availability: {data['week_day']}
         - Desired Location: {data['location']}
         - Salary Expectation: {data['salary']}
         
@@ -75,7 +74,6 @@ def matchmaking(request, entity_type, entity_id):
                 "contract_type": employee.contract_type.name if employee.contract_type else "None",
                 "function": employee.function.name if employee.function else "None",
                 "languages": [l.name for l in employee.language.all()],
-                "week_day": employee.week_day,
                 "location": f"{employee.latitude}, {employee.longitude}",
                 "salary": "Not specified"
             },

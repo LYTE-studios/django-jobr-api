@@ -22,7 +22,6 @@ class Employee(models.Model):
     contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
     skill = models.ManyToManyField(Skill)
-    week_day = models.CharField(max_length=255, default="0")
 
 
 class EmployeeGallery(models.Model):

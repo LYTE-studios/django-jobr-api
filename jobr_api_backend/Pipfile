@@ -63,6 +63,7 @@ gunicorn = "20.1.0"
 django-storages = "*"
 boto3 = "*"
 djangorestframework-simplejwt = "*"
+django-extensions = "*"
 
 [requires]
 python_version = "3.12"

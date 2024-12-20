@@ -9,7 +9,7 @@ class ChatRoom(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"ChatRoom {self.id} ({self.employer} -{self.employee})"
+        return f"ChatRoom {self.id} ({self.employer} - {self.employee})"
     
 class Message(models.Model):
     chatroom = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name="messages")

@@ -1,12 +1,13 @@
 # accounts/urls.py
 from django.urls import path, include
-from .views import UserLoginView, UserDetailView, EmployeeRegistration, EmployerRegistration, GoogleSignInView, \
+from .views import UserLoginView, UserRegistrationView, UserDetailView, EmployeeRegistration, EmployerRegistration, GoogleSignInView, \
     AppleSignInView, ReviewCreateView, AllEmployeeGalleriesView, EmployeeByUserView, UpdateEmployeeGalleryView, \
     DeleteEmployeeGallery, AllEmployerGalleriesView, EmployerByUserView, UpdateEmployerGalleryView, \
     DeleteEmployerGallery, EmployeeStatisticsView
 
 urlpatterns = [
     path('login/', UserLoginView.as_view(), name='login'),
+    path('register/', UserRegistrationView.as_view(), name='register'),
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),  # Added user detail URL
     path('register/employee/', EmployeeRegistration.as_view(), name='employee-registration'),
     path('register/employer/', EmployerRegistration.as_view(), name='employer-registration'),

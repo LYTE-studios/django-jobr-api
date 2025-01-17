@@ -4,7 +4,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from .services import TokenService
-from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer, EmployeeStatisticsSerializer, EmployeeWithGallerySerializer, EmployeeGalleryUpdateSerializer, EmployerWithGallerySerializer, EmployerGalleryUpdateSerializer
+from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer, \
+    EmployeeStatisticsSerializer, EmployeeWithGallerySerializer, EmployeeGalleryUpdateSerializer, \
+    EmployerWithGallerySerializer, EmployerGalleryUpdateSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -20,6 +22,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery
 from .serializers import UserSerializer
+
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -55,6 +58,7 @@ class UserLoginView(generics.GenericAPIView):
             "access": tokens['access'],
             "refresh": tokens['refresh']
         }, status=status.HTTP_200_OK)
+
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [JWTAuthentication]
@@ -101,7 +105,9 @@ class EmployeeRegistration(generics.CreateAPIView):
             employee_serializer = self.get_serializer(data=employee_data)
             if employee_serializer.is_valid():
                 employee_serializer.save()
-                return Response({"success": True, "message": "Employee registered successfully."} | TokenService.get_tokens_for_user(user),
+                return Response({"success": True,
+                                 "message": "Employee registered successfully."} | TokenService.get_tokens_for_user(
+                    user),
                                 status=status.HTTP_201_CREATED)
             else:
                 # delete user
@@ -138,7 +144,9 @@ class EmployerRegistration(generics.CreateAPIView):
             employer_serializer = self.get_serializer(data=employer_data)
             if employer_serializer.is_valid():
                 employer_serializer.save()
-                return Response({"success": True, "message": "Employer registered successfully."}  | TokenService.get_tokens_for_user(user),
+                return Response({"success": True,
+                                 "message": "Employer registered successfully."} | TokenService.get_tokens_for_user(
+                    user),
                                 status=status.HTTP_201_CREATED)
             else:
                 user.delete()
@@ -173,8 +181,10 @@ class AdminRegistration(generics.CreateAPIView):
             admin_serializer = self.get_serializer(data=admin_data)
             if admin_serializer.is_valid():
                 admin_serializer.save()
-                return Response({"success": True, "message": "Admin registered successfully."}  | TokenService.get_tokens_for_user(user),
-                                status=status.HTTP_201_CREATED)
+                return Response(
+                    {"success": True, "message": "Admin registered successfully."} | TokenService.get_tokens_for_user(
+                        user),
+                    status=status.HTTP_201_CREATED)
             else:
                 user.delete()
                 return Response(admin_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -240,10 +250,10 @@ class GoogleSignInView(APIView):
 
             # Return response
             return Response({
-                "message": "Google Login successful",
-                "user": user.username,
-                "created": created
-            }  | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
+                                "message": "Google Login successful",
+                                "user": user.username,
+                                "created": created
+                            } | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
@@ -304,10 +314,10 @@ class AppleSignInView(APIView):
 
             # Return response
             return Response({
-                "message": "Apple Login successful",
-                "user": user.username,
-                "created": created
-            }  | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
+                                "message": "Apple Login successful",
+                                "user": user.username,
+                                "created": created
+                            } | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
@@ -376,7 +386,8 @@ class UpdateEmployeeGalleryView(APIView):
         for image in gallery_image:
             EmployeeGallery.objects.create(employees=employee, gallery=image)
 
-        serializer = EmployeeWithGallerySerializer(Employee.objects.prefetch_related('employees_gallery').get(pk=employee.id))
+        serializer = EmployeeWithGallerySerializer(
+            Employee.objects.prefetch_related('employees_gallery').get(pk=employee.id))
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -432,7 +443,8 @@ class UpdateEmployerGalleryView(APIView):
         for image in gallery_image:
             EmployerGallery.objects.create(employers=employer, gallery=image)
 
-        serializer = EmployerWithGallerySerializer(Employer.objects.prefetch_related('employers_gallery').get(pk=employer.id))
+        serializer = EmployerWithGallerySerializer(
+            Employer.objects.prefetch_related('employers_gallery').get(pk=employer.id))
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

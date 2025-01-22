@@ -78,7 +78,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class EmployeeRegistration(generics.CreateAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSerializer
 
     @swagger_auto_schema(
@@ -97,27 +97,20 @@ class EmployeeRegistration(generics.CreateAPIView):
         }
     )
     def create(self, request, *args, **kwargs):
-        user_serializer = UserSerializer(data=request.data)
-        if user_serializer.is_valid():
-            user = user_serializer.save()
-            employee_data = request.data.copy()
-            employee_data['user'] = user.id
-            employee_serializer = self.get_serializer(data=employee_data)
-            if employee_serializer.is_valid():
-                employee_serializer.save()
-                return Response({"success": True,
-                                 "message": "Employee registered successfully."} | TokenService.get_tokens_for_user(
-                    user),
-                                status=status.HTTP_201_CREATED)
-            else:
-                # delete user
-                user.delete()
-                return Response(employee_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        employee_data = request.data.copy()
+        employee_data['user'] = user.id
+        employee_serializer = self.get_serializer(data=employee_data)
+        if employee_serializer.is_valid():
+            employee_serializer.save()
+            return Response({"success": True,
+                             "message": "Employee registered successfully."} | TokenService.get_tokens_for_user(user),
+                            status=status.HTTP_201_CREATED)
+        return Response(employee_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EmployerRegistration(generics.CreateAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = EmployerSerializer
 
     @swagger_auto_schema(
@@ -136,22 +129,16 @@ class EmployerRegistration(generics.CreateAPIView):
         }
     )
     def create(self, request, *args, **kwargs):
-        user_serializer = UserSerializer(data=request.data)
-        if user_serializer.is_valid():
-            user = user_serializer.save()
-            employer_data = request.data.copy()
-            employer_data['user'] = user.id
-            employer_serializer = self.get_serializer(data=employer_data)
-            if employer_serializer.is_valid():
-                employer_serializer.save()
-                return Response({"success": True,
-                                 "message": "Employer registered successfully."} | TokenService.get_tokens_for_user(
-                    user),
-                                status=status.HTTP_201_CREATED)
-            else:
-                user.delete()
-                return Response(employer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        employer_data = request.data.copy()
+        employer_data['user'] = user.id
+        employer_serializer = self.get_serializer(data=employer_data)
+        if employer_serializer.is_valid():
+            employer_serializer.save()
+            return Response({"success": True,
+                             "message": "Employer registered successfully."} | TokenService.get_tokens_for_user(user),
+                            status=status.HTTP_201_CREATED)
+        return Response(employer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdminRegistration(generics.CreateAPIView):

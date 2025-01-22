@@ -26,7 +26,15 @@ from .serializers import UserSerializer
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
 
+        tokens = TokenService.get_tokens_for_user(user)
+
+        return Response({"access": tokens["access"], "refresh": tokens["refresh"]}, status=status.HTTP_201_CREATED)     
 
 class UserLoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer

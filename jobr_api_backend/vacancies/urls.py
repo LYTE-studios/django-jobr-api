@@ -14,6 +14,6 @@ router.register(r'vacancies', VacancyViewSet, basename='vacancy')
 router.register(r'apply', ApplyViewSet, basename='apply')
 urlpatterns = [
     path('', include(router.urls)),
-    path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),
+    path('filter', VacancyFilterView.as_view(), name='vacancy-filter'),
 ]
 

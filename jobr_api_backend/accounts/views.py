@@ -98,6 +98,10 @@ class EmployeeRegistration(generics.CreateAPIView):
     )
     def create(self, request, *args, **kwargs):
         user = request.user
+        if user.role != 'employee':
+            return Response({"error": "User is not allowed to register as an employee."},
+                            status=status.HTTP_403_FORBIDDEN)
+
         employee_data = request.data.copy()
         employee_data['user'] = user.id
         employee_serializer = self.get_serializer(data=employee_data)
@@ -130,6 +134,10 @@ class EmployerRegistration(generics.CreateAPIView):
     )
     def create(self, request, *args, **kwargs):
         user = request.user
+        if user.role != 'employer':
+            return Response({"error": "User is not allowed to register as an employer."},
+                            status=status.HTTP_403_FORBIDDEN)
+
         employer_data = request.data.copy()
         employer_data['user'] = user.id
         employer_serializer = self.get_serializer(data=employer_data)

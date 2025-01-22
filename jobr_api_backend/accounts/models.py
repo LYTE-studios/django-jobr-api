@@ -5,6 +5,11 @@ from common.models import Language, ContractType, Function, Skill
 
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
+    ROLE_CHOICES = (
+        ('employee', 'Employee'),
+        ('employer', 'Employer'),
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, null=True, blank=True)
 
 
 class Employee(models.Model):

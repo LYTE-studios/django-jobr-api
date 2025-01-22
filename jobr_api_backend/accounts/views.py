@@ -23,6 +23,14 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery
 from .serializers import UserSerializer
 
+class ConnectionTestView(generics.GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "role": request.user.role,
+        })
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -63,6 +71,7 @@ class UserLoginView(generics.GenericAPIView):
         return Response({
             "message": "Login successful",
             "user": user.username,
+            "role": user.role,
             "access": tokens['access'],
             "refresh": tokens['refresh']
         }, status=status.HTTP_200_OK)

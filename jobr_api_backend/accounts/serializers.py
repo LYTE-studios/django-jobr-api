@@ -7,11 +7,12 @@ from .models import CustomUser, Employee, EmployeeGallery, Employer, EmployerGal
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'password']
+        fields = ['id', 'username', 'email', 'password', 'role']
         extra_kwargs = {
             'password': {'write_only': True, 'required': False},  # Make password optional for updates
             'email': {'required': False},  # Make email optional for updates
-            'username': {'required': False}  # Make username optional for updates
+            'username': {'required': False},  # Make username optional for updates
+            'role': {'required': False}  # Make role optional for updates
         }
 
     def create(self, validated_data):

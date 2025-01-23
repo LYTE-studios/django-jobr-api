@@ -1,57 +1,66 @@
 from rest_framework import viewsets
-from common.models import ContractType, Function, Question, Skill, Extra, Language
+from common.models import ContractType, Function, Language, Skill, Location
 from .models import Vacancy, ApplyVacancy
-from .serializers import ContractTypeSerializer, LanguageSerializer, QuestionSerializer, SkillSerializer, \
-    ExtraSerializer, VacancySerializer, ApplySerializer, FunctionSerializer
+from .serializers import VacancySerializer, ApplySerializer, ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, LocationSerializer
 from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
 from accounts.models import Employee
 from rest_framework.exceptions import NotFound
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.response import Response
 
 
-
-class ContractTypeViewSet(viewsets.ModelViewSet):
+class LocationsView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
+    queryset = Location.objects.all()  
+    serializer_class = LocationSerializer
 
-    queryset = ContractType.objects.all()
-    serializer_class = ContractTypeSerializer
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-
-class FunctionViewSet(viewsets.ModelViewSet):
+class SkillsView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
+    queryset = Skill.objects.all()  
+    serializer_class = SkillSerializer
 
-    queryset = Function.objects.all()
-    serializer_class = FunctionSerializer
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-
-class QuestionViewSet(viewsets.ModelViewSet):
+ 
+class LanguagesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
-
-    queryset = Question.objects.all()
-    serializer_class = QuestionSerializer
-
-
-class LanguageViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication]
-
     queryset = Language.objects.all()
     serializer_class = LanguageSerializer
 
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-class SkillViewSet(viewsets.ModelViewSet):
+
+class FunctionsView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
+    queryset = Function.objects.all()
+    serializer_class = FunctionSerializer
 
-    queryset = Skill.objects.all()
-    serializer_class = SkillSerializer
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-
-class ExtraViewSet(viewsets.ModelViewSet):
+class ContractsTypesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
+    queryset = ContractType.objects.all()
+    serializer_class = ContractTypeSerializer
 
-    queryset = Extra.objects.all()
-    serializer_class = ExtraSerializer
-
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class VacancyViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]

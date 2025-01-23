@@ -28,6 +28,9 @@ class Employee(models.Model):
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
     skill = models.ManyToManyField(Skill)
 
+    def __str__(self):
+        return self.user.email
+
 
 class EmployeeGallery(models.Model):
     employees = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='employees_gallery')
@@ -45,6 +48,9 @@ class Employer(models.Model):
     coordinates = models.JSONField()  # Stores latitude and longitude as JSON
     website = models.URLField(blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.user.email
 
 
 class EmployerGallery(models.Model):

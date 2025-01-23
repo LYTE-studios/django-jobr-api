@@ -1,25 +1,29 @@
 from rest_framework import serializers
 from accounts.models import Employer, Employee
 from .models import Vacancy, ApplyVacancy
-from common.models import ContractType, Function, Question, Skill, Extra, Language
+from common.models import ContractType, Function, Question, Skill, Extra, Language, Location
 
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ['id', 'location']
 
 class ContractTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractType
-        fields = ['contract_type']
+        fields = ['id', 'contract_type']
 
 
 class FunctionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Function
-        fields = ['function']
+        fields = ['id', 'function']
 
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
-        fields = ['language']
+        fields = ['id', 'language']
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -31,7 +35,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
-        fields = ['skill', 'category']
+        fields = ['id', 'skill', 'category']
 
 
 class ExtraSerializer(serializers.ModelSerializer):

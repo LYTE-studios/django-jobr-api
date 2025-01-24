@@ -30,8 +30,6 @@ class VacancyQuestion(models.Model):
 class Vacancy(models.Model):
     employer = models.ForeignKey(Employer, on_delete=models.CASCADE)
 
-    title = models.CharField(max_length=255)
-
     expected_mastery = models.CharField(max_length=255, choices=MasteryOption.choices, null=True)
 
     contract_type = models.ForeignKey(ContractType, on_delete=models.CASCADE, blank=True, null=True)

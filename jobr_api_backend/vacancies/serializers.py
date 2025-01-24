@@ -76,7 +76,7 @@ class VacancySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vacancy
-        fields = ['title', 'expected_mastery', 'contract_type', 'location', 'function', 'week_day', 'job_date',
+        fields = ['expected_mastery', 'contract_type', 'location', 'function', 'week_day', 'job_date',
                   'salary', 'languages', 'descriptions', 'questions', 'skill']
 
 
@@ -85,6 +85,7 @@ class VacancySerializer(serializers.ModelSerializer):
         descriptions_data = validated_data.pop('descriptions')
         questions_data = validated_data.pop('questions')
         week_days_data = validated_data.pop('week_day')
+        skills_data = validated_data.pop('skill')
 
         vacancy = Vacancy.objects.create(**validated_data)
 
@@ -100,6 +101,8 @@ class VacancySerializer(serializers.ModelSerializer):
         for week_day_data in week_days_data:
             week_day = Weekday.objects.get(**week_day_data)
             vacancy.week_day.add(week_day)
+
+        vacancy.skill.set(skills_data)
 
         return vacancy
 

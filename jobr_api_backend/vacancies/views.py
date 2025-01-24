@@ -1,7 +1,8 @@
 from rest_framework import viewsets
-from common.models import ContractType, Function, Language, Skill, Location
+from common.models import ContractType, Function, Language, Skill, Location, Question
+from accounts.models import Employer
 from .models import Vacancy, ApplyVacancy
-from .serializers import VacancySerializer, ApplySerializer, ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, LocationSerializer
+from .serializers import VacancySerializer, ApplySerializer, ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, LocationSerializer, QuestionSerializer
 from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
 from rest_framework import status
@@ -52,6 +53,16 @@ class FunctionsView(generics.GenericAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+class QuestionsView(generics.GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class ContractsTypesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
@@ -71,7 +82,7 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data['employer'] = request.user.employer.id  # Set the employer to the authenticated user's employer ID
+        data['employer'] = Employer.objects.get(user_id=request.user.id)  # Set the employer to the authenticated user's employer ID
         serializer = self.get_serializer(data=data)
 
         if serializer.is_valid():

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from accounts.models import Employer, Employee
-from .models import Vacancy, ApplyVacancy
+from .models import Vacancy, ApplyVacancy, VacancyLanguage, VacancyDescription, VacancyQuestion, Weekday
 from common.models import ContractType, Function, Question, Skill, Extra, Language, Location
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -44,18 +44,64 @@ class ExtraSerializer(serializers.ModelSerializer):
         fields = ['extra']
 
 
+class VacancyLanguageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VacancyLanguage
+        fields = ['language', 'mastery']
+
+class VacancyDescriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VacancyDescription
+        fields = ['question', 'description']
+
+class VacancyQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VacancyQuestion
+        fields = ['question']
+
+class WeekdaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Weekday
+        fields = ['name']
+
 class VacancySerializer(serializers.ModelSerializer):
-    employer = serializers.PrimaryKeyRelatedField(queryset=Employer.objects.all(), many=False)
-    contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), many=False)
-    function = serializers.PrimaryKeyRelatedField(queryset=Function.objects.all(), many=False)
+    contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True)
+    function = serializers.PrimaryKeyRelatedField(queryset=Function.objects.all(), allow_null=True)
+    location = serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(), allow_null=True)
     skill = serializers.PrimaryKeyRelatedField(queryset=Skill.objects.all(), many=True)
-    question = serializers.PrimaryKeyRelatedField(queryset=Question.objects.all(), many=True)
-    language = serializers.PrimaryKeyRelatedField(queryset=Language.objects.all(), many=True)
+    languages = VacancyLanguageSerializer(many=True)
+    descriptions = VacancyDescriptionSerializer(many=True)
+    questions = VacancyQuestionSerializer(many=True)
+    week_day = WeekdaySerializer(many=True)
 
     class Meta:
         model = Vacancy
-        fields = ['employer', 'title', 'contract_type', 'function', 'location', 'skill', 'week_day', 'salary', 'description',
-                  'language', 'question', 'latitude', 'longitude']
+        fields = ['title', 'expected_mastery', 'contract_type', 'location', 'function', 'week_day', 'job_date',
+                  'salary', 'languages', 'descriptions', 'questions', 'skill']
+
+
+    def create(self, validated_data):
+        languages_data = validated_data.pop('languages')
+        descriptions_data = validated_data.pop('descriptions')
+        questions_data = validated_data.pop('questions')
+        week_days_data = validated_data.pop('week_day')
+
+        vacancy = Vacancy.objects.create(**validated_data)
+
+        for language_data in languages_data:
+            VacancyLanguage.objects.create(**language_data, vacancy=vacancy)
+
+        for description_data in descriptions_data:
+            VacancyDescription.objects.create(**description_data, vacancy=vacancy)
+
+        for question_data in questions_data:
+            VacancyQuestion.objects.create(**question_data, vacancy=vacancy)
+
+        for week_day_data in week_days_data:
+            week_day = Weekday.objects.get(**week_day_data)
+            vacancy.week_day.add(week_day)
+
+        return vacancy
 
 
 class ApplySerializer(serializers.ModelSerializer):

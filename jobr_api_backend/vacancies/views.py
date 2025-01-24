@@ -4,6 +4,7 @@ from .models import Vacancy, ApplyVacancy
 from .serializers import VacancySerializer, ApplySerializer, ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, LocationSerializer
 from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
+from rest_framework import status
 from accounts.models import Employee
 from rest_framework.exceptions import NotFound
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -67,6 +68,17 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
     queryset = Vacancy.objects.all()
     serializer_class = VacancySerializer
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        data['employer'] = request.user.employer.id  # Set the employer to the authenticated user's employer ID
+        serializer = self.get_serializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ApplyViewSet(viewsets.ModelViewSet):

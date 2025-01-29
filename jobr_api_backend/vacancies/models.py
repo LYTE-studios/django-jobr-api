@@ -1,6 +1,47 @@
 from django.db import models
-from accounts.models import Employer, Employee
-from common.models import Language, ContractType, Function, Skill, Question, Location
+from django.conf import settings
+
+class Location(models.Model):
+    location = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.location
+
+
+class ContractType(models.Model):
+    contract_type = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.contract_type
+
+
+class Function(models.Model):
+    function = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.function
+
+
+class Question(models.Model):
+    question = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.question
+
+
+class Language(models.Model):
+    language = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.language
+
+
+class Skill(models.Model):
+    skill = models.CharField(max_length=255)
+    category = models.CharField(max_length=10, choices=[('hard', 'Hard'), ('soft', 'Soft')], default='hard')
+
+    def __str__(self):
+        return self.skill
 
 class MasteryOption(models.TextChoices):
     NONE = 'None'
@@ -28,7 +69,8 @@ class VacancyQuestion(models.Model):
     question = models.CharField(max_length=255)
     
 class Vacancy(models.Model):
-    employer = models.ForeignKey(Employer, on_delete=models.CASCADE)
+
+    employer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     expected_mastery = models.CharField(max_length=255, choices=MasteryOption.choices, null=True)
 
@@ -50,5 +92,5 @@ class Vacancy(models.Model):
     skill = models.ManyToManyField(Skill)
 
 class ApplyVacancy(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE)

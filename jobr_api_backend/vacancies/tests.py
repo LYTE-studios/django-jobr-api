@@ -5,7 +5,7 @@ from rest_framework import status
 from datetime import date
 from decimal import Decimal
 from accounts.models import Employer, Employee, CustomUser
-from common.models import ContractType, Function, Question, Skill, Language
+from .models import ContractType, Function, Question, Skill, Language
 from vacancies.models import Vacancy, ApplyVacancy
 from vacancies.serializers import VacancySerializer, ApplySerializer
 

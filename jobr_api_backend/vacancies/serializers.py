@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from accounts.models import Employer, Employee
+from accounts.models import Employee
 from .models import Vacancy, ApplyVacancy, VacancyLanguage, VacancyDescription, VacancyQuestion, Weekday
-from common.models import ContractType, Function, Question, Skill, Extra, Language, Location
+from .models import ContractType, Function, Question, Skill, Language, Location
+from common.models import Extra
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -76,7 +77,7 @@ class VacancySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vacancy
-        fields = ['expected_mastery', 'contract_type', 'location', 'function', 'week_day', 'job_date',
+        fields = ['employer', 'expected_mastery', 'contract_type', 'location', 'function', 'week_day', 'job_date',
                   'salary', 'languages', 'descriptions', 'questions', 'skill']
 
 
@@ -100,7 +101,7 @@ class VacancySerializer(serializers.ModelSerializer):
 
         for week_day_data in week_days_data:
             week_day = Weekday.objects.get(**week_day_data)
-            vacancy.week_day.add(week_day)
+            vacancy.week_day.set(week_day)
 
         vacancy.skill.set(skills_data)
 

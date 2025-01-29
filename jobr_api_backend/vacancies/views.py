@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from common.models import ContractType, Function, Language, Skill, Location, Question
+from .models import ContractType, Function, Language, Skill, Location, Question
 from accounts.models import Employer
 from .models import Vacancy, ApplyVacancy
 from .serializers import VacancySerializer, ApplySerializer, ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, LocationSerializer, QuestionSerializer
@@ -82,7 +82,7 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data['employer'] = Employer.objects.get(user_id=request.user.id)  # Set the employer to the authenticated user's employer ID
+        data['employer'] = Employer.objects.get(user_id=request.user.id).id  # Set the employer to the authenticated user's employer ID
         serializer = self.get_serializer(data=data)
 
         if serializer.is_valid():

@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.core.exceptions import ValidationError
-from common.models import (ContractType, Function, Question, Language, Skill, Extra)
+from vacancies.models import (ContractType, Function, Question, Language, Skill)
+from common.models import Extra
 
 class CommonModelsTestCase(TestCase):
     def setUp(self):

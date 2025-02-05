@@ -2,6 +2,7 @@
 from rest_framework import generics, status, viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .services import TokenService
 from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer, \
@@ -13,7 +14,6 @@ from rest_framework.permissions import AllowAny
 from django.conf import settings
 from django.http import Http404
 from firebase_admin import auth as firebase_auth
-import requests
 import google.auth.transport.requests
 import google.oauth2.id_token
 from drf_yasg.utils import swagger_auto_schema
@@ -23,7 +23,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery
 from .serializers import UserSerializer
 
-class ConnectionTestView(generics.GenericAPIView):
+class ConnectionTestView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 

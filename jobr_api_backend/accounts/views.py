@@ -5,9 +5,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .services import TokenService
-from .serializers import LoginSerializer, EmployeeSerializer, EmployerSerializer, AdminSerializer, ReviewSerializer, \
-    EmployeeStatisticsSerializer, EmployeeWithGallerySerializer, EmployeeGalleryUpdateSerializer, \
-    EmployerWithGallerySerializer, EmployerGalleryUpdateSerializer
+from .serializers import (
+    LoginSerializer,
+    EmployeeSerializer,
+    EmployerSerializer,
+    AdminSerializer,
+    ReviewSerializer,
+    EmployeeStatisticsSerializer,
+    EmployeeWithGallerySerializer,
+    EmployeeGalleryUpdateSerializer,
+    EmployerWithGallerySerializer,
+    EmployerGalleryUpdateSerializer,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -23,18 +32,22 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery
 from .serializers import UserSerializer
 
+
 class ConnectionTestView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({
-            "role": request.user.role,
-        })
+        return Response(
+            {
+                "role": request.user.role,
+            }
+        )
+
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserSerializer
-    
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -42,7 +55,11 @@ class UserRegistrationView(generics.CreateAPIView):
 
         tokens = TokenService.get_tokens_for_user(user)
 
-        return Response({"access": tokens["access"], "refresh": tokens["refresh"]}, status=status.HTTP_201_CREATED)     
+        return Response(
+            {"access": tokens["access"], "refresh": tokens["refresh"]},
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class UserLoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
@@ -56,25 +73,28 @@ class UserLoginView(generics.GenericAPIView):
                         "message": "Login successful",
                         "user": "username",
                         "access": "access_token_string",
-                        "refresh": "refresh_token_string"
+                        "refresh": "refresh_token_string",
                     }
-                }
+                },
             )
         }
     )
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
+        user = serializer.validated_data["user"]
         tokens = TokenService.get_tokens_for_user(user)
 
-        return Response({
-            "message": "Login successful",
-            "user": user.username,
-            "role": user.role,
-            "access": tokens['access'],
-            "refresh": tokens['refresh']
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": "Login successful",
+                "user": user.username,
+                "role": user.role,
+                "access": tokens["access"],
+                "refresh": tokens["refresh"],
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -107,26 +127,30 @@ class EmployeeRegistration(generics.CreateAPIView):
                         "success": True,
                         "message": "Employee registered successfully.",
                         "access": "access_token_string",
-                        "refresh": "refresh_token_string"
+                        "refresh": "refresh_token_string",
                     }
-                }
+                },
             )
         }
     )
     def create(self, request, *args, **kwargs):
         user = request.user
-        if user.role != 'employee':
-            return Response({"error": "User is not allowed to register as an employee."},
-                            status=status.HTTP_403_FORBIDDEN)
+        if user.role != "employee":
+            return Response(
+                {"error": "User is not allowed to register as an employee."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         employee_data = request.data.copy()
-        employee_data['user'] = user.id
+        employee_data["user"] = user.id
         employee_serializer = self.get_serializer(data=employee_data)
         if employee_serializer.is_valid():
             employee_serializer.save()
-            return Response({"success": True,
-                             "message": "Employee registered successfully."} | TokenService.get_tokens_for_user(user),
-                            status=status.HTTP_201_CREATED)
+            return Response(
+                {"success": True, "message": "Employee registered successfully."}
+                | TokenService.get_tokens_for_user(user),
+                status=status.HTTP_201_CREATED,
+            )
         return Response(employee_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -143,26 +167,30 @@ class EmployerRegistration(generics.CreateAPIView):
                         "success": True,
                         "message": "Employer registered successfully.",
                         "access": "access_token_string",
-                        "refresh": "refresh_token_string"
+                        "refresh": "refresh_token_string",
                     }
-                }
+                },
             )
         }
     )
     def create(self, request, *args, **kwargs):
         user = request.user
-        if user.role != 'employer':
-            return Response({"error": "User is not allowed to register as an employer."},
-                            status=status.HTTP_403_FORBIDDEN)
+        if user.role != "employer":
+            return Response(
+                {"error": "User is not allowed to register as an employer."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         employer_data = request.data.copy()
-        employer_data['user'] = user.id
+        employer_data["user"] = user.id
         employer_serializer = self.get_serializer(data=employer_data)
         if employer_serializer.is_valid():
             employer_serializer.save()
-            return Response({"success": True,
-                             "message": "Employer registered successfully."} | TokenService.get_tokens_for_user(user),
-                            status=status.HTTP_201_CREATED)
+            return Response(
+                {"success": True, "message": "Employer registered successfully."}
+                | TokenService.get_tokens_for_user(user),
+                status=status.HTTP_201_CREATED,
+            )
         return Response(employer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -178,9 +206,9 @@ class AdminRegistration(generics.CreateAPIView):
                         "success": True,
                         "message": "Admin registered successfully.",
                         "access": "access_token_string",
-                        "refresh": "refresh_token_string"
+                        "refresh": "refresh_token_string",
                     }
-                }
+                },
             )
         }
     )
@@ -189,17 +217,20 @@ class AdminRegistration(generics.CreateAPIView):
         if user_serializer.is_valid():
             user = user_serializer.save()
             admin_data = request.data.copy()
-            admin_data['user'] = user.id
+            admin_data["user"] = user.id
             admin_serializer = self.get_serializer(data=admin_data)
             if admin_serializer.is_valid():
                 admin_serializer.save()
                 return Response(
-                    {"success": True, "message": "Admin registered successfully."} | TokenService.get_tokens_for_user(
-                        user),
-                    status=status.HTTP_201_CREATED)
+                    {"success": True, "message": "Admin registered successfully."}
+                    | TokenService.get_tokens_for_user(user),
+                    status=status.HTTP_201_CREATED,
+                )
             else:
                 user.delete()
-                return Response(admin_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    admin_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                )
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -216,62 +247,65 @@ class GoogleSignInView(APIView):
                         "created": "01/01/2000 00:00:00",
                         "user": "username",
                         "access": "access_token_string",
-                        "refresh": "refresh_token_string"
+                        "refresh": "refresh_token_string",
                     }
-                }
+                },
             )
         }
     )
     def post(self, request):
         try:
             # Get the ID token from the request
-            id_token = request.data.get('id_token')
+            id_token = request.data.get("id_token")
 
             if not id_token:
-                return Response({
-                    'error': 'ID token is required'
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "ID token is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Verify Google ID token
             request_google = google.auth.transport.requests.Request()
             try:
                 id_info = google.oauth2.id_token.verify_firebase_token(
-                    id_token,
-                    request_google,
-                    settings.GOOGLE_CLIENT_ID
+                    id_token, request_google, settings.GOOGLE_CLIENT_ID
                 )
             except ValueError as e:
-                return Response({
-                    'error': 'Invalid token',
-                    'details': str(e)
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid token", "details": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Extract user information
-            email = id_info.get('email')
-            name = id_info.get('name', '')
+            email = id_info.get("email")
+            name = id_info.get("name", "")
 
             # Check if user exists, if not create
             user, created = CustomUser.objects.get_or_create(
                 email=email,
                 defaults={
-                    'username': email,
-                    'first_name': name.split()[0] if name else '',
-                    'last_name': name.split()[-1] if len(name.split()) > 1 else ''
-                }
+                    "username": email,
+                    "first_name": name.split()[0] if name else "",
+                    "last_name": name.split()[-1] if len(name.split()) > 1 else "",
+                },
             )
 
             # Return response
-            return Response({
-                                "message": "Google Login successful",
-                                "user": user.username,
-                                "created": created
-                            } | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "message": "Google Login successful",
+                    "user": user.username,
+                    "created": created,
+                }
+                | TokenService.get_tokens_for_user(user),
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as e:
-            return Response({
-                'error': 'Google Authentication failed',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Google Authentication failed", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AppleSignInView(APIView):
@@ -287,55 +321,60 @@ class AppleSignInView(APIView):
                         "created": "01/01/2000 00:00:00",
                         "user": "username",
                         "access": "access_token_string",
-                        "refresh": "refresh_token_string"
+                        "refresh": "refresh_token_string",
                     }
-                }
+                },
             )
         }
     )
     def post(self, request):
         try:
             # Get the ID token from the request
-            id_token = request.data.get('id_token')
+            id_token = request.data.get("id_token")
 
             if not id_token:
-                return Response({
-                    'error': 'ID token is required'
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "ID token is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Verify Apple ID token using Firebase
             try:
                 decoded_token = firebase_auth.verify_id_token(id_token)
             except (ValueError, firebase_auth.InvalidIdTokenError) as e:
-                return Response({
-                    'error': 'Invalid token',
-                    'details': str(e)
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid token", "details": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Extract user information
-            email = decoded_token.get('email')
-            apple_uid = decoded_token.get('uid')
+            email = decoded_token.get("email")
+            apple_uid = decoded_token.get("uid")
 
             # Check if user exists, if not create
             user, created = CustomUser.objects.get_or_create(
                 email=email,
                 defaults={
-                    'username': f'apple_{apple_uid}',
-                }
+                    "username": f"apple_{apple_uid}",
+                },
             )
 
             # Return response
-            return Response({
-                                "message": "Apple Login successful",
-                                "user": user.username,
-                                "created": created
-                            } | TokenService.get_tokens_for_user(user), status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "message": "Apple Login successful",
+                    "user": user.username,
+                    "created": created,
+                }
+                | TokenService.get_tokens_for_user(user),
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as e:
-            return Response({
-                'error': 'Apple Authentication failed',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Apple Authentication failed", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ReviewCreateView(generics.CreateAPIView):
@@ -346,15 +385,15 @@ class ReviewCreateView(generics.CreateAPIView):
         user = self.request.user
 
         # Determine reviewer type and save accordingly
-        if hasattr(user, 'employee'):
-            reviewer_type = 'employee'
+        if hasattr(user, "employee"):
+            reviewer_type = "employee"
             serializer.save(employee=user.employee, reviewer_type=reviewer_type)
-        elif hasattr(user, 'employer'):
-            reviewer_type = 'employer'
+        elif hasattr(user, "employer"):
+            reviewer_type = "employer"
             serializer.save(employer=user.employer, reviewer_type=reviewer_type)
         else:
             # For anonymous users
-            reviewer_type = 'anonymous'
+            reviewer_type = "anonymous"
             serializer.save(reviewer_type=reviewer_type)
 
 
@@ -363,7 +402,7 @@ class AllEmployeeGalleriesView(generics.ListAPIView):
     serializer_class = EmployeeWithGallerySerializer
 
     def get_queryset(self):
-        return Employee.objects.all().prefetch_related('employees_gallery')
+        return Employee.objects.all().prefetch_related("employees_gallery")
 
 
 class EmployeeByUserView(generics.RetrieveUpdateAPIView):
@@ -372,26 +411,28 @@ class EmployeeByUserView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         try:
-            return Employee.objects.get(user=self.kwargs['pk'])
+            return Employee.objects.get(user=self.kwargs["pk"])
         except Employee.DoesNotExist:
-            raise Http404('Employee does not exist')
+            raise Http404("Employee does not exist")
 
     def get_queryset(self):
-        return Employee.objects.prefetch_related('employees_gallery')
+        return Employee.objects.prefetch_related("employees_gallery")
 
 
 class UpdateEmployeeGalleryView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ['put']
+    http_method_names = ["put"]
 
     def put(self, request):
-        serializer = EmployeeGalleryUpdateSerializer(data=request.data, context={'user': request.user.id})
+        serializer = EmployeeGalleryUpdateSerializer(
+            data=request.data, context={"user": request.user.id}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         validated_data = serializer.validated_data
         user_id = request.user.id
-        gallery_image = validated_data.get('gallery')
+        gallery_image = validated_data.get("gallery")
 
         employee = Employee.objects.get(user=user_id)
         EmployeeGallery.objects.filter(employees=employee).delete()
@@ -399,7 +440,8 @@ class UpdateEmployeeGalleryView(APIView):
             EmployeeGallery.objects.create(employees=employee, gallery=image)
 
         serializer = EmployeeWithGallerySerializer(
-            Employee.objects.prefetch_related('employees_gallery').get(pk=employee.id))
+            Employee.objects.prefetch_related("employees_gallery").get(pk=employee.id)
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -412,7 +454,10 @@ class DeleteEmployeeGallery(APIView):
             EmployeeGallery.objects.filter(employees=employee).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Employee.DoesNotExist:
-            return Response({"details": "Current user isn't an employee"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"details": "Current user isn't an employee"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
 
 class AllEmployerGalleriesView(generics.ListAPIView):
@@ -420,7 +465,7 @@ class AllEmployerGalleriesView(generics.ListAPIView):
     serializer_class = EmployerWithGallerySerializer
 
     def get_queryset(self):
-        return Employer.objects.all().prefetch_related('employers_gallery')
+        return Employer.objects.all().prefetch_related("employers_gallery")
 
 
 class EmployerByUserView(generics.RetrieveAPIView):
@@ -429,26 +474,28 @@ class EmployerByUserView(generics.RetrieveAPIView):
 
     def get_object(self):
         try:
-            return Employer.objects.get(user=self.kwargs['pk'])
+            return Employer.objects.get(user=self.kwargs["pk"])
         except:
-            raise Http404('Employer does not exist')
+            raise Http404("Employer does not exist")
 
     def get_queryset(self):
-        return Employer.objects.prefetch_related('employers_gallery')
+        return Employer.objects.prefetch_related("employers_gallery")
 
 
 class UpdateEmployerGalleryView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ['put']
+    http_method_names = ["put"]
 
     def put(self, request):
-        serializer = EmployerGalleryUpdateSerializer(data=request.data, context={'user': request.user.id})
+        serializer = EmployerGalleryUpdateSerializer(
+            data=request.data, context={"user": request.user.id}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         validated_data = serializer.validated_data
         user_id = request.user.id
-        gallery_image = validated_data.get('gallery')
+        gallery_image = validated_data.get("gallery")
 
         employer = Employer.objects.get(user=user_id)
         EmployerGallery.objects.filter(employers=employer).delete()
@@ -456,7 +503,8 @@ class UpdateEmployerGalleryView(APIView):
             EmployerGallery.objects.create(employers=employer, gallery=image)
 
         serializer = EmployerWithGallerySerializer(
-            Employer.objects.prefetch_related('employers_gallery').get(pk=employer.id))
+            Employer.objects.prefetch_related("employers_gallery").get(pk=employer.id)
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -469,7 +517,10 @@ class DeleteEmployerGallery(APIView):
             EmployerGallery.objects.filter(employers=employer).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Employer.DoesNotExist:
-            return Response({"details": "Current user isn't an employer"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"details": "Current user isn't an employer"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
 
 class EmployeeStatisticsView(APIView):
@@ -485,7 +536,7 @@ class EmployeeStatisticsView(APIView):
         except Employee.DoesNotExist:
             return Response(
                 {"detail": "Employee profile not found"},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND,
             )
 
     def post(self, request):
@@ -499,5 +550,5 @@ class EmployeeStatisticsView(APIView):
         except Employee.DoesNotExist:
             return Response(
                 {"detail": "Employee profile not found"},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND,
             )

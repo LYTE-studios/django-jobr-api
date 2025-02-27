@@ -2,7 +2,16 @@ from rest_framework import viewsets
 from .models import ContractType, Function, Language, Skill, Location, Question
 from accounts.models import Employer
 from .models import Vacancy, ApplyVacancy
-from .serializers import VacancySerializer, ApplySerializer, ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, LocationSerializer, QuestionSerializer
+from .serializers import (
+    VacancySerializer,
+    ApplySerializer,
+    ContractTypeSerializer,
+    FunctionSerializer,
+    LanguageSerializer,
+    SkillSerializer,
+    LocationSerializer,
+    QuestionSerializer,
+)
 from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
 from rest_framework import status
@@ -14,7 +23,7 @@ from rest_framework.response import Response
 
 class LocationsView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
-    queryset = Location.objects.all()  
+    queryset = Location.objects.all()
     serializer_class = LocationSerializer
 
     def get(self, request, *args, **kwargs):
@@ -22,9 +31,10 @@ class LocationsView(generics.GenericAPIView):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+
 class SkillsView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
-    queryset = Skill.objects.all()  
+    queryset = Skill.objects.all()
     serializer_class = SkillSerializer
 
     def get(self, request, *args, **kwargs):
@@ -32,7 +42,7 @@ class SkillsView(generics.GenericAPIView):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
- 
+
 class LanguagesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
     queryset = Language.objects.all()
@@ -53,7 +63,8 @@ class FunctionsView(generics.GenericAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
+
 class QuestionsView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
     queryset = Question.objects.all()
@@ -63,6 +74,7 @@ class QuestionsView(generics.GenericAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
 
 class ContractsTypesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
@@ -74,6 +86,7 @@ class ContractsTypesView(generics.GenericAPIView):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+
 class VacancyViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
@@ -82,7 +95,9 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data['employer'] = Employer.objects.get(user_id=request.user.id).id  # Set the employer to the authenticated user's employer ID
+        data["employer"] = Employer.objects.get(
+            user_id=request.user.id
+        ).id  # Set the employer to the authenticated user's employer ID
         serializer = self.get_serializer(data=data)
 
         if serializer.is_valid():
@@ -108,11 +123,11 @@ class VacancyFilterView(generics.ListAPIView):
         queryset = Vacancy.objects.all()
 
         # Get parameters from request
-        contract_type = self.request.query_params.get('contract_type')
-        function = self.request.query_params.get('function')
-        skills = self.request.query_params.getlist('skills')
-        employee_id = self.request.query_params.get('employee_id', None)
-        max_distance = self.request.query_params.get('distance', None)
+        contract_type = self.request.query_params.get("contract_type")
+        function = self.request.query_params.get("function")
+        skills = self.request.query_params.getlist("skills")
+        employee_id = self.request.query_params.get("employee_id", None)
+        max_distance = self.request.query_params.get("distance", None)
 
         # Retrieve employee's latitude and longitude
         user_latitude = None
@@ -124,7 +139,7 @@ class VacancyFilterView(generics.ListAPIView):
                 user_latitude = employee.latitude
                 user_longitude = employee.longitude
             except Employee.DoesNotExist:
-                raise NotFound('Employee not found.')
+                raise NotFound("Employee not found.")
 
         # Filter by contract_type
         if contract_type:
@@ -140,9 +155,12 @@ class VacancyFilterView(generics.ListAPIView):
         # Filter by distance if latitude and longitude are available
         if max_distance and user_latitude is not None and user_longitude is not None:
             queryset = [
-                vacancy for vacancy in queryset
-                if self.calculate_distance(user_latitude, user_longitude, vacancy.latitude, vacancy.longitude) <= float(
-                    max_distance)
+                vacancy
+                for vacancy in queryset
+                if self.calculate_distance(
+                    user_latitude, user_longitude, vacancy.latitude, vacancy.longitude
+                )
+                <= float(max_distance)
             ]
 
         return queryset
@@ -163,4 +181,3 @@ class VacancyFilterView(generics.ListAPIView):
         c = 2 * asin(sqrt(a))
         r = 6371  # Radius of earth in kilometers
         return c * r
-

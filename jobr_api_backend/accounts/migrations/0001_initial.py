@@ -13,98 +13,282 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('auth', '0012_alter_user_first_name_max_length'),
+        ("auth", "0012_alter_user_first_name_max_length"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Employee',
+            name="Employee",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_of_birth', models.DateField()),
-                ('gender', models.CharField(choices=[('male', 'Male'), ('female', 'Female'), ('other', 'Other')], max_length=10)),
-                ('phone_number', models.CharField(max_length=15)),
-                ('profile_picture', models.ImageField(blank=True, null=True, upload_to='profile_pictures/')),
-                ('city_name', models.CharField(blank=True, max_length=100, null=True)),
-                ('biography', models.TextField(blank=True, null=True)),
-                ('latitude', models.DecimalField(blank=True, decimal_places=6, max_digits=9, null=True)),
-                ('longitude', models.DecimalField(blank=True, decimal_places=6, max_digits=9, null=True)),
-                ('phone_session_counts', models.IntegerField(default=0)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date_of_birth", models.DateField()),
+                (
+                    "gender",
+                    models.CharField(
+                        choices=[
+                            ("male", "Male"),
+                            ("female", "Female"),
+                            ("other", "Other"),
+                        ],
+                        max_length=10,
+                    ),
+                ),
+                ("phone_number", models.CharField(max_length=15)),
+                (
+                    "profile_picture",
+                    models.ImageField(
+                        blank=True, null=True, upload_to="profile_pictures/"
+                    ),
+                ),
+                ("city_name", models.CharField(blank=True, max_length=100, null=True)),
+                ("biography", models.TextField(blank=True, null=True)),
+                (
+                    "latitude",
+                    models.DecimalField(
+                        blank=True, decimal_places=6, max_digits=9, null=True
+                    ),
+                ),
+                (
+                    "longitude",
+                    models.DecimalField(
+                        blank=True, decimal_places=6, max_digits=9, null=True
+                    ),
+                ),
+                ("phone_session_counts", models.IntegerField(default=0)),
             ],
         ),
         migrations.CreateModel(
-            name='EmployeeGallery',
+            name="EmployeeGallery",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('gallery', models.ImageField(upload_to='galleries/')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("gallery", models.ImageField(upload_to="galleries/")),
             ],
         ),
         migrations.CreateModel(
-            name='Employer',
+            name="Employer",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('vat_number', models.CharField(max_length=30)),
-                ('company_name', models.CharField(max_length=100)),
-                ('street_name', models.CharField(max_length=100)),
-                ('house_number', models.CharField(max_length=10)),
-                ('city', models.CharField(max_length=100)),
-                ('postal_code', models.CharField(max_length=20)),
-                ('coordinates', models.JSONField()),
-                ('website', models.URLField(blank=True, null=True)),
-                ('biography', models.TextField(blank=True, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("vat_number", models.CharField(max_length=30)),
+                ("company_name", models.CharField(max_length=100)),
+                ("street_name", models.CharField(max_length=100)),
+                ("house_number", models.CharField(max_length=10)),
+                ("city", models.CharField(max_length=100)),
+                ("postal_code", models.CharField(max_length=20)),
+                ("coordinates", models.JSONField()),
+                ("website", models.URLField(blank=True, null=True)),
+                ("biography", models.TextField(blank=True, null=True)),
             ],
         ),
         migrations.CreateModel(
-            name='EmployerGallery',
+            name="EmployerGallery",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('gallery', models.ImageField(upload_to='galleries/')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("gallery", models.ImageField(upload_to="galleries/")),
             ],
         ),
         migrations.CreateModel(
-            name='Review',
+            name="Review",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('anonymous_name', models.CharField(blank=True, max_length=100, null=True)),
-                ('rating', models.PositiveIntegerField()),
-                ('comment', models.TextField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('reviewer_type', models.CharField(choices=[('employee', 'Employee'), ('employer', 'Employer'), ('anonymous', 'Anonymous')], default='anonymous', max_length=10)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "anonymous_name",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
+                ("rating", models.PositiveIntegerField()),
+                ("comment", models.TextField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "reviewer_type",
+                    models.CharField(
+                        choices=[
+                            ("employee", "Employee"),
+                            ("employer", "Employer"),
+                            ("anonymous", "Anonymous"),
+                        ],
+                        default="anonymous",
+                        max_length=10,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='CustomUser',
+            name="CustomUser",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('password', models.CharField(max_length=128, verbose_name='password')),
-                ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
-                ('is_superuser', models.BooleanField(default=False, help_text='Designates that this user has all permissions without explicitly assigning them.', verbose_name='superuser status')),
-                ('username', models.CharField(error_messages={'unique': 'A user with that username already exists.'}, help_text='Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.', max_length=150, unique=True, validators=[django.contrib.auth.validators.UnicodeUsernameValidator()], verbose_name='username')),
-                ('first_name', models.CharField(blank=True, max_length=150, verbose_name='first name')),
-                ('last_name', models.CharField(blank=True, max_length=150, verbose_name='last name')),
-                ('is_staff', models.BooleanField(default=False, help_text='Designates whether the user can log into this admin site.', verbose_name='staff status')),
-                ('is_active', models.BooleanField(default=True, help_text='Designates whether this user should be treated as active. Unselect this instead of deleting accounts.', verbose_name='active')),
-                ('date_joined', models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined')),
-                ('email', models.EmailField(max_length=254, unique=True)),
-                ('role', models.CharField(blank=True, choices=[('employee', 'Employee'), ('employer', 'Employer')], max_length=10, null=True)),
-                ('groups', models.ManyToManyField(blank=True, help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.', related_name='user_set', related_query_name='user', to='auth.group', verbose_name='groups')),
-                ('user_permissions', models.ManyToManyField(blank=True, help_text='Specific permissions for this user.', related_name='user_set', related_query_name='user', to='auth.permission', verbose_name='user permissions')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("password", models.CharField(max_length=128, verbose_name="password")),
+                (
+                    "last_login",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="last login"
+                    ),
+                ),
+                (
+                    "is_superuser",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Designates that this user has all permissions without explicitly assigning them.",
+                        verbose_name="superuser status",
+                    ),
+                ),
+                (
+                    "username",
+                    models.CharField(
+                        error_messages={
+                            "unique": "A user with that username already exists."
+                        },
+                        help_text="Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.",
+                        max_length=150,
+                        unique=True,
+                        validators=[
+                            django.contrib.auth.validators.UnicodeUsernameValidator()
+                        ],
+                        verbose_name="username",
+                    ),
+                ),
+                (
+                    "first_name",
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name="first name"
+                    ),
+                ),
+                (
+                    "last_name",
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name="last name"
+                    ),
+                ),
+                (
+                    "is_staff",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Designates whether the user can log into this admin site.",
+                        verbose_name="staff status",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(
+                        default=True,
+                        help_text="Designates whether this user should be treated as active. Unselect this instead of deleting accounts.",
+                        verbose_name="active",
+                    ),
+                ),
+                (
+                    "date_joined",
+                    models.DateTimeField(
+                        default=django.utils.timezone.now, verbose_name="date joined"
+                    ),
+                ),
+                ("email", models.EmailField(max_length=254, unique=True)),
+                (
+                    "role",
+                    models.CharField(
+                        blank=True,
+                        choices=[("employee", "Employee"), ("employer", "Employer")],
+                        max_length=10,
+                        null=True,
+                    ),
+                ),
+                (
+                    "groups",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="The groups this user belongs to. A user will get all permissions granted to each of their groups.",
+                        related_name="user_set",
+                        related_query_name="user",
+                        to="auth.group",
+                        verbose_name="groups",
+                    ),
+                ),
+                (
+                    "user_permissions",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="Specific permissions for this user.",
+                        related_name="user_set",
+                        related_query_name="user",
+                        to="auth.permission",
+                        verbose_name="user permissions",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'user',
-                'verbose_name_plural': 'users',
-                'abstract': False,
+                "verbose_name": "user",
+                "verbose_name_plural": "users",
+                "abstract": False,
             },
             managers=[
-                ('objects', django.contrib.auth.models.UserManager()),
+                ("objects", django.contrib.auth.models.UserManager()),
             ],
         ),
         migrations.CreateModel(
-            name='Admin',
+            name="Admin",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('full_name', models.CharField(max_length=100)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("full_name", models.CharField(max_length=100)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

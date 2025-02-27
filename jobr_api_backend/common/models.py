@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Extra(models.Model):
     extra = models.CharField(max_length=255)
 

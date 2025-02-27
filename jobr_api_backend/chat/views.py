@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer, MessageSerializer
+from django.db.models import Q
 
 class StartChatView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -103,10 +104,27 @@ class GetMessagesView(APIView):
             # Only return messages from chat rooms the user is part of
             messages = Message.objects.filter(
                 chatroom__in=ChatRoom.objects.filter(
-                    models.Q(employer=request.user) | 
-                    models.Q(employee=request.user)
+                    Q(employer=request.user) | 
+                    Q(employee=request.user)
                 )
             ).order_by('timestamp')
             
         serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
+    
+
+class GetChatRoomListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        # Get all chat rooms for a user and order by last message
+        chat_rooms = ChatRoom.objects.filter(
+            Q(employer=request.user) | 
+            Q(employee=request.user)
+        ).order_by('')
+
+        serializer = ChatRoomSerializer(chat_rooms, many=True)
+
         return Response(serializer.data)

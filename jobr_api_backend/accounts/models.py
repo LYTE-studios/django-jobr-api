@@ -3,17 +3,12 @@ from django.db import models
 from vacancies.models import Language, ContractType, Function, Skill
 
 
-class CustomUser(AbstractUser):
-    email = models.EmailField(unique=True)
-    ROLE_CHOICES = (
-        ("employee", "Employee"),
-        ("employer", "Employer"),
-    )
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, null=True, blank=True)
-
+class ProfileOption(models.TextChoices):
+    EMPLOYEE = "employee", "Employee"
+    EMPLOYER = "employer", "Employer"
+    ADMIN = "admin", "Admin"
 
 class Employee(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     date_of_birth = models.DateField()
     gender = models.CharField(
         max_length=10,
@@ -53,7 +48,6 @@ class EmployeeGallery(models.Model):
 
 
 class Employer(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     vat_number = models.CharField(max_length=30)
     company_name = models.CharField(max_length=100)
     street_name = models.CharField(max_length=100)
@@ -65,7 +59,7 @@ class Employer(models.Model):
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.user.email
+        return self.vat_number
 
 
 class EmployerGallery(models.Model):
@@ -76,11 +70,11 @@ class EmployerGallery(models.Model):
 
 
 class Admin(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=100)
 
 
 class Review(models.Model):
+
     REVIEWER_TYPE_CHOICES = [
         ("employee", "Employee"),
         ("employer", "Employer"),
@@ -102,10 +96,32 @@ class Review(models.Model):
     )
     anonymous_name = models.CharField(
         max_length=100, blank=True, null=True
-    )  # Optional name field for anonymous reviews
-    rating = models.PositiveIntegerField()  # Example: 1 to 5 stars
+    )
+    rating = models.PositiveIntegerField()
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     reviewer_type = models.CharField(
         max_length=10, choices=REVIEWER_TYPE_CHOICES, default="anonymous"
     )
+
+class CustomUser(AbstractUser):
+    email = models.EmailField(unique=True)
+
+    role = models.CharField(max_length=10, choices=ProfileOption.choices, null=True, blank=True)
+
+    employer_profile = models.OneToOneField(Employer, null=True, on_delete=models.CASCADE)
+    employee_profile = models.OneToOneField(Employee, null=True, on_delete=models.CASCADE)
+    admin_profile = models.OneToOneField(Admin, null=True, on_delete=models.CASCADE)
+
+    def save(self, *args, **kwargs):
+        if self.role == ProfileOption.EMPLOYEE:
+            if not self.employee_profile:
+                self.employee_profile = Employee.objects.create(user=self)
+        elif self.role == ProfileOption.EMPLOYER:
+            if not self.employer_profile:
+                self.employer_profile = Employer.objects.create(user=self)
+        elif self.role == ProfileOption.ADMIN:
+            if not self.admin_profile:
+                self.admin_profile = Admin.objects.create(user=self)
+
+        super().save(*args, **kwargs)

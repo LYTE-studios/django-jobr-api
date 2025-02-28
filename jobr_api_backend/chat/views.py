@@ -52,34 +52,33 @@ class SendMessageView(APIView):
 
     def post(self, request):
         chat_room_id = request.data.get("chat_room_id")
-        sender_id = request.data.get("sender_id")
         content = request.data.get("content")
+        user_id = request.data.get("user_id")
 
-        if not all([chat_room_id, sender_id, content]):
-            return Response(
-                {"error": "chat_room_id, sender_id, and content are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        chat_room = get_object_or_404(ChatRoom, id=chat_room_id)
-
-        # Verify the sender is part of the chat room
-        if sender_id not in [chat_room.employer.id, chat_room.employee.id]:
-            return Response(
-                {"error": "You are not authorized to send messages in this chat room"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Verify the authenticated user is the sender
-        if request.user.id != sender_id:
-            return Response(
-                {"error": "You can only send messages as yourself"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
+        if not user_id:
+            if not all([chat_room_id, content]):
+                return Response(
+                    {"error": "chat_room_id or user_id, and content are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            chat_room = get_object_or_404(ChatRoom, id=chat_room_id)
+            
+        else: 
+            try:
+                chat_room = ChatRoom.objects.get(employee_id=user_id)
+            except ChatRoom.DoesNotExist:
+                chat_room = ChatRoom.objects.create(
+                    employer_id=request.user.id, employee_id=user_id
+                )
+                
         message = Message.objects.create(
-            chatroom=chat_room, sender_id=sender_id, content=content
+            chatroom=chat_room, sender_id=request.user.id, content=content,
         )
+
+        message.read_by.add(request.user)
+
+        message.save()
+
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -89,26 +88,18 @@ class GetMessagesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, chatroom_id=None):
-        if chatroom_id:
-            chat_room = get_object_or_404(ChatRoom, id=chatroom_id)
+        chat_room = get_object_or_404(ChatRoom, id=chatroom_id)
 
-            # Verify the user is part of the chat room
-            if request.user.id not in [chat_room.employer.id, chat_room.employee.id]:
-                return Response(
-                    {
-                        "error": "You are not authorized to view messages in this chat room"
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+        # Verify the user is part of the chat room
+        if request.user.id not in [chat_room.employer.id, chat_room.employee.id]:
+            return Response(
+                {
+                    "error": "You are not authorized to view messages in this chat room"
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-            messages = Message.objects.filter(chatroom=chat_room).order_by("timestamp")
-        else:
-            # Only return messages from chat rooms the user is part of
-            messages = Message.objects.filter(
-                chatroom__in=ChatRoom.objects.filter(
-                    Q(employer=request.user) | Q(employee=request.user)
-                )
-            ).order_by("timestamp")
+        messages = Message.objects.filter(chatroom=chat_room).order_by("-created_at")
 
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)

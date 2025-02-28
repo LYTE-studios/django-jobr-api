@@ -129,9 +129,7 @@ class GetChatRoomListView(APIView):
         chat_rooms_data = []
         for chat_room in chat_rooms:
             last_message = chat_room.messages.order_by("-created_at").first()
-            unread_messages_count = chat_room.messages.filter(
-                ~Q(read_by=None)
-            ).count()
+            unread_messages_count = chat_room.messages.filter(~Q(read_by=None)).count()
             other_user = (
                 chat_room.employer
                 if chat_room.employer != request.user

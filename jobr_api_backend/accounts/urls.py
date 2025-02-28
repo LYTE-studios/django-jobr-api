@@ -19,6 +19,7 @@ from .views import (
     DeleteEmployerGallery,
     EmployeeStatisticsView,
     ConnectionTestView,
+    AISuggestionsView,
 )
 
 urlpatterns = [
@@ -82,4 +83,5 @@ urlpatterns = [
     path("login/apple", AppleSignInView.as_view(), name="apple_signin"),
     path("reviews", ReviewCreateView.as_view(), name="review-create"),
     path("statistics", EmployeeStatisticsView.as_view(), name="employee-statistics"),
+    path("ai/suggestions/", AISuggestionsView.as_view(), name="ai-suggestions"),
 ]

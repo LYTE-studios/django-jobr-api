@@ -552,3 +552,11 @@ class EmployeeStatisticsView(APIView):
                 {"detail": "Employee profile not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+
+class AISuggestionsView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return CustomUser.objects.filter(role="employee")

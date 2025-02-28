@@ -11,11 +11,67 @@ from .models import (
     Review,
 )
 
+class EmployeeSerializer(serializers.ModelSerializer):
+    # user = UserSerializer(required=True)
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), many=False
+    )
+
+    class Meta:
+        model = Employee
+        fields = [
+            "date_of_birth",
+            "gender",
+            "phone_number",
+            "city_name",
+            "biography",
+            "user",
+            "latitude",
+            "longitude",
+        ]
+
+
+class EmployerSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), many=False
+    )
+
+    class Meta:
+        model = Employer
+        fields = [
+            "vat_number",
+            "company_name",
+            "street_name",
+            "house_number",
+            "city",
+            "postal_code",
+            "coordinates",
+            "website",
+            "biography",
+            "user",
+        ]
+
+
+class AdminSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), many=False
+    )
+
+    class Meta:
+        model = Admin
+        fields = ["full_name", "user"]
+
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "password", "role"]
+        employer_profile = EmployerSerializer(read_only=True)
+        employee_profile = EmployeeSerializer(read_only=True)
+        admin_profile= AdminSerializer(read_only=True)
+
+        fields = ["id", "username", "email", "password", "role", "employer_profile", "employee_profile", "admin_profile"]
+
         extra_kwargs = {
             "password": {
                 "write_only": True,
@@ -66,57 +122,6 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Invalid credentials.")
         else:
             raise serializers.ValidationError('Must include "username" and "password".')
-
-
-class EmployeeSerializer(serializers.ModelSerializer):
-    # user = UserSerializer(required=True)
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
-    class Meta:
-        model = Employee
-        fields = [
-            "date_of_birth",
-            "gender",
-            "phone_number",
-            "city_name",
-            "biography",
-            "user",
-            "latitude",
-            "longitude",
-        ]
-
-
-class EmployerSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
-    class Meta:
-        model = Employer
-        fields = [
-            "vat_number",
-            "company_name",
-            "street_name",
-            "house_number",
-            "city",
-            "postal_code",
-            "coordinates",
-            "website",
-            "biography",
-            "user",
-        ]
-
-
-class AdminSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
-    class Meta:
-        model = Admin
-        fields = ["full_name", "user"]
 
 
 class ReviewSerializer(serializers.ModelSerializer):

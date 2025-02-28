@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from accounts.serializers import UserSerializer
 from .models import ChatRoom, Message
 
 
@@ -14,6 +16,9 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
+    employer = UserSerializer(read_only=True) 
+    employee = UserSerializer(read_only=True) 
+    
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:

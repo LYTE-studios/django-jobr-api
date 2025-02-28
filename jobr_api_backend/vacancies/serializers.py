@@ -10,6 +10,7 @@ from .models import (
 )
 from .models import ContractType, Function, Question, Skill, Language, Location
 from common.models import Extra
+from accounts.serializers import UserSerializer  # Import the UserSerializer
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -79,6 +80,7 @@ class WeekdaySerializer(serializers.ModelSerializer):
 
 
 class VacancySerializer(serializers.ModelSerializer):
+    employer = UserSerializer(read_only=True)  # Use the UserSerializer for the employer field
     contract_type = serializers.PrimaryKeyRelatedField(
         queryset=ContractType.objects.all(), allow_null=True
     )

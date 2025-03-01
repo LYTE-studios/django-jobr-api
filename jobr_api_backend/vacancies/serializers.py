@@ -80,7 +80,9 @@ class WeekdaySerializer(serializers.ModelSerializer):
 
 
 class VacancySerializer(serializers.ModelSerializer):
-    employer = UserSerializer(read_only=True) 
+    employer = UserSerializer(
+        read_only=True
+    ) 
     contract_type = serializers.PrimaryKeyRelatedField(
         queryset=ContractType.objects.all(), allow_null=True
     )

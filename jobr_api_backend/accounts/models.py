@@ -72,6 +72,9 @@ class EmployerGallery(models.Model):
 class Admin(models.Model):
     full_name = models.CharField(max_length=100)
 
+    def __str__(self):
+        return self.full_name
+
 
 class Review(models.Model):
 

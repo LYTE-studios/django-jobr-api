@@ -62,17 +62,19 @@ class SendMessageView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             chat_room = get_object_or_404(ChatRoom, id=chat_room_id)
-            
-        else: 
+
+        else:
             try:
                 chat_room = ChatRoom.objects.get(employee_id=user_id)
             except ChatRoom.DoesNotExist:
                 chat_room = ChatRoom.objects.create(
                     employer_id=request.user.id, employee_id=user_id
                 )
-                
+
         message = Message.objects.create(
-            chatroom=chat_room, sender_id=request.user.id, content=content,
+            chatroom=chat_room,
+            sender_id=request.user.id,
+            content=content,
         )
 
         message.read_by.add(request.user)
@@ -93,9 +95,7 @@ class GetMessagesView(APIView):
         # Verify the user is part of the chat room
         if request.user.id not in [chat_room.employer.id, chat_room.employee.id]:
             return Response(
-                {
-                    "error": "You are not authorized to view messages in this chat room"
-                },
+                {"error": "You are not authorized to view messages in this chat room"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

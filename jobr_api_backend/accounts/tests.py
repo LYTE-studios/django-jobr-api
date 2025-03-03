@@ -276,29 +276,51 @@ class SocialAuthenticationTests(TestCase):
         self.assertEqual(response_apple.data["error"], "ID token is required")
 
 
-class EmployeeStatisticsTestCase(TestCase):
+class EmployeeStatisticsViewTest(APITestCase):
     def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(username="testuser", password="testpass")
+        self.user = CustomUser.objects.create_user(
+            username="testuser", email="test@example.com", password="securepassword", role="employee"
+        )
+        self.employee = Employee.objects.create(
+            custom_user=self.user,
+            date_of_birth=date(1990, 1, 1),
+            gender="male",
+            phone_number="1234567890"
+        )
         self.client.force_authenticate(user=self.user)
+        self.url = reverse("employee-statistics")
 
+    def test_get_employee_statistics(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("vacancies_count", response.data)
+        self.assertIn("chats_count", response.data)
+        self.assertIn("phone_session_counts", response.data)
+
+    def test_increment_phone_sessions(self):
+        initial_count = self.employee.phone_session_counts
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.phone_session_counts, initial_count + 1)
+
+
+class MyProfileViewTest(APITestCase):
     def setUp(self):
-        self.client = APIClient()
         self.user = CustomUser.objects.create_user(
             username="testuser", password="testpass"
         )
-        self.employee = Employee.objects.create(
-            user=self.user,
-            date_of_birth=date(1990, 1, 1),  # Added a sample date of birth haha
-        )
-        self.client.force_authenticate(user=self.user)
+        self.client.login(username="testuser", password="testpass")
 
-    def test_get_statistics(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get(reverse("employee-statistics"))
+    def test_get_my_profile(self):
+        url = reverse("my-profile")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_increment_phone_sessions(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.post(reverse("employee-statistics"))
+    def test_update_my_profile(self):
+        url = reverse("my-profile")
+        data = {"username": "updateduser"}
+        response = self.client.put(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "updateduser")

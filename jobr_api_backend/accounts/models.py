@@ -8,6 +8,7 @@ class ProfileOption(models.TextChoices):
     EMPLOYER = "employer", "Employer"
     ADMIN = "admin", "Admin"
 
+
 class Employee(models.Model):
     date_of_birth = models.DateField()
     gender = models.CharField(
@@ -74,7 +75,6 @@ class Admin(models.Model):
 
 
 class Review(models.Model):
-
     REVIEWER_TYPE_CHOICES = [
         ("employee", "Employee"),
         ("employer", "Employer"),
@@ -94,9 +94,7 @@ class Review(models.Model):
         blank=True,
         related_name="employer_reviews",
     )
-    anonymous_name = models.CharField(
-        max_length=100, blank=True, null=True
-    )
+    anonymous_name = models.CharField(max_length=100, blank=True, null=True)
     rating = models.PositiveIntegerField()
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -104,14 +102,24 @@ class Review(models.Model):
         max_length=10, choices=REVIEWER_TYPE_CHOICES, default="anonymous"
     )
 
+
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
 
-    role = models.CharField(max_length=10, choices=ProfileOption.choices, null=True, blank=True)
+    role = models.CharField(
+        max_length=10, choices=ProfileOption.choices, null=True, blank=True
+    )
 
-    employer_profile = models.OneToOneField(Employer, null=True, on_delete=models.CASCADE)
-    employee_profile = models.OneToOneField(Employee, null=True, on_delete=models.CASCADE)
+    employer_profile = models.OneToOneField(
+        Employer, null=True, on_delete=models.CASCADE
+    )
+    employee_profile = models.OneToOneField(
+        Employee, null=True, on_delete=models.CASCADE
+    )
     admin_profile = models.OneToOneField(Admin, null=True, on_delete=models.CASCADE)
+    profile_picture = models.ImageField(
+        upload_to="profile_pictures/", blank=True, null=True
+    )
 
     def save(self, *args, **kwargs):
         if self.role == ProfileOption.EMPLOYEE:

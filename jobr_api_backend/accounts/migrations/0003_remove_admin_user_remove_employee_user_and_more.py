@@ -7,40 +7,61 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0002_initial'),
+        ("accounts", "0002_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='admin',
-            name='user',
+            model_name="admin",
+            name="user",
         ),
         migrations.RemoveField(
-            model_name='employee',
-            name='user',
+            model_name="employee",
+            name="user",
         ),
         migrations.RemoveField(
-            model_name='employer',
-            name='user',
+            model_name="employer",
+            name="user",
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='admin_profile',
-            field=models.OneToOneField(null=True, on_delete=django.db.models.deletion.CASCADE, to='accounts.admin'),
+            model_name="customuser",
+            name="admin_profile",
+            field=models.OneToOneField(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="accounts.admin",
+            ),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='employee_profile',
-            field=models.OneToOneField(null=True, on_delete=django.db.models.deletion.CASCADE, to='accounts.employee'),
+            model_name="customuser",
+            name="employee_profile",
+            field=models.OneToOneField(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="accounts.employee",
+            ),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='employer_profile',
-            field=models.OneToOneField(null=True, on_delete=django.db.models.deletion.CASCADE, to='accounts.employer'),
+            model_name="customuser",
+            name="employer_profile",
+            field=models.OneToOneField(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="accounts.employer",
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='role',
-            field=models.CharField(blank=True, choices=[('Employee', 'Employee'), ('Employer', 'Employer'), ('Admin', 'Admin')], max_length=10, null=True),
+            model_name="customuser",
+            name="role",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("Employee", "Employee"),
+                    ("Employer", "Employer"),
+                    ("Admin", "Admin"),
+                ],
+                max_length=10,
+                null=True,
+            ),
         ),
     ]

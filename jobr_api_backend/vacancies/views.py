@@ -169,7 +169,7 @@ class VacancyFilterView(generics.ListAPIView):
                 queryset = queryset.order_by("salary")
             elif sort_by_salary.lower() == "desc":
                 queryset = queryset.order_by("-salary")
-                
+
         return queryset
 
     @staticmethod

@@ -279,13 +279,16 @@ class SocialAuthenticationTests(TestCase):
 class EmployeeStatisticsViewTest(APITestCase):
     def setUp(self):
         self.user = CustomUser.objects.create_user(
-            username="testuser", email="test@example.com", password="securepassword", role="employee"
+            username="testuser",
+            email="test@example.com",
+            password="securepassword",
+            role="employee",
         )
         self.employee = Employee.objects.create(
             custom_user=self.user,
             date_of_birth=date(1990, 1, 1),
             gender="male",
-            phone_number="1234567890"
+            phone_number="1234567890",
         )
         self.client.force_authenticate(user=self.user)
         self.url = reverse("employee-statistics")

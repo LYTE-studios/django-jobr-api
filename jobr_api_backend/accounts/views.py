@@ -11,11 +11,9 @@ from .serializers import (
     EmployerSerializer,
     AdminSerializer,
     ReviewSerializer,
-    EmployeeStatisticsSerializer,
-    EmployeeWithGallerySerializer,
-    EmployeeGalleryUpdateSerializer,
-    EmployerWithGallerySerializer,
-    EmployerGalleryUpdateSerializer, UserGalleryUpdateSerializer, UserWithGallerySerializer,
+    EmployeeStatisticsSerializer, 
+    UserGallerySerializer,
+    UserGalleryUpdateSerializer,
 )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -29,7 +27,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery, UserGallery
+from .models import CustomUser, Employee, Employer, UserGallery
 from .serializers import UserSerializer
 
 
@@ -396,133 +394,6 @@ class ReviewCreateView(generics.CreateAPIView):
             reviewer_type = "anonymous"
             serializer.save(reviewer_type=reviewer_type)
 
-
-class AllEmployeeGalleriesView(generics.ListAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = EmployeeWithGallerySerializer
-
-    def get_queryset(self):
-        return Employee.objects.all().prefetch_related("employees_gallery")
-
-
-class EmployeeByUserView(generics.RetrieveUpdateAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = EmployeeWithGallerySerializer
-
-    def get_object(self):
-        try:
-            return Employee.objects.get(user=self.kwargs["pk"])
-        except Employee.DoesNotExist:
-            raise Http404("Employee does not exist")
-
-    def get_queryset(self):
-        return Employee.objects.prefetch_related("employees_gallery")
-
-
-class UpdateEmployeeGalleryView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ["put"]
-
-    def put(self, request):
-        serializer = EmployeeGalleryUpdateSerializer(
-            data=request.data, context={"user": request.user.id}
-        )
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        validated_data = serializer.validated_data
-        user_id = request.user.id
-        gallery_image = validated_data.get("gallery")
-
-        employee = Employee.objects.get(user=user_id)
-        EmployeeGallery.objects.filter(employees=employee).delete()
-        for image in gallery_image:
-            EmployeeGallery.objects.create(employees=employee, gallery=image)
-
-        serializer = EmployeeWithGallerySerializer(
-            Employee.objects.prefetch_related("employees_gallery").get(pk=employee.id)
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class DeleteEmployeeGallery(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request):
-        try:
-            employee = Employee.objects.get(user=request.user.id)
-            EmployeeGallery.objects.filter(employees=employee).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Employee.DoesNotExist:
-            return Response(
-                {"details": "Current user isn't an employee"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-
-class AllEmployerGalleriesView(generics.ListAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = EmployerWithGallerySerializer
-
-    def get_queryset(self):
-        return Employer.objects.all().prefetch_related("employers_gallery")
-
-
-class EmployerByUserView(generics.RetrieveAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = EmployerWithGallerySerializer
-
-    def get_object(self):
-        try:
-            return Employer.objects.get(user=self.kwargs["pk"])
-        except:
-            raise Http404("Employer does not exist")
-
-    def get_queryset(self):
-        return Employer.objects.prefetch_related("employers_gallery")
-
-
-class UpdateEmployerGalleryView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ["put"]
-
-    def put(self, request):
-        serializer = EmployerGalleryUpdateSerializer(
-            data=request.data, context={"user": request.user.id}
-        )
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        validated_data = serializer.validated_data
-        user_id = request.user.id
-        gallery_image = validated_data.get("gallery")
-
-        employer = Employer.objects.get(user=user_id)
-        EmployerGallery.objects.filter(employers=employer).delete()
-        for image in gallery_image:
-            EmployerGallery.objects.create(employers=employer, gallery=image)
-
-        serializer = EmployerWithGallerySerializer(
-            Employer.objects.prefetch_related("employers_gallery").get(pk=employer.id)
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class DeleteEmployerGallery(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request):
-        try:
-            employer = Employer.objects.get(user=request.user.id)
-            EmployerGallery.objects.filter(employers=employer).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Employer.DoesNotExist:
-            return Response(
-                {"details": "Current user isn't an employer"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-
 class EmployeeStatisticsView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
@@ -569,18 +440,16 @@ class MyProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
-
 class AllUserGalleriesView(generics.ListAPIView):
     permission_classes = [AllowAny]
-    serializer_class = UserWithGallerySerializer
+    serializer_class = UserSerializer
 
     def get_queryset(self):
         return CustomUser.objects.all().prefetch_related("users_gallery")
 
-
 class UserByUserView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
-    serializer_class = UserWithGallerySerializer
+    serializer_class = UserSerializer
 
     def get_object(self):
         try:
@@ -612,7 +481,7 @@ class UpdateUserGalleryView(APIView):
         for image in gallery_image:
             UserGallery.objects.create(user=user, gallery=image)
 
-        serializer = UserWithGallerySerializer(
+        serializer = UserSerializer(
             CustomUser.objects.prefetch_related("users_gallery").get(pk=user.id)
         )
         return Response(serializer.data, status=status.HTTP_200_OK)

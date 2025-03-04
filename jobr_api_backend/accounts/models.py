@@ -40,14 +40,6 @@ class Employee(models.Model):
     def __str__(self):
         return self.user.email
 
-
-class EmployeeGallery(models.Model):
-    employees = models.ForeignKey(
-        Employee, on_delete=models.CASCADE, related_name="employees_gallery"
-    )
-    gallery = models.ImageField(upload_to="galleries/", blank=False)
-
-
 class Employer(models.Model):
     vat_number = models.CharField(max_length=30)
     company_name = models.CharField(max_length=100)
@@ -61,14 +53,6 @@ class Employer(models.Model):
 
     def __str__(self):
         return self.vat_number
-
-
-class EmployerGallery(models.Model):
-    employers = models.ForeignKey(
-        Employer, on_delete=models.CASCADE, related_name="employers_gallery"
-    )
-    gallery = models.ImageField(upload_to="galleries/", blank=False)
-
 
 class Admin(models.Model):
     full_name = models.CharField(max_length=100)
@@ -119,7 +103,9 @@ class CustomUser(AbstractUser):
     employee_profile = models.OneToOneField(
         Employee, null=True, on_delete=models.CASCADE
     )
+
     admin_profile = models.OneToOneField(Admin, null=True, on_delete=models.CASCADE)
+
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", blank=True, null=True
     )
@@ -139,7 +125,7 @@ class CustomUser(AbstractUser):
 
 
 class UserGallery(models.Model):
-    employers = models.ForeignKey(
+    user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="user_gallery"
     )
     gallery = models.ImageField(upload_to="galleries/", blank=False)

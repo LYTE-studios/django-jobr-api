@@ -20,7 +20,7 @@ from .views import (
     EmployeeStatisticsView,
     ConnectionTestView,
     AISuggestionsView,
-    MyProfileView,
+    MyProfileView, UpdateUserGalleryView, DeleteUserGallery,
 )
 
 urlpatterns = [
@@ -86,4 +86,15 @@ urlpatterns = [
     path("statistics", EmployeeStatisticsView.as_view(), name="employee-statistics"),
     path("ai/suggestions/", AISuggestionsView.as_view(), name="ai-suggestions"),
     path("profile/", MyProfileView.as_view(), name="my-profile"),
+
+    path(
+        "gallery/user/update",
+        UpdateUserGalleryView.as_view(),
+        name="update-user-galleries",
+    ),
+    path(
+        "gallery/user/delete",
+        DeleteUserGallery.as_view(),
+        name="delete-user-galleries",
+    ),
 ]

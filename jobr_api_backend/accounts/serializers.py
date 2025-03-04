@@ -9,7 +9,7 @@ from .models import (
     EmployerGallery,
     Admin,
     Review,
-    ProfileOption,
+    ProfileOption, UserGallery,
 )
 
 
@@ -82,7 +82,6 @@ class UserSerializer(serializers.ModelSerializer):
             "employee_profile",
             "admin_profile",
             "profile_picture",
-            "gallery",
         ]
 
         extra_kwargs = {
@@ -94,17 +93,6 @@ class UserSerializer(serializers.ModelSerializer):
             "username": {"required": False},  # Make username optional for updates
             "role": {"required": False},  # Make role optional for updates
         }
-
-    def get_gallery(self, obj):
-        if obj.role == ProfileOption.EMPLOYEE and obj.employee_profile:
-            return EmployeeGallerySerializer(
-                obj.employee_profile.employees_gallery.all(), many=True
-            ).data
-        elif obj.role == ProfileOption.EMPLOYER and obj.employer_profile:
-            return EmployerGallerySerializer(
-                obj.employer_profile.employers_gallery.all(), many=True
-            ).data
-        return []
 
     def create(self, validated_data):
         user = CustomUser(**validated_data)
@@ -258,3 +246,36 @@ class EmployeeStatisticsSerializer(serializers.ModelSerializer):
         from chat.models import Message
 
         return Message.objects.filter(sender=obj.user).count()
+
+
+class UserGallerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserGallery
+        fields = ["id", "gallery"]
+
+
+class UserWithGallerySerializer(serializers.ModelSerializer):
+    gallery = UserGallerySerializer(many=True, source="users_gallery")
+
+    class Meta:
+        model = CustomUser
+        fields = ["username", "gallery"]
+
+
+class UserGalleryUpdateSerializer(serializers.Serializer):
+    gallery = serializers.ListField(
+        child=serializers.ImageField(max_length=100000, allow_empty_file=False),
+        write_only=True,
+    )
+
+    def validate(self, data):
+        try:
+            CustomUser.objects.get(id=self.context.get("user"))
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError(
+                "User with this ID does not exist."
+            )
+        gallery = data.get("gallery")
+        if not gallery:
+            raise serializers.ValidationError("At least one image is required.")
+        return data

@@ -128,7 +128,7 @@ class VacancyFilterView(generics.ListAPIView):
         skills = self.request.query_params.getlist("skills")
         employee_id = self.request.query_params.get("employee_id", None)
         max_distance = self.request.query_params.get("distance", None)
-
+        sort_by_salary = self.request.query_params.get("sort_by_salary", None)
         # Retrieve employee's latitude and longitude
         user_latitude = None
         user_longitude = None
@@ -162,6 +162,13 @@ class VacancyFilterView(generics.ListAPIView):
                 )
                 <= float(max_distance)
             ]
+
+        # Sort by salary
+        if sort_by_salary:
+            if sort_by_salary.lower() == "asc":
+                queryset = queryset.order_by("salary")
+            elif sort_by_salary.lower() == "desc":
+                queryset = queryset.order_by("-salary")
 
         return queryset
 

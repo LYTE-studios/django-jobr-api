@@ -20,6 +20,7 @@ from .views import (
     EmployeeStatisticsView,
     ConnectionTestView,
     AISuggestionsView,
+    MyProfileView,
 )
 
 urlpatterns = [
@@ -84,4 +85,5 @@ urlpatterns = [
     path("reviews", ReviewCreateView.as_view(), name="review-create"),
     path("statistics", EmployeeStatisticsView.as_view(), name="employee-statistics"),
     path("ai/suggestions/", AISuggestionsView.as_view(), name="ai-suggestions"),
+    path("profile/", MyProfileView.as_view(), name="my-profile"),
 ]

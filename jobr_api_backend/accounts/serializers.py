@@ -9,7 +9,9 @@ from .models import (
     EmployerGallery,
     Admin,
     Review,
+    ProfileOption,
 )
+
 
 class EmployeeSerializer(serializers.ModelSerializer):
     # user = UserSerializer(required=True)
@@ -62,15 +64,26 @@ class AdminSerializer(serializers.ModelSerializer):
         fields = ["full_name", "user"]
 
 
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         employer_profile = EmployerSerializer(read_only=True)
         employee_profile = EmployeeSerializer(read_only=True)
-        admin_profile= AdminSerializer(read_only=True)
+        admin_profile = AdminSerializer(read_only=True)
+        gallery = serializers.SerializerMethodField()
 
-        fields = ["id", "username", "email", "password", "role", "employer_profile", "employee_profile", "admin_profile"]
+        fields = [
+            "id",
+            "username",
+            "email",
+            "password",
+            "role",
+            "employer_profile",
+            "employee_profile",
+            "admin_profile",
+            "profile_picture",
+            "gallery",
+        ]
 
         extra_kwargs = {
             "password": {
@@ -81,6 +94,17 @@ class UserSerializer(serializers.ModelSerializer):
             "username": {"required": False},  # Make username optional for updates
             "role": {"required": False},  # Make role optional for updates
         }
+
+    def get_gallery(self, obj):
+        if obj.role == ProfileOption.EMPLOYEE and obj.employee_profile:
+            return EmployeeGallerySerializer(
+                obj.employee_profile.employees_gallery.all(), many=True
+            ).data
+        elif obj.role == ProfileOption.EMPLOYER and obj.employer_profile:
+            return EmployerGallerySerializer(
+                obj.employer_profile.employers_gallery.all(), many=True
+            ).data
+        return []
 
     def create(self, validated_data):
         user = CustomUser(**validated_data)

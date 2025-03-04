@@ -10,10 +10,11 @@ class ProfileOption(models.TextChoices):
 
 
 class Employee(models.Model):
-    date_of_birth = models.DateField()
+    date_of_birth = models.DateField(null=True)
     gender = models.CharField(
         max_length=10,
         choices=[("male", "Male"), ("female", "Female"), ("other", "Other")],
+        null=True
     )
     phone_number = models.CharField(max_length=15)
     profile_picture = models.ImageField(
@@ -41,13 +42,13 @@ class Employee(models.Model):
         return self.user.email
 
 class Employer(models.Model):
-    vat_number = models.CharField(max_length=30)
-    company_name = models.CharField(max_length=100)
-    street_name = models.CharField(max_length=100)
-    house_number = models.CharField(max_length=10)
-    city = models.CharField(max_length=100)
-    postal_code = models.CharField(max_length=20)
-    coordinates = models.JSONField()  # Stores latitude and longitude as JSON
+    vat_number = models.CharField(max_length=30, null=True)
+    company_name = models.CharField(max_length=100, null=True)
+    street_name = models.CharField(max_length=100, null=True)
+    house_number = models.CharField(max_length=10, null=True)
+    city = models.CharField(max_length=100, null=True)
+    postal_code = models.CharField(max_length=20, null=True)
+    coordinates = models.JSONField(null=True)  # Stores latitude and longitude as JSON
     website = models.URLField(blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
 
@@ -112,17 +113,13 @@ class CustomUser(AbstractUser):
 
     def save(self, *args, **kwargs):
         if self.role == ProfileOption.EMPLOYEE:
-            if not self.employee_profile:
-                self.employee_profile = Employee.objects.create(user=self)
+            self.employee_profile = Employee.objects.create()
         elif self.role == ProfileOption.EMPLOYER:
-            if not self.employer_profile:
-                self.employer_profile = Employer.objects.create(user=self)
+            self.employer_profile = Employer.objects.create()
         elif self.role == ProfileOption.ADMIN:
-            if not self.admin_profile:
-                self.admin_profile = Admin.objects.create(user=self)
+            self.admin_profile = Admin.objects.create()
 
         super().save(*args, **kwargs)
-
 
 class UserGallery(models.Model):
     user = models.ForeignKey(

@@ -100,11 +100,11 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "password": {
                 "write_only": True,
-                "required": False,
+                "required": True,
             },  # Make password optional for updates
-            "email": {"required": False},  # Make email optional for updates
-            "username": {"required": False},  # Make username optional for updates
-            "role": {"required": False},  # Make role optional for updates
+            "email": {"required": True},  # Make email optional for updates
+            "username": {"required": True},  # Make username optional for updates
+            "role": {"required": True},  # Make role optional for updates
         }
 
 class UserSerializer(serializers.ModelSerializer):

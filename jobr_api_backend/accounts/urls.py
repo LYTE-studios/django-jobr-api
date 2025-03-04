@@ -20,7 +20,7 @@ from .views import (
     EmployeeStatisticsView,
     ConnectionTestView,
     AISuggestionsView,
-    MyProfileView, UpdateUserGalleryView, DeleteUserGallery,
+    MyProfileView, UpdateUserGalleryView, DeleteUserGallery, DeleteAccountView,
 )
 
 urlpatterns = [
@@ -97,4 +97,5 @@ urlpatterns = [
         DeleteUserGallery.as_view(),
         name="delete-user-galleries",
     ),
+    path('account/delete/', DeleteAccountView.as_view(), name='delete-account'),
 ]

@@ -631,3 +631,12 @@ class DeleteUserGallery(APIView):
                 {"details": "Current user isn't an User"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+
+class DeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        user.delete()
+        return Response({"detail": "Account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)

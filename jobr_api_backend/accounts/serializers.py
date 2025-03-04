@@ -86,6 +86,26 @@ class UserGalleryUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError("At least one image is required.")
         return data
     
+class UserAuthenticationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+
+        fields = [
+            "username",
+            "email",
+            "password",
+            "role",
+        ]
+
+        extra_kwargs = {
+            "password": {
+                "write_only": True,
+                "required": False,
+            },  # Make password optional for updates
+            "email": {"required": False},  # Make email optional for updates
+            "username": {"required": False},  # Make username optional for updates
+            "role": {"required": False},  # Make role optional for updates
+        }
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

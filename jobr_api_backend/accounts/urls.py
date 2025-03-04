@@ -4,8 +4,6 @@ from .views import (
     UserLoginView,
     UserRegistrationView,
     UserDetailView,
-    EmployeeRegistration,
-    EmployerRegistration,
     GoogleSignInView,
     AppleSignInView,
     ReviewCreateView,
@@ -18,20 +16,10 @@ from .views import (
 urlpatterns = [
     path("login", UserLoginView.as_view(), name="login"),
     path("test-connection", ConnectionTestView.as_view(), name="test-connection"),
-    path("register", UserRegistrationView.as_view(), name="register"),
     path(
         "users/<int:pk>", UserDetailView.as_view(), name="user-detail"
     ),  # Added user detail URL
-    path(
-        "register/employee",
-        EmployeeRegistration.as_view(),
-        name="employee-registration",
-    ),
-    path(
-        "register/employer",
-        EmployerRegistration.as_view(),
-        name="employer-registration",
-    ),
+    path("register", UserRegistrationView.as_view(), name="register"),
     path("login/google", GoogleSignInView.as_view(), name="google_signin"),
     path("login/apple", AppleSignInView.as_view(), name="apple_signin"),
     path("reviews", ReviewCreateView.as_view(), name="review-create"),

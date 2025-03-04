@@ -7,12 +7,9 @@ from rest_framework.views import APIView
 from .services import TokenService
 from .serializers import (
     LoginSerializer,
-    EmployeeSerializer,
-    EmployerSerializer,
-    AdminSerializer,
+    UserAuthenticationSerializer,
     ReviewSerializer,
     EmployeeStatisticsSerializer, 
-    UserGallerySerializer,
     UserGalleryUpdateSerializer,
 )
 from rest_framework.permissions import IsAuthenticated
@@ -44,7 +41,7 @@ class ConnectionTestView(APIView):
 
 
 class UserRegistrationView(generics.CreateAPIView):
-    serializer_class = UserSerializer
+    serializer_class = UserAuthenticationSerializer
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -110,127 +107,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
-
-
-class EmployeeRegistration(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = EmployeeSerializer
-
-    @swagger_auto_schema(
-        responses={
-            201: openapi.Response(
-                description="Employee registration successful",
-                examples={
-                    "application/json": {
-                        "success": True,
-                        "message": "Employee registered successfully.",
-                        "access": "access_token_string",
-                        "refresh": "refresh_token_string",
-                    }
-                },
-            )
-        }
-    )
-    def create(self, request, *args, **kwargs):
-        user = request.user
-        if user.role != "employee":
-            return Response(
-                {"error": "User is not allowed to register as an employee."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        employee_data = request.data.copy()
-        employee_data["user"] = user.id
-        employee_serializer = self.get_serializer(data=employee_data)
-        if employee_serializer.is_valid():
-            employee_serializer.save()
-            return Response(
-                {"success": True, "message": "Employee registered successfully."}
-                | TokenService.get_tokens_for_user(user),
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(employee_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class EmployerRegistration(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = EmployerSerializer
-
-    @swagger_auto_schema(
-        responses={
-            201: openapi.Response(
-                description="Employer registration successful",
-                examples={
-                    "application/json": {
-                        "success": True,
-                        "message": "Employer registered successfully.",
-                        "access": "access_token_string",
-                        "refresh": "refresh_token_string",
-                    }
-                },
-            )
-        }
-    )
-    def create(self, request, *args, **kwargs):
-        user = request.user
-        if user.role != "employer":
-            return Response(
-                {"error": "User is not allowed to register as an employer."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        employer_data = request.data.copy()
-        employer_data["user"] = user.id
-        employer_serializer = self.get_serializer(data=employer_data)
-        if employer_serializer.is_valid():
-            employer_serializer.save()
-            return Response(
-                {"success": True, "message": "Employer registered successfully."}
-                | TokenService.get_tokens_for_user(user),
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(employer_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class AdminRegistration(generics.CreateAPIView):
-    serializer_class = AdminSerializer
-
-    @swagger_auto_schema(
-        responses={
-            201: openapi.Response(
-                description="Admin registration successful",
-                examples={
-                    "application/json": {
-                        "success": True,
-                        "message": "Admin registered successfully.",
-                        "access": "access_token_string",
-                        "refresh": "refresh_token_string",
-                    }
-                },
-            )
-        }
-    )
-    def create(self, request, *args, **kwargs):
-        user_serializer = UserSerializer(data=request.data)
-        if user_serializer.is_valid():
-            user = user_serializer.save()
-            admin_data = request.data.copy()
-            admin_data["user"] = user.id
-            admin_serializer = self.get_serializer(data=admin_data)
-            if admin_serializer.is_valid():
-                admin_serializer.save()
-                return Response(
-                    {"success": True, "message": "Admin registered successfully."}
-                    | TokenService.get_tokens_for_user(user),
-                    status=status.HTTP_201_CREATED,
-                )
-            else:
-                user.delete()
-                return Response(
-                    admin_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
-        return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class GoogleSignInView(APIView):
     permission_classes = [AllowAny]

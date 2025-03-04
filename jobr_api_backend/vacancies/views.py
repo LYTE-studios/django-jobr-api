@@ -100,9 +100,7 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data["employer"] = Employer.objects.get(
-            user_id=request.user.id
-        ).id  # Set the employer to the authenticated user's employer ID
+        data["employer"] = request.user.id
         serializer = self.get_serializer(data=data)
 
         if serializer.is_valid():

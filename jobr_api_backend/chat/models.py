@@ -3,6 +3,8 @@ from django.db import models
 # from django.contrib.auth.models import User
 from django.conf import settings
 
+from vacancies.models import Vacancy
+
 
 # Create your models here.
 class ChatRoom(models.Model):
@@ -17,7 +19,7 @@ class ChatRoom(models.Model):
         related_name="employee_chatrooms",
     )
     created_at = models.DateTimeField(auto_now_add=True)
-
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE, related_name="chatrooms_vacancy", null=True, blank=True)
     def __str__(self):
         return f"ChatRoom {self.id} ({self.employer} - {self.employee})"
 

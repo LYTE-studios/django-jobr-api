@@ -15,7 +15,7 @@ from .serializers import (
     EmployeeWithGallerySerializer,
     EmployeeGalleryUpdateSerializer,
     EmployerWithGallerySerializer,
-    EmployerGalleryUpdateSerializer,
+    EmployerGalleryUpdateSerializer, UserGalleryUpdateSerializer, UserWithGallerySerializer,
 )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -29,7 +29,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery
+from .models import CustomUser, Employee, Employer, EmployeeGallery, EmployerGallery, UserGallery
 from .serializers import UserSerializer
 
 
@@ -568,3 +568,75 @@ class MyProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class AllUserGalleriesView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = UserWithGallerySerializer
+
+    def get_queryset(self):
+        return CustomUser.objects.all().prefetch_related("users_gallery")
+
+
+class UserByUserView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = UserWithGallerySerializer
+
+    def get_object(self):
+        try:
+            return CustomUser.objects.get(id=self.kwargs["pk"])
+        except CustomUser.DoesNotExist:
+            raise Http404("User does not exist")
+
+    def get_queryset(self):
+        return CustomUser.objects.prefetch_related("users_gallery")
+
+
+class UpdateUserGalleryView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    http_method_names = ["put"]
+
+    def put(self, request):
+        serializer = UserGalleryUpdateSerializer(
+            data=request.data, context={"user": request.user.id}
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        validated_data = serializer.validated_data
+        user_id = request.user.id
+        gallery_image = validated_data.get("gallery")
+
+        user = CustomUser.objects.get(id=user_id)
+        UserGallery.objects.filter(user=user).delete()
+        for image in gallery_image:
+            UserGallery.objects.create(user=user, gallery=image)
+
+        serializer = UserWithGallerySerializer(
+            CustomUser.objects.prefetch_related("users_gallery").get(pk=user.id)
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DeleteUserGallery(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            employer = CustomUser.objects.get(id=request.user.id)
+            UserGallery.objects.filter(user=employer).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Employer.DoesNotExist:
+            return Response(
+                {"details": "Current user isn't an User"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class DeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        user.delete()
+        return Response({"detail": "Account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)

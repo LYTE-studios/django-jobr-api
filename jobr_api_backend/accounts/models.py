@@ -136,3 +136,10 @@ class CustomUser(AbstractUser):
                 self.admin_profile = Admin.objects.create(user=self)
 
         super().save(*args, **kwargs)
+
+
+class UserGallery(models.Model):
+    employers = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="user_gallery"
+    )
+    gallery = models.ImageField(upload_to="galleries/", blank=False)

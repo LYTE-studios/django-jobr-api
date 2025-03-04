@@ -1,4 +1,6 @@
 from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+
 from .models import ContractType, Function, Language, Skill, Location, Question
 from accounts.models import Employer
 from .models import Vacancy, ApplyVacancy
@@ -19,6 +21,9 @@ from accounts.models import Employee
 from rest_framework.exceptions import NotFound
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
+
+from chat.models import ChatRoom
+from chat.serializers import ChatRoomSerializer
 
 
 class LocationsView(generics.GenericAPIView):
@@ -188,3 +193,33 @@ class VacancyFilterView(generics.ListAPIView):
         c = 2 * asin(sqrt(a))
         r = 6371  # Radius of earth in kilometers
         return c * r
+
+
+class ApplyForJobView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ApplySerializer
+
+    def post(self, request, *args, **kwargs):
+        vacancy_id = self.kwargs.get('vacancy_id')
+        try:
+            vacancy = Vacancy.objects.get(id=vacancy_id)
+        except Vacancy.DoesNotExist:
+            return Response({"detail": "Vacancy not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = {
+            "employee": request.user.employee_profile.id,
+            "vacancy": vacancy.id
+        }
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            chatroom = ChatRoom.objects.create(
+                employee=request.user.employee_profile,
+                employer=vacancy.employer,
+                vacancy=vacancy
+            )
+            chatroom_serializer = ChatRoomSerializer(chatroom)
+            response_data = serializer.data
+            response_data['chatroom'] = chatroom_serializer.data
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

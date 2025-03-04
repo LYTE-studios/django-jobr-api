@@ -4,47 +4,52 @@ from django.conf import settings
 
 class Location(models.Model):
     location = models.CharField(max_length=255)
+    weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.location
+        return f"{self.location} at {self.weight}"
 
 
 class ContractType(models.Model):
     contract_type = models.CharField(max_length=255)
+    weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.contract_type
+        return f"{self.contract_type} at {self.weight}"
 
 
 class Function(models.Model):
     function = models.CharField(max_length=255)
+    weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.function
+        return f"{self.function} at {self.weight}"
 
 
 class Question(models.Model):
     question = models.CharField(max_length=255)
+    weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.question
+        return f"{self.question} at {self.weight}"
 
 
 class Language(models.Model):
     language = models.CharField(max_length=255)
+    weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.language
-
+        return f"{self.language} at {self.weight}"
 
 class Skill(models.Model):
     skill = models.CharField(max_length=255)
     category = models.CharField(
         max_length=10, choices=[("hard", "Hard"), ("soft", "Soft")], default="hard"
     )
+    weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.skill
+        return f"{self.skill} - {self.category} at {self.weight}"
 
 
 class MasteryOption(models.TextChoices):
@@ -60,7 +65,27 @@ class Weekday(models.Model):
 
     def __str__(self):
         return self.name
+    
+class SalaryBenefit(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    weight = models.IntegerField(null=True)
 
+    def __str__(self):
+        return f"{self.name} at {self.weight}"
+
+class ProfileInterest(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    weight = models.IntegerField(null=True)
+
+    def __str__(self):
+        return f"{self.name} at {self.weight}"
+    
+class JobListingPrompt(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    weight = models.IntegerField(null=True)
+
+    def __str__(self):
+        return f"{self.name} at {self.weight}"
 
 class VacancyLanguage(models.Model):
     language = models.ForeignKey(Language, on_delete=models.CASCADE)

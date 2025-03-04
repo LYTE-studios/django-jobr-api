@@ -38,7 +38,6 @@ urlpatterns = [
     path("statistics", EmployeeStatisticsView.as_view(), name="employee-statistics"),
     path("ai/suggestions/", AISuggestionsView.as_view(), name="ai-suggestions"),
     path("profile/", MyProfileView.as_view(), name="my-profile"),
-
     path(
         "gallery/user/update",
         UpdateUserGalleryView.as_view(),

@@ -75,23 +75,24 @@ class VacancyTests(APITestCase):
 
 class VacancyModelTests(TestCase):
     def setUp(self):
-        self.user = CustomUser.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
-        )
+
         self.employer = Employer.objects.create(
-            user=self.user,
             company_name="Test Company",
             coordinates="40.7128,-74.0060",  # Added coordinates
         )
-        self.contract_type = ContractType.objects.create(contract_type="Full-time")
+        self.user = CustomUser.objects.create_user(
+            username="testuser", email="test@example.com", password="testpass123",
+            employer_profile=self.employer
+        )
+        self.contract_type1 = ContractType.objects.create(contract_type='Full-time')
+        self.contract_type2 = ContractType.objects.create(contract_type='Part-time')
         self.function = Function.objects.create(function="Software Development")
 
     def test_vacancy_creation(self):
         """Test the creation of a Vacancy instance"""
         vacancy = Vacancy.objects.create(
-            employer=self.employer,
+            employer=self.user,
             title="Test Position",
-            contract_type=self.contract_type,
             function=self.function,
             location="distance",
             week_day="Monday-Friday",
@@ -100,20 +101,23 @@ class VacancyModelTests(TestCase):
             latitude=40.7128,
             longitude=-74.0060,
         )
-        self.assertEqual(vacancy.title, "Test Position")
-        self.assertEqual(vacancy.salary, Decimal("50000.00"))
+        vacancy.contract_type.add(self.contract_type1, self.contract_type2)
+        self.assertEqual(vacancy.contract_type.count(), 2)
+        self.assertIn(self.contract_type1, vacancy.contract_type.all())
+        self.assertIn(self.contract_type2, vacancy.contract_type.all())
 
 
 class SerializerTests(TestCase):
     def setUp(self):
         self.language = Language.objects.create(language="English")
-        self.user = CustomUser.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
-        )
+
         self.employer = Employer.objects.create(
-            user=self.user,
             company_name="Test Company",
             coordinates="40.7128,-74.0060",  # Added coordinates
+        )
+        self.user = CustomUser.objects.create_user(
+            username="testuser", email="test@example.com", password="testpass123",
+            employer_profile=self.employer
         )
         self.contract_type = ContractType.objects.create(contract_type="Full-time")
         self.function = Function.objects.create(function="Software Development")
@@ -121,7 +125,7 @@ class SerializerTests(TestCase):
     def test_vacancy_serializer(self):
         """Test VacancySerializer"""
         vacancy = Vacancy.objects.create(
-            employer=self.employer,
+            employer=self.user,
             title="Test Position",
             contract_type=self.contract_type,
             function=self.function,
@@ -134,4 +138,4 @@ class SerializerTests(TestCase):
         )
         serializer = VacancySerializer(vacancy)
         self.assertEqual(serializer.data["title"], "Test Position")
-        self.assertEqual(serializer.data["employer"], self.employer.id)
+        self.assertEqual(serializer.data["employer"], self.user.id)

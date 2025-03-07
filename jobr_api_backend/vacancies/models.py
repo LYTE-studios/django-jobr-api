@@ -85,9 +85,8 @@ class Vacancy(models.Model):
         max_length=255, choices=MasteryOption.choices, null=True
     )
 
-    contract_type = models.ForeignKey(
-        ContractType, on_delete=models.CASCADE, blank=True, null=True
-    )
+    contract_type = models.ManyToManyField(ContractType, blank=True)
+
     location = models.ForeignKey(
         Location, on_delete=models.CASCADE, blank=True, null=True
     )

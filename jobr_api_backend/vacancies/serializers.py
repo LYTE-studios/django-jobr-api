@@ -81,7 +81,7 @@ class WeekdaySerializer(serializers.ModelSerializer):
 
 class VacancySerializer(serializers.ModelSerializer):
     employer = UserSerializer(read_only=True)
-    contract_type = ContractTypeSerializer()
+    contract_type = ContractTypeSerializer(many=True)
     function = FunctionSerializer()
     location = LocationSerializer()
     skill = SkillSerializer(many=True)

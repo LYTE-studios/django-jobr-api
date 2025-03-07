@@ -67,7 +67,7 @@ ALLOWED_HOSTS = ["api.jobr.lytestudios.be"]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://api.jobr.lytestudios.be",
-    "http://api.jobr.lytestudios.be",  # if you also use http
+    "http://api.jobr.lytestudios.be",
 ]
 
 

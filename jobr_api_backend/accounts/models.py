@@ -39,7 +39,12 @@ class Employee(models.Model):
     skill = models.ManyToManyField(Skill)
 
     def __str__(self):
-        return self.user.email
+        try:
+            user = CustomUser.objects.get(employee_profile=self)
+        except CustomUser.DoesNotExist:
+            return "Not Found"
+
+        return str(user)
 
 class Employer(models.Model):
     vat_number = models.CharField(max_length=30, null=True)
@@ -48,18 +53,28 @@ class Employer(models.Model):
     house_number = models.CharField(max_length=10, null=True)
     city = models.CharField(max_length=100, null=True)
     postal_code = models.CharField(max_length=20, null=True)
-    coordinates = models.JSONField(null=True)  # Stores latitude and longitude as JSON
+    coordinates = models.JSONField(null=True)
     website = models.URLField(blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.vat_number
+        try:
+            user = CustomUser.objects.get(employer_profile=self)
+        except CustomUser.DoesNotExist:
+            return "Not Found"
+
+        return str(user)
 
 class Admin(models.Model):
     full_name = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.full_name
+        try:
+            user = CustomUser.objects.get(admin_profile=self)
+        except CustomUser.DoesNotExist:
+            return "Not Found"
+
+        return str(user)
 
 
 class Review(models.Model):
@@ -110,6 +125,9 @@ class CustomUser(AbstractUser):
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", blank=True, null=True
     )
+
+    def __str__(self) -> str:
+        return f'{self.role} {self.email}'
 
     def save(self, *args, **kwargs):
         if self.role == ProfileOption.EMPLOYEE:

@@ -81,16 +81,10 @@ class WeekdaySerializer(serializers.ModelSerializer):
 
 class VacancySerializer(serializers.ModelSerializer):
     employer = UserSerializer(read_only=True)
-    contract_type = serializers.PrimaryKeyRelatedField(
-        queryset=ContractType.objects.all(), allow_null=True
-    )
-    function = serializers.PrimaryKeyRelatedField(
-        queryset=Function.objects.all(), allow_null=True
-    )
-    location = serializers.PrimaryKeyRelatedField(
-        queryset=Location.objects.all(), allow_null=True
-    )
-    skill = serializers.PrimaryKeyRelatedField(queryset=Skill.objects.all(), many=True)
+    contract_type = ContractTypeSerializer()
+    function = FunctionSerializer()
+    location = LocationSerializer()
+    skill = SkillSerializer(many=True)
     languages = VacancyLanguageSerializer(many=True)
     descriptions = VacancyDescriptionSerializer(many=True)
     questions = VacancyQuestionSerializer(many=True)

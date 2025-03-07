@@ -12,11 +12,6 @@ from .models import (
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    # user = UserSerializer(required=True)
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
     class Meta:
         model = Employee
         fields = [
@@ -25,17 +20,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "phone_number",
             "city_name",
             "biography",
-            "user",
             "latitude",
             "longitude",
         ]
 
 
 class EmployerSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
     class Meta:
         model = Employer
         fields = [
@@ -48,7 +38,6 @@ class EmployerSerializer(serializers.ModelSerializer):
             "coordinates",
             "website",
             "biography",
-            "user",
         ]
 
 
@@ -108,16 +97,19 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         }
 
 class UserSerializer(serializers.ModelSerializer):
+    employer_profile = EmployerSerializer(read_only=True)
+    employee_profile = EmployeeSerializer(read_only=True)
+    admin_profile = AdminSerializer(read_only=True)
+    user_gallery = UserGallerySerializer(many=True, read_only=True)
+
     class Meta:
         model = CustomUser
-        employer_profile = EmployerSerializer(read_only=True)
-        employee_profile = EmployeeSerializer(read_only=True)
-        admin_profile = AdminSerializer(read_only=True)
-        gallery = UserGallerySerializer(many=True, read_only=True)
 
         fields = [
             "id",
             "username",
+            "first_name",
+            "last_name",
             "email",
             "password",
             "role",

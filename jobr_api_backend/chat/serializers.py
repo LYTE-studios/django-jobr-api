@@ -5,29 +5,33 @@ from .models import ChatRoom, Message
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    read_by = UserSerializer(many=True, read_only=True)
+    sender = UserSerializer(read_only=True)
+    is_sent_by_me = serializers.SerializerMethodField()
+
     class Meta:
         model = Message
-        fields = ["id", "chatroom", "sender", "content", "timestamp"]
+        fields = ["id", "sender", "content", "created_at", "modified_at", "read_by", "is_sent_by_me"]
 
     def validate_content(self, value):
         if not value.strip():
             raise serializers.ValidationError("Message content cannot be empty.")
         return value
+    
+    def get_is_sent_by_me(self, obj):
+        request = self.context.get('request')
+
+        if request:
+            return obj.sender == request.user
+        
+        return False
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-    employer = UserSerializer(read_only=True)
-    employee = UserSerializer(read_only=True)
+    users = UserSerializer(many=True, read_only=True)
 
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:
         model = ChatRoom
-        fields = ["id", "employer", "employee", "created_at", "messages"]
-
-    def validate(self, data):
-        if data.get("employer") == data.get("employee"):
-            raise serializers.ValidationError(
-                {"employee": "Employer and employee cannot be the same user."}
-            )
-        return data
+        fields = ["id", "users", "created_at", "messages"]

@@ -113,6 +113,15 @@ class VacancySerializer(serializers.ModelSerializer):
         questions_data = validated_data.pop("questions")
         week_days_data = validated_data.pop("week_day")
         skills_data = validated_data.pop("skill")
+        location_data = validated_data.pop("location", None)
+        function_data = validated_data.pop("function", None)
+        if location_data:
+            location = Location.objects.get(**location_data)
+            validated_data["location"] = location
+
+        if function_data:
+            function = Function.objects.get(**function_data)
+            validated_data["function"] = function
 
         vacancy = Vacancy.objects.create(**validated_data)
 

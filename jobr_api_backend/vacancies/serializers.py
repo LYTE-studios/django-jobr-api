@@ -301,6 +301,22 @@ class VacancySerializer(serializers.ModelSerializer):
 
 
 class ApplySerializer(serializers.ModelSerializer):
+    """
+    Serializer for the ApplyVacancy model.
+
+    This serializer is responsible for converting ApplyVacancy model instances into JSON format 
+    for API responses and validating data for creating applications. An application associates an 
+    employee with a vacancy.
+
+    Fields:
+        - employee: The employee applying for the vacancy (PrimaryKeyRelatedField).
+        - vacancy: The vacancy being applied for (PrimaryKeyRelatedField).
+    
+    Meta:
+        model: ApplyVacancy
+        fields: ["employee", "vacancy"]   
+    """
+    
     employee = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.all(), many=False
     )

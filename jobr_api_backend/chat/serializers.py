@@ -71,6 +71,19 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for the ChatRoom model.
+
+    This serializer is used to convert ChatRoom model instances into JSON format and vice versa.
+    It includes the `users` (a list of users in the chat room) and `messages` (a list of messages in the chat room).
+    
+    Fields:
+        id (int): The unique identifier for the chat room.
+        users (List[UserSerializer]): A list of user objects in the chat room, serialized using the UserSerializer.
+        created_at (datetime): The timestamp of when the chat room was created.
+        messages (List[MessageSerializer]): A list of message objects in the chat room, serialized using the MessageSerializer.
+    """
     users = UserSerializer(many=True, read_only=True)
 
     messages = MessageSerializer(many=True, read_only=True)

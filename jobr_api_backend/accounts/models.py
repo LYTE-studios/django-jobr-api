@@ -27,6 +27,13 @@ class ProfileOption(models.TextChoices):
 
 
 class Employee(models.Model):
+
+    """ Represents an employee's profile with personal, contact, and work-related information.
+
+    Methods:
+        __str__(self): Returns the string representation of the employee's associated user if exists.
+
+    """
     date_of_birth = models.DateField(null=True)
     gender = models.CharField(
         max_length=10,
@@ -56,6 +63,19 @@ class Employee(models.Model):
     skill = models.ManyToManyField(Skill)
 
     def __str__(self):
+
+        """
+        Returns the string representation of the employee by looking up the associated user.
+
+        If no associated user is found, it returns "Not Found".
+
+        Args:
+        self (Employee): Instance of the Employee model.
+
+        Returns:
+        str: The user's name if found, otherwise "Not Found".
+        """
+
         try:
             user = CustomUser.objects.get(employee_profile=self)
         except CustomUser.DoesNotExist:
@@ -64,6 +84,14 @@ class Employee(models.Model):
         return str(user)
 
 class Employer(models.Model):
+
+    """ Represents an employer's profile with personal, contact, and work-related information.
+
+    Methods:
+        __str__(self): Returns the string representation of the employer's associated user if exists.
+
+    """
+
     vat_number = models.CharField(max_length=30, null=True)
     company_name = models.CharField(max_length=100, null=True)
     street_name = models.CharField(max_length=100, null=True)
@@ -75,6 +103,19 @@ class Employer(models.Model):
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
+
+        """
+        Returns the string representation of the employer by looking up the associated user.
+
+        If no associated user is found, it returns "Not Found".
+
+        Args:
+        self (Employer): Instance of the Employer model.
+
+        Returns:
+        str: The user's name if found, otherwise "Not Found".
+        """
+         
         try:
             user = CustomUser.objects.get(employer_profile=self)
         except CustomUser.DoesNotExist:

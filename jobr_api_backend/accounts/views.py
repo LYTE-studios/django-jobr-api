@@ -783,7 +783,7 @@ class UpdateUserGalleryView(APIView):
                 - 200 OK: If the gallery is successfully updated, returns the updated user profile.
                 - 400 Bad Request: If the provided data is invalid, returns validation errors.
         """
-        
+
         serializer = UserGalleryUpdateSerializer(
             data=request.data, context={"user": request.user.id}
         )
@@ -805,9 +805,35 @@ class UpdateUserGalleryView(APIView):
 
 
 class DeleteUserGallery(APIView):
+
+    """
+    API endpoint for deleting a user's gallery.
+
+    Methods:
+        - DELETE: Deletes all gallery images associated with the authenticated user.
+
+    Permission:
+        - Only authenticated users can access this endpoint.
+
+    Responses:
+        - 204 No Content: Successfully deleted all images.
+        - 404 Not Found: If the current user does not exist.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def delete(self, request):
+
+        """
+        Handle DELETE request to remove all images from the user's gallery.
+
+        Args:
+            request (Request): The incoming request from the user.
+
+        Returns:
+            Response: HTTP 204 status if successful, or 404 if the user does not exist.
+        """
+
         try:
             employer = CustomUser.objects.get(id=request.user.id)
             UserGallery.objects.filter(user=employer).delete()

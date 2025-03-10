@@ -12,10 +12,45 @@ from accounts.serializers import UserSerializer
 from django.db.models import Q, Max, Count
 
 class SendMessageView(APIView):
+
+    """
+    View to send a message in a chat room. The view allows authenticated users 
+    to send messages either to an existing chat room or to create a new chat room 
+    with another user and send a message.
+
+    Authentication:
+        Requires JWT authentication.
+
+    Permissions:
+        Only authenticated users can send messages.
+
+    Methods:
+        POST: Sends a message to a chat room or creates a new chat room if not found.
+    """
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+
+        """
+        Send a message in a chat room.
+
+        Attributes:
+            chat_room_id (int): The ID of the chat room where the message will be sent. 
+                                          Required if user_id is not provided.
+            content (str): The content of the message to be sent. This field is required.
+            user_id (int): The ID of the user to create a new chat room with. 
+                                      If provided, a new chat room is created between the authenticated user and the user with the given ID.
+
+        Response:
+            - 201 Created: If the message is successfully created, it returns the serialized message data.
+            - 400 Bad Request: If chat_room_id or user_id and content are missing, it returns an error message.
+
+        Returns:
+            Response: The serialized message data upon success, or an error message if any required fields are missing.
+        """
+
         chat_room_id = request.data.get("chat_room_id")
         content = request.data.get("content")
         user_id = request.data.get("user_id")

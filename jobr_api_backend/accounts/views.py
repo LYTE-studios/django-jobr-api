@@ -624,22 +624,62 @@ class AISuggestionsView(generics.ListAPIView):
         Returns:
             queryset: A QuerySet of users with the role "employee".
         """
-        
+
         return CustomUser.objects.filter(role="employee")
 
 
 class MyProfileView(generics.RetrieveUpdateAPIView):
+
+    """
+    This view allows authenticated users to retrieve and update their profile information.
+
+    Attributes:
+        serializer_class (UserSerializer): The serializer used to validate and serialize user data.
+        permission_classes (list): A list of permission classes, where the user must be authenticated.
+
+    Methods:
+        get_object(self): Returns the user object of the currently authenticated user.
+    """
+
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
+
+        """
+        Override the method to retrieve the current authenticated user.
+
+        Returns:
+            CustomUser: The current authenticated user.
+        """
+
         return self.request.user
 
 class AllUserGalleriesView(generics.ListAPIView):
+
+    """
+    This view returns a list of all users along with their galleries.
+
+    Attributes:
+        permission_classes (list): Allows access to any user.
+        serializer_class (UserSerializer): The serializer used to represent users and their galleries.
+        
+    Methods:
+        get_queryset(self): Returns the queryset of all users with their related galleries.
+    """
+
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
 
     def get_queryset(self):
+
+        """
+        Retrieves the queryset of all CustomUser instances and prefetches the related users_gallery.
+        
+        Returns:
+            QuerySet: A queryset of all CustomUser instances, prefetching their related galleries.
+        """
+
         return CustomUser.objects.all().prefetch_related("users_gallery")
 
 class UserByUserView(generics.RetrieveAPIView):

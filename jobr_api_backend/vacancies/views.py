@@ -374,7 +374,7 @@ class VacancyFilterView(generics.ListAPIView):
         """
         Calculate the great-circle distance between two points
         on the Earth using the Haversine formula.
-        
+
         Parameters:
             - lat1 (float): Latitude of the first point.
             - lon1 (float): Longitude of the first point.
@@ -397,10 +397,49 @@ class VacancyFilterView(generics.ListAPIView):
 
 
 class ApplyForJobView(generics.CreateAPIView):
+    """
+    API view for applying for a job vacancy.
+
+    This view allows an authenticated employee to apply for a job vacancy. If the application is 
+    successful, a new chatroom will be created between the employee and employer.
+
+    Authentication:
+        - JWT authentication is required.
+    
+    Permission:
+        - Only authenticated users can apply for a job.
+    
+    Methods:
+        - post: Allows an authenticated employee to apply for a job vacancy.
+    """
+
     permission_classes = [IsAuthenticated]
     serializer_class = ApplySerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Handles the application for a job vacancy.
+
+        This method retrieves the vacancy based on the vacancy_id passed in the URL, validates the 
+        application data, and creates an application. Additionally, it creates a chatroom for communication 
+        between the employee and employer.
+
+        Steps:
+            1. Retrieve the vacancy based on the vacancy_id from the URL.
+            2. If the vacancy exists, prepare application data (employee and vacancy).
+            3. Validate the application data.
+            4. If valid, save the application and create a new chatroom.
+            5. Return the application data and chatroom data in the response.
+
+        Parameters:
+            - request (Request): The HTTP request object containing the user and application data.
+            - *args (tuple): Additional positional arguments.
+            - **kwargs (dict): Additional keyword arguments, including the vacancy_id from URL.
+
+        Returns:
+            - Response: The response containing the application and chatroom details if successful, 
+                        or error messages if the application is invalid or the vacancy does not exist.
+        """
         vacancy_id = self.kwargs.get('vacancy_id')
         try:
             vacancy = Vacancy.objects.get(id=vacancy_id)

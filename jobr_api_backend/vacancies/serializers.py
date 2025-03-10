@@ -190,6 +190,33 @@ class WeekdaySerializer(serializers.ModelSerializer):
 
 
 class VacancySerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Vacancy model.
+
+    This serializer is responsible for converting Vacancy model instances into JSON format for API 
+    responses and validating data for creating or updating Vacancy instances.
+
+    The serializer includes nested serializers for related models like contract type, function, 
+    location, skills, languages, descriptions, questions, and weekdays.
+
+    Fields:
+        - employer: The user who is the employer for the vacancy (read-only).
+        - contract_type: The types of contracts for the vacancy (many-to-many relation).
+        - function: The job function associated with the vacancy.
+        - location: The location of the vacancy.
+        - skill: The skills required for the vacancy (many-to-many relation).
+        - languages: Languages required for the vacancy (many-to-many relation).
+        - descriptions: Descriptions related to the vacancy (many-to-many relation).
+        - questions: Questions associated with the vacancy (many-to-many relation).
+        - week_day: The days of the week the vacancy is available (many-to-many relation).
+        - expected_mastery: The expected level of mastery for the position.
+        - job_date: The date the vacancy is posted.
+        - salary: The salary for the position.
+
+    Methods:
+        create(self, validated_data): Create a new Vacancy instance and handle related data for languages, descriptions, 
+        questions, week days, and skills.
+    """
     employer = UserSerializer(read_only=True)
     contract_type = ContractTypeSerializer(many=True)
     function = FunctionSerializer()
@@ -218,6 +245,26 @@ class VacancySerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
+        """
+        Create a new Vacancy instance and handle related data for languages, descriptions, 
+        questions, week days, and skills.
+
+        This method takes the validated data from the serializer, processes related fields (languages, 
+        descriptions, questions, etc.), and creates instances for each of the related models. It then 
+        creates the Vacancy instance and associates the related objects.
+
+        Steps:
+            1. Retrieve and process related data (languages, descriptions, etc.).
+            2. Create or retrieve related objects (Location, Function, Weekday, etc.).
+            3. Create the Vacancy instance with the remaining validated data.
+            4. Create and associate the related instances (languages, descriptions, skills, etc.).
+        
+        Parameters:
+            validated_data (dict): The validated data that will be used to create the Vacancy instance.
+        
+        Returns:
+            Vacancy: The newly created Vacancy instance with all associated related models.
+        """
         languages_data = validated_data.pop("languages")
         descriptions_data = validated_data.pop("descriptions")
         questions_data = validated_data.pop("questions")

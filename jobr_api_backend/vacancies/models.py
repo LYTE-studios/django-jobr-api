@@ -305,6 +305,23 @@ class VacancyQuestion(models.Model):
 
 
 class Vacancy(models.Model):
+    """
+    Represents a job vacancy posted by an employer.
+
+    Attributes:
+        employer (ForeignKey): A reference to the user (employer) who posted the vacancy.
+        expected_mastery (CharField): The required mastery level for the vacancy, based on `MasteryOption` choices.
+        contract_type (ManyToManyField): The contract types applicable for the vacancy, related to the `ContractType` model.
+        location (ForeignKey, optional): The location of the vacancy, linked to the `Location` model. Can be null.
+        function (ForeignKey, optional): The function or role for the vacancy, linked to the `Function` model. Can be null.
+        week_day (ManyToManyField): The weekdays the vacancy is available, related to the `Weekday` model.
+        job_date (DateField, optional): The date the job vacancy is available or applicable. Can be null.
+        salary (DecimalField, optional): The salary for the vacancy, with two decimal places. Can be null or blank.
+        languages (ManyToManyField): Languages required for the vacancy, related to the `VacancyLanguage` model.
+        descriptions (ManyToManyField): The descriptions associated with the vacancy, linked to the `VacancyDescription` model.
+        questions (ManyToManyField): A list of questions related to the vacancy, linked to the `VacancyQuestion` model.
+        skill (ManyToManyField): The skills required for the vacancy, related to the `Skill` model.
+    """
 
     employer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
@@ -338,5 +355,12 @@ class Vacancy(models.Model):
 
 
 class ApplyVacancy(models.Model):
+    """
+    Represents an application for a job vacancy by an employee.
+
+    Attributes:
+        employee (ForeignKey): A reference to the employee (user) who applied for the vacancy.
+        vacancy (ForeignKey): A reference to the `Vacancy` that the employee has applied for.
+    """
     employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE)

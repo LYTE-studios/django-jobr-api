@@ -156,6 +156,19 @@ class Skill(models.Model):
 
 
 class MasteryOption(models.TextChoices):
+    """
+    Enum for representing the different levels of mastery in a skill.
+    
+    This class is used to define the different stages of skill proficiency. The options range from "None" (no proficiency)
+    to "Expert" (highest proficiency).
+    
+    Choices:
+        NONE (str): Represents no proficiency.
+        BEGINNER (str): Represents a beginner level of proficiency.
+        INTERMEDIATE (str): Represents an intermediate level of proficiency.
+        ADVANCED (str): Represents an advanced level of proficiency.
+        EXPERT (str): Represents the highest level of proficiency.
+    """
     NONE = "None"
     BEGINNER = "Beginner"
     INTERMEDIATE = "Intermediate"
@@ -164,16 +177,48 @@ class MasteryOption(models.TextChoices):
 
 
 class Weekday(models.Model):
+    """
+    Represents a day of the week.
+    
+    Attributes:
+        name (CharField): The name of the weekday.
+    
+    Methods:
+        __str__(self): Returns the name of the weekday as a string.
+    """
     name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
+        """
+        Returns the name of the weekday as a string.
+        
+        Returns:
+            str: The name of the weekday.
+        """
         return self.name
     
 class SalaryBenefit(models.Model):
+    """
+    Represents a salary-related benefit with a corresponding weight.
+    
+    Attributes:
+        name (CharField): A string field that stores the name of the salary benefit.
+        weight (IntegerField): An optional field to store the weight of the benefit. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the salary benefit and its weight in the format: "Benefit at weight".
+    """
     name = models.CharField(max_length=255, unique=True)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the SalaryBenefit in the format:
+        "Benefit at weight".
+        
+        Returns:
+            str: A human-readable string representing the SalaryBenefit instance.
+        """
         return f"{self.name} at {self.weight}"
 
 class ProfileInterest(models.Model):

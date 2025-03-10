@@ -76,19 +76,27 @@ class VacancyQuestionSerializer(serializers.ModelSerializer):
 class WeekdaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Weekday
-        fields = ["name"]
+        fields = ["id", "name"]
 
 
 class VacancySerializer(serializers.ModelSerializer):
     employer = UserSerializer(read_only=True)
-    contract_type = ContractTypeSerializer(many=True)
-    function = FunctionSerializer()
-    location = LocationSerializer()
-    skill = SkillSerializer(many=True)
+    contract_type = serializers.PrimaryKeyRelatedField(
+        queryset=ContractType.objects.all(), allow_null=True, many=True
+    )
+    function = serializers.PrimaryKeyRelatedField(
+        queryset=Function.objects.all(), allow_null=True
+    )
+    location = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(), allow_null=True
+    )
+    skill = serializers.PrimaryKeyRelatedField(queryset=Skill.objects.all(), many=True)
     languages = VacancyLanguageSerializer(many=True)
     descriptions = VacancyDescriptionSerializer(many=True)
     questions = VacancyQuestionSerializer(many=True)
-    week_day = WeekdaySerializer(many=True)
+    week_day = serializers.PrimaryKeyRelatedField(
+        queryset=Weekday.objects.all(), allow_null=True, many=True
+    )
 
     class Meta:
         model = Vacancy
@@ -108,37 +116,36 @@ class VacancySerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request.user, 'employer_profile'):
+            validated_data['employer'] = request.user
+        else:
+            raise serializers.ValidationError("User does not have an employer profile.")
+
         languages_data = validated_data.pop("languages")
         descriptions_data = validated_data.pop("descriptions")
         questions_data = validated_data.pop("questions")
         week_days_data = validated_data.pop("week_day")
         skills_data = validated_data.pop("skill")
-        location_data = validated_data.pop("location", None)
-        function_data = validated_data.pop("function", None)
-        if location_data:
-            location = Location.objects.get(**location_data)
-            validated_data["location"] = location
-
-        if function_data:
-            function = Function.objects.get(**function_data)
-            validated_data["function"] = function
+        contract_types_data = validated_data.pop("contract_type")
 
         vacancy = Vacancy.objects.create(**validated_data)
 
         for language_data in languages_data:
-            VacancyLanguage.objects.create(**language_data, vacancy=vacancy)
+            language = VacancyLanguage.objects.create(**language_data)
+            vacancy.languages.add(language)
 
         for description_data in descriptions_data:
-            VacancyDescription.objects.create(**description_data, vacancy=vacancy)
+            description = VacancyDescription.objects.create(**description_data)
+            vacancy.descriptions.add(description)
 
         for question_data in questions_data:
-            VacancyQuestion.objects.create(**question_data, vacancy=vacancy)
-
-        for week_day_data in week_days_data:
-            week_day = Weekday.objects.get(**week_day_data)
-            vacancy.week_day.set(week_day)
+            question = VacancyQuestion.objects.create(**question_data)
+            vacancy.questions.add(question)
 
         vacancy.skill.set(skills_data)
+        vacancy.week_day.set(week_days_data)
+        vacancy.contract_type.set(contract_types_data)
 
         return vacancy
 

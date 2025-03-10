@@ -58,7 +58,7 @@ class ConnectionTestView(APIView):
 
         Returns:
         Response: A response containing the user's role.
-        
+
         """
 
         return Response(
@@ -69,9 +69,46 @@ class ConnectionTestView(APIView):
 
 
 class UserRegistrationView(generics.CreateAPIView):
+
+    """
+    View for registering a new user and generating authentication tokens.
+
+    This view handles the user registration process by accepting the user data,
+    validating it using the provided serializer, saving the user, and generating 
+    JWT authentication tokens for the newly created user.
+
+    Attributes:
+        serializer_class (UserAuthenticationSerializer): The serializer used to validate and save the user data.
+
+    Methods:
+        post(self, request, *args, **kwargs): Handles POST requests to register a new user and return authentication tokens.
+
+    Responses:
+        201 Created: The user's account is successfully created, and authentication tokens are returned in the response.
+
+    """
+
     serializer_class = UserAuthenticationSerializer
 
     def post(self, request, *args, **kwargs):
+
+        """
+        Handles POST requests to register a new user and generate JWT tokens.
+
+        This method:
+            - Validates the input data using the `UserAuthenticationSerializer`.
+            - Saves the user data and creates the new user.
+            - Generates authentication tokens (access and refresh tokens) for the user using the `TokenService`.
+            - Returns the access and refresh tokens in the response.
+
+        Args:
+            self (UserRegistrationView): The instance of the UserRegistrationView class.
+            request (Request): The HTTP request object containing user data to be registered.
+
+        Returns:
+            Response: A response containing the access and refresh tokens for the newly created user.
+        """
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()

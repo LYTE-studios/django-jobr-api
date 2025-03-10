@@ -744,11 +744,46 @@ class UserByUserView(generics.RetrieveAPIView):
 
 
 class UpdateUserGalleryView(APIView):
+
+    """
+    Update the authenticated user's gallery.
+
+    This view allows authenticated users to update their gallery images.  
+    The existing gallery images are deleted before adding the new ones.
+
+    Attributes:
+        permission_classes: Ensures only authenticated users can update their gallery.
+        parser_classes: Allows handling of file uploads (`MultiPartParser`, `FormParser`).
+        http_method_names: Restricts the view to only allow `PUT` requests.
+
+    Methods:
+        PUT: Handles PUT requests to replace the user's gallery with new images.
+
+    """
+
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
     http_method_names = ["put"]
 
     def put(self, request):
+
+        """
+        Handle the PUT request to update the user's gallery.
+
+        Args:
+            request (Request): The HTTP request object containing the user's uploaded images.
+
+        Process:
+            - Validates the uploaded images.
+            - Deletes the user's existing gallery images.
+            - Saves the new images to the gallery.
+
+        Returns:
+            Response:
+                - 200 OK: If the gallery is successfully updated, returns the updated user profile.
+                - 400 Bad Request: If the provided data is invalid, returns validation errors.
+        """
+        
         serializer = UserGalleryUpdateSerializer(
             data=request.data, context={"user": request.user.id}
         )

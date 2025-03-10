@@ -58,12 +58,41 @@ class UserGallerySerializer(serializers.ModelSerializer):
 
 
 class UserGalleryUpdateSerializer(serializers.Serializer):
+
+    """
+    Serializer for updating the user's gallery.
+
+    This serializer validates the uploaded images and ensures that the data structure is correct.
+    
+    Fields:
+        - gallery (List[ImageField]): A list of images to be uploaded to the user's gallery.
+    
+    Validation:
+        - Ensures that at least one image is provided.
+        - Checks if the user exists based on the provided user ID.
+    """
+
     gallery = serializers.ListField(
         child=serializers.ImageField(max_length=100000, allow_empty_file=False),
         write_only=True,
     )
 
     def validate(self, data):
+
+        """
+        Validate the uploaded gallery images.
+
+        Args:
+            data (dict): The input data containing the user and gallery images.
+
+        Returns:
+            dict: The validated data.
+
+        Raises:
+            serializers.ValidationError: If no images are provided.
+            serializers.ValidationError: If the user ID does not exist.
+        """
+
         try:
             CustomUser.objects.get(user=self.context.get("user"))
         except CustomUser.DoesNotExist:

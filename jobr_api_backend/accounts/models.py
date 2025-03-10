@@ -4,6 +4,23 @@ from vacancies.models import Language, ContractType, Function, Skill
 
 
 class ProfileOption(models.TextChoices):
+
+    """
+    An enumeration of profile types for users in the application.
+
+    This class defines the available profile options for a user, which include:
+    - Employee
+    - Employer
+    - Admin
+
+    Each profile type has a database value.
+
+    Attributes:
+        EMPLOYEE (str): Represents an employee profile type with value 'employee'.
+        EMPLOYER (str): Represents an employer profile type with value 'employer'.
+        ADMIN (str): Represents an admin profile type with value 'admin'.
+    """
+    
     EMPLOYEE = "employee", "Employee"
     EMPLOYER = "employer", "Employer"
     ADMIN = "admin", "Admin"

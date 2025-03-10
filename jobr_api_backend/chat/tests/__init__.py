@@ -1,3 +1,3 @@
 from .models_tests import ChatRoomModelTest, MessageModelTest
 from .views_tests import SendMessageViewTest, GetMessagesViewTest, GetChatRoomListViewTest
-from .serializers_tests import MessageSerializerTest
+from .serializers_tests import MessageSerializerTest, ChatRoomSerializerTest

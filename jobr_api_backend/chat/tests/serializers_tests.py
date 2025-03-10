@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from chat.models import Message, ChatRoom
 from datetime import datetime
 
-from chat.serializers import MessageSerializer
+from chat.serializers import MessageSerializer, ChatRoomSerializer
 
 class MessageSerializerTest(APITestCase):
     def setUp(self):
@@ -107,4 +107,44 @@ class MessageSerializerTest(APITestCase):
         self.assertTrue(serializer.is_valid())
 
 
+class ChatRoomSerializerTest(APITestCase):
+    def setUp(self):
+        #Set up users and chat room
+        
+        #Get custom user model
+        User = get_user_model()
+
+        # Create users with different roles
+        self.employee = User.objects.create_user(
+            username='employee_user',
+            email='employee@example.com',
+            password='password123',
+            role='employee'
+        )
+        self.employer = User.objects.create_user(
+            username='employer_user',
+            email='employer@example.com',
+            password='password123',
+            role='employer'
+        )
+
+        #Create a chat room and add users
+        self.chatroom = ChatRoom.objects.create()
+        self.chatroom.users.add(self.employee, self.employer)
+        self.message = Message.objects.create(chatroom=self.chatroom, sender=self.employee, content="Hello")
+
+    def test_chat_room_serializer(self):
+        """Test that the ChatRoomSerializer correctly serializes the chat room data."""
+        serializer = ChatRoomSerializer(self.chatroom)
+        data = serializer.data
+        self.assertEqual(set(data.keys()), {"id", "users", "created_at", "messages"})
+        self.assertEqual(len(data["users"]), 2)
+        self.assertEqual(data["users"][0]["id"], self.employee.id)
+        self.assertEqual(data["users"][1]["id"], self.employer.id)
+        self.assertEqual(len(data["messages"]), 1)
+        self.assertEqual(data["messages"][0]["content"], "Hello")
+        self.assertEqual(data["messages"][0]["sender"]["id"], self.employee.id)
+        self.assertIsInstance(data["created_at"], str)
+        self.assertEqual(data["id"], self.chatroom.id)
     
+          

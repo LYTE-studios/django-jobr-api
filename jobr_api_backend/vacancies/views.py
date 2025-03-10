@@ -114,33 +114,105 @@ class LanguagesView(generics.GenericAPIView):
 
 
 class FunctionsView(generics.GenericAPIView):
+    """
+    API view to retrieve a list of Function instances.
+    
+    This view allows authenticated users to retrieve a list of all available 
+    functions from the Function model. It returns data serialized into JSON format.
+
+    Authentication:
+        JWT authentication is required to access this view.
+
+     Methods:
+        get:
+            Handles GET requests to retrieve a list of Function instances.
+            Returns a list of serialized Function objects as JSON data.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Function.objects.all()
     serializer_class = FunctionSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve a list of Function instances.
+        
+        This method retrieves all Function objects from the database,
+        serializes them using the FunctionSerializer, and returns the 
+        serialized data in JSON format.
+
+        Returns:
+            Response: A response containing a list of serialized Function objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class QuestionsView(generics.GenericAPIView):
+    """
+    API view to retrieve a list of Question instances.
+    
+    This view allows authenticated users to retrieve a list of all available 
+    questions from the Question model. It returns data serialized into JSON format.
+
+    Authentication:
+       JWT authentication is required to access this view.
+
+    Methods:
+        get:
+            Handles GET requests to retrieve a list of Question instances.
+            Returns a list of serialized Question objects as JSON data.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve a list of Question instances.
+        
+        This method retrieves all Question objects from the database,
+        serializes them using the QuestionSerializer, and returns the 
+        serialized data in JSON format.
+
+        Returns:
+            Response: A response containing a list of serialized Question objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class ContractsTypesView(generics.GenericAPIView):
+    """
+    API view to retrieve a list of ContractType instances.
+    
+    This view allows authenticated users to retrieve a list of all available 
+    contract types from the ContractType model. It returns data serialized into JSON format.
+
+    Authentication:
+        JWT authentication is required to access this view.
+
+    Methods:
+        get:
+            Handles GET requests to retrieve a list of ContractType instances.
+            Returns a list of serialized ContractType objects as JSON data.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = ContractType.objects.all()
     serializer_class = ContractTypeSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve a list of ContractType instances.
+        
+        This method retrieves all ContractType objects from the database,
+        serializes them using the ContractTypeSerializer, and returns the 
+        serialized data in JSON format.
+
+        Returns:
+            Response: A response containing a list of serialized ContractType objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

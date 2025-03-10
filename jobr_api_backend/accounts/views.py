@@ -108,7 +108,7 @@ class UserRegistrationView(generics.CreateAPIView):
         Returns:
             Response: A response containing the access and refresh tokens for the newly created user.
         """
-        
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -122,6 +122,25 @@ class UserRegistrationView(generics.CreateAPIView):
 
 
 class UserLoginView(generics.GenericAPIView):
+
+    """
+    View for handling user login and generating authentication tokens.
+
+    This view handles the login process by accepting the user's credentials,
+    validating them using the provided serializer, authenticating the user,
+    and generating JWT authentication tokens (access and refresh) for the authenticated user.
+
+    Attributes:
+        serializer_class (LoginSerializer): The serializer used to validate and authenticate the user's login credentials.
+
+    Methods:
+        post(self, request): Handles POST requests for logging in and generating authentication tokens.
+
+    Responses:
+        200 OK: The login is successful, and authentication tokens are returned along with the username and role.
+
+    """
+
     serializer_class = LoginSerializer
 
     @swagger_auto_schema(
@@ -140,6 +159,24 @@ class UserLoginView(generics.GenericAPIView):
         }
     )
     def post(self, request):
+
+        """
+        Handles POST requests to log the user in and generate authentication tokens.
+
+        This method:
+            - Validates the user's login credentials using the `LoginSerializer`.
+            - Authenticates the user based on the provided credentials.
+            - Generates access and refresh tokens for the authenticated user using `TokenService`.
+            - Returns the username, role, and authentication tokens (access and refresh) in the response.
+
+        Args:
+            self (UserLoginView): The instance of the UserLoginView class.
+            request (Request): The HTTP request object containing the login credentials (username and password).
+
+        Returns:
+            Response: A response containing a success message, the authenticated user's username, role, and the access and refresh tokens.
+        """
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]

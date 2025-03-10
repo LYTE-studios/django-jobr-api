@@ -57,6 +57,29 @@ def get_relevant_employees(vacancy):
 
 
 def generate_matchmaking_prompt(entity_type, data, preferences):
+
+    """
+     Generates a matchmaking prompt for either an employee or an employer based on provided data.
+
+    This function generates a detailed prompt that can be used by an assistant (such as an AI) 
+    to rate job vacancies for an employee or rate potential employees for an employer. The prompt 
+    includes the relevant profile information for the entity (either employee or employer) and 
+    requests a ranking of preferences based on matching criteria.
+
+    Args:
+        entity_type (str): The type of the entity. Can be either "employee" or "employer". 
+                           It determines whether the matchmaking is for an employee looking for 
+                           a job or an employer looking for employees.
+        data (dict): A dictionary containing the profile data for the entity. 
+        preferences (str): A string representing the list of job vacancies or employee profiles 
+                           that will be compared against the `data`. This could be a formatted 
+                           list or detailed descriptions, depending on the context.
+
+    Returns:
+        str: A formatted prompt string that provides the assistant with all necessary information 
+             to perform matchmaking and rank options (job vacancies or employees).
+    """
+
     if entity_type == "employee":
         prompt = f"""
         You are an assistant helping employees find their best match among job vacancies. 
@@ -92,6 +115,31 @@ def generate_matchmaking_prompt(entity_type, data, preferences):
 
 
 def matchmaking(request, entity_type, entity_id):
+
+    """
+    Handles the matchmaking process for either employees or employers by generating a prompt 
+    for an assistant to rate job matches for employees or employee matches for employers.
+
+    This function retrieves the relevant data for either an employee or employer based on the 
+    `entity_type` and `entity_id`, creates a prompt that includes the necessary details, 
+    and sends the prompt to a chatbot (such as ChatGPT) to get a response. The matchmaking 
+    process is based on the attributes of skills, languages, contract type, function, and 
+    location for employees, and similar criteria for employers.
+
+    Args:
+        request (HttpRequest): The HTTP request object that triggered the matchmaking process.
+        entity_type (str): The type of the entity, either "employee" or "employer". 
+                           This determines whether the matchmaking process is for an employee 
+                           looking for job vacancies or an employer looking for candidates.
+        entity_id (int): The ID of the entity (either an employee or an employer) to retrieve 
+                         from the database for matchmaking.
+
+    Returns:
+        JsonResponse: A JSON response containing the assistant's matchmaking response. 
+                      The response contains a `response` field with the chatbot's output.
+                      In case of an invalid entity type, returns a 400 error response with an 
+                      error message.
+    """
     if entity_type == "employee":
         employee = Employee.objects.get(id=entity_id)
         vacancies = get_relevant_vacancies(employee)

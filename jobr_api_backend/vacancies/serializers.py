@@ -14,6 +14,16 @@ from accounts.serializers import UserSerializer  # Import the UserSerializer
 
 
 class LocationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Location model.
+    
+    This serializer converts Location model instances into JSON format for API responses.
+    It also validates data for creating or updating Location instances.
+
+    Meta:
+        model: Location
+        fields: ["id", "location"]
+    """
     class Meta:
         model = Location
         fields = ["id", "location"]
@@ -32,6 +42,16 @@ class FunctionSerializer(serializers.ModelSerializer):
 
 
 class LanguageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Language model.
+    
+    This serializer converts Language model instances into JSON format for API responses.
+    It also validates data for creating or updating Language instances.
+
+    Meta:
+        model: Language
+        fields: ["id", "language"]
+    """
     class Meta:
         model = Language
         fields = ["id", "language"]
@@ -44,6 +64,16 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class SkillSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Skill model.
+    
+    This serializer converts Skill model instances into JSON format for API responses.
+    It also validates data for creating or updating Skill instances.
+
+    Meta:
+        model: Skill
+        fields: ["id", "skill", "category"]
+    """
     class Meta:
         model = Skill
         fields = ["id", "skill", "category"]

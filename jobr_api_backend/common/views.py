@@ -7,6 +7,22 @@ from django.http import JsonResponse
 
 # Create your views here.
 def get_relevant_vacancies(employee):
+
+    """
+    Retrieves relevant vacancies for a given employee based on matching contract type,
+    function, languages, and skills.
+
+    This function filters the `Vacancy` model to return vacancies that match the 
+    employee's contract type, function, and languages. It also filters vacancies based on
+    the skills that the employee possesses. The results are distinct to avoid duplicates.
+
+    Args:
+        employee (Employee): An instance of the Employee model, representing the employee 
+                              whose relevant vacancies are to be retrieved.
+
+    Returns:
+        QuerySet: A queryset of `Vacancy` objects that are relevant to the given employee.
+    """
     return Vacancy.objects.filter(
         Q(contract_type=employee.contract_type)
         & Q(function=employee.function)
@@ -16,6 +32,22 @@ def get_relevant_vacancies(employee):
 
 
 def get_relevant_employees(vacancy):
+
+    """
+    Retrieves relevant employees for a given vacancy based on matching contract type,
+    function, languages, and skills.
+
+    This function filters the `Employee` model to return employees who match the 
+    vacancy's contract type, function, and languages. It also filters employees based on
+    the skills required by the vacancy. The results are distinct to avoid duplicates.
+
+    Args:
+        vacancy (Vacancy): An instance of the Vacancy model, representing the vacancy 
+                           for which relevant employees are to be retrieved.
+
+    Returns:
+        QuerySet: A queryset of `Employee` objects that are relevant to the given vacancy.
+    """
     return Employee.objects.filter(
         Q(contract_type=vacancy.contract_type)
         & Q(function=vacancy.function)

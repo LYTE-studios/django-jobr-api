@@ -282,12 +282,25 @@ class VacancyLanguage(models.Model):
 
 
 class VacancyDescription(models.Model):
+    """
+    Represents a description for a vacancy, which could be a main description or an associated description for a specific question.
+    
+    Attributes:
+        question (ForeignKey, optional): A reference to the `Question` model that links a specific question to the vacancy description. If null, the description is considered the main description.
+        description (TextField): The text of the vacancy description.
+    """
     # If this value is null, it means the description is presumed to be the main description
     question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True)
     description = models.TextField()
 
 
 class VacancyQuestion(models.Model):
+    """
+    Represents a question related to a vacancy that can be used in vacancy descriptions.
+    
+    Attributes:
+        question (CharField): The text of the question to be asked or associated with the vacancy.
+    """
     question = models.CharField(max_length=255)
 
 

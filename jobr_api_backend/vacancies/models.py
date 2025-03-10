@@ -78,21 +78,66 @@ class Function(models.Model):
 
 
 class Question(models.Model):
+    """
+    Represents a question with an associated weight.
+    
+    Attributes:
+        question (CharField): A string field that stores the question text. The maximum length is 255 characters.
+        weight (IntegerField): An optional field that stores the weight of the question. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Question in the format: "Question at weight".
+    """
     question = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the Question in the format:
+        "Question at weight".
+        
+        Returns:
+            str: A human-readable string that represents the Question instance.
+        """
         return f"{self.question} at {self.weight}"
 
 
 class Language(models.Model):
+    """
+    Represents a language with an associated weight.
+    
+    Attributes:
+        language (CharField): A string field that stores the name of the language. The maximum length is 255 characters.
+        weight (IntegerField): An optional field that stores the weight of the language. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Language in the format: "Language at weight".
+    """
     language = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the Language in the format:
+        "Language at weight".
+        
+        Returns:
+            str: A human-readable string that represents the Language instance.
+        """
         return f"{self.language} at {self.weight}"
 
 class Skill(models.Model):
+    """
+    Represents a skill with an associated category (either 'hard' or 'soft') and a weight.
+    
+    Attributes:
+        skill (CharField): A string field that stores the name of the skill. The maximum length is 255 characters.
+        category (CharField): A string field with two possible choices ('hard' or 'soft') to specify the type of skill.
+        weight (IntegerField): An optional field that stores the weight of the skill. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Skill in the format: "Skill - Category at weight".
+    """
     skill = models.CharField(max_length=255)
     category = models.CharField(
         max_length=10, choices=[("hard", "Hard"), ("soft", "Soft")], default="hard"
@@ -100,6 +145,13 @@ class Skill(models.Model):
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the Skill in the format:
+        "Skill - Category at weight".
+        
+        Returns:
+            str: A human-readable string that represents the Skill instance.
+        """
         return f"{self.skill} - {self.category} at {self.weight}"
 
 

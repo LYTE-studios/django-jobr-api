@@ -115,6 +115,7 @@ class Vacancy(models.Model):
     location = models.ForeignKey(
         Location, on_delete=models.CASCADE, blank=True, null=True
     )
+    
     function = models.ForeignKey(
         Function, on_delete=models.CASCADE, blank=True, null=True
     )

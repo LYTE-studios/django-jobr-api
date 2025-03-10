@@ -164,6 +164,15 @@ class Review(models.Model):
     """
     Represents a review given by either an employee, employer, or anonymously.
 
+    Attributes:
+        employee (ForeignKey): A reference to the Employee associated with the review, if applicable.
+        employer (ForeignKey): A reference to the Employer associated with the review, if applicable.
+        anonymous_name (str): The name of the reviewer if the review is anonymous.
+        rating (int): The rating given in the review, typically on a scale of 1 to 5.
+        comment (str): The comment provided in the review.
+        created_at (datetime): The timestamp when the review was created.
+        reviewer_type (str): Indicates the type of reviewer (employee, employer, or anonymous).
+
     """
 
     REVIEWER_TYPE_CHOICES = [
@@ -268,6 +277,16 @@ class CustomUser(AbstractUser):
         super().save(*args, **kwargs)
 
 class UserGallery(models.Model):
+
+    """
+    Represents a gallery for a user, where the user can upload images.
+
+    Attributes:
+        user (CustomUser): A foreign key to the CustomUser model, representing the user who owns the gallery.
+        gallery (Image): The image file uploaded by the user.
+
+    """
+     
     user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="user_gallery"
     )

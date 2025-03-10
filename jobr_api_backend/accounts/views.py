@@ -476,10 +476,35 @@ class AppleSignInView(APIView):
 
 
 class ReviewCreateView(generics.CreateAPIView):
+
+    """
+    View for creating a review. This view allows any user to submit a review.
+
+    Attributes:
+        serializer_class (ReviewSerializer): The serializer class used to validate and create the review.
+        permission_classes (list): A list of permission classes that define access control. 
+                                   In this case, anyone (authenticated or anonymous) can post a review.
+    
+    Methods:
+        perform_create(self, serializer): Saves the review based on the reviewer's type (employee, employer, or anonymous).
+    
+    Responses:
+        - 201 Created: Successfully created the review.
+    """
+
     serializer_class = ReviewSerializer
     permission_classes = [AllowAny]  # Allow anyone to post a review
 
     def perform_create(self, serializer):
+
+        """
+        This method determines the reviewer type (employee, employer, or anonymous) 
+        and saves the review accordingly.
+
+        Args:
+            serializer (ReviewSerializer): The validated serializer instance to save the review.
+        
+        """
         user = self.request.user
 
         # Determine reviewer type and save accordingly

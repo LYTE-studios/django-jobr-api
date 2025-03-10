@@ -173,6 +173,25 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for creating and validating reviews.
+
+    This serializer is responsible for validating the input data for a review,
+    including the reviewer information (employee, employer, or anonymous), 
+    rating, and comment.
+
+    Attributes:
+        Meta (class): The model and fields used for serializing the review data.
+    
+    Methods:
+        validate(self, attrs): Custom validation to ensure that either an employee 
+                                or an anonymous name is provided and the rating is within a valid range.
+    
+    Responses:
+        - ValidationError: If either employee or anonymous name is missing, or if the rating is out of range.
+    """
+
     class Meta:
         model = Review
         fields = [
@@ -185,6 +204,22 @@ class ReviewSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
+
+        """
+        Custom validation to ensure that either an employee or an anonymous name is provided 
+        and the rating is within a valid range (1 to 5).
+
+        Args:
+            attrs (dict): The validated attributes (review data) before saving.
+
+        Returns:
+            attrs (dict): The validated attributes.
+
+        Raises:
+            serializers.ValidationError: If validation fails (e.g., missing employee/anonymous name, 
+                                          or invalid rating range).
+        """
+         
         # Ensure either employee or anonymous_name is provided
         if not attrs.get("employee") and not attrs.get("anonymous_name"):
             raise serializers.ValidationError(

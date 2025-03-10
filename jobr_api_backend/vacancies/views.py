@@ -27,33 +27,87 @@ from chat.serializers import ChatRoomSerializer
 
 
 class LocationsView(generics.GenericAPIView):
+    """
+    This view handles the retrieval of all Location objects.
+
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        get: Retrieves all Location objects from the database and returns them serialized in the response.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve all Location objects.
+
+        Arguments:
+            request: The HTTP request object.
+        
+        Returns:
+            Response: A serialized list of all Location objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class SkillsView(generics.GenericAPIView):
+    """
+    This view handles the retrieval of all Skill objects.
+
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        get: Retrieves all Skill objects from the database and returns them serialized in the response.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Skill.objects.all()
     serializer_class = SkillSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve all Skill objects.
+
+        Arguments:
+            request: The HTTP request object.
+        
+        Returns:
+            Response: A serialized list of all Skill objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class LanguagesView(generics.GenericAPIView):
+    """
+    This view handles the retrieval of all Language objects.
+
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        get: Retrieves all Language objects from the database and returns them serialized in the response.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Language.objects.all()
     serializer_class = LanguageSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve all Language objects.
+
+        Arguments:
+            request: The HTTP request object.
+        
+        Returns:
+            Response: A serialized list of all Language objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

@@ -234,6 +234,23 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class EmployeeStatisticsSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer to retrieve employee statistics, including:
+    - Number of vacancies applied by the employee.
+    - Number of chats sent by the employee.
+    - Phone session counts for the employee.
+
+    Attributes:
+        vacancies_count (int): The number of vacancies the employee has applied to.
+        chats_count (int): The number of chats/messages sent by the employee.
+        phone_session_counts (int): The number of phone sessions the employee has participated in.
+
+    Methods:
+        get_vacancies_count(self, obj): Returns the number of vacancies the employee has applied for.
+        get_chats_count(self, obj): Returns the number of chats/messages sent by the employee.
+    """
+
     vacancies_count = serializers.SerializerMethodField()
     chats_count = serializers.SerializerMethodField()
     phone_session_counts = serializers.IntegerField(read_only=True)
@@ -243,11 +260,33 @@ class EmployeeStatisticsSerializer(serializers.ModelSerializer):
         fields = ["user", "vacancies_count", "chats_count", "phone_session_counts"]
 
     def get_vacancies_count(self, obj):
+
+        """
+        Retrieves the number of vacancies that the employee has applied for.
+
+        Args:
+            obj (Employee): The Employee instance for which the vacancies count is being fetched.
+
+        Returns:
+            int: The number of vacancies the employee has applied to.
+        """
+         
         from vacancies.models import ApplyVacancy
 
         return ApplyVacancy.objects.filter(employee=obj).count()
 
     def get_chats_count(self, obj):
+
+        """
+        Retrieves the number of chats or messages sent by the employee.
+
+        Args:
+            obj (Employee): The Employee instance for which the chats count is being fetched.
+
+        Returns:
+            int: The number of chats or messages sent by the employee.
+        """
+         
         from chat.models import Message
 
         return Message.objects.filter(sender=obj.user).count()

@@ -520,10 +520,43 @@ class ReviewCreateView(generics.CreateAPIView):
             serializer.save(reviewer_type=reviewer_type)
 
 class EmployeeStatisticsView(APIView):
+
+    """
+    View for retrieving and updating employee statistics.
+
+    This view allows the retrieval of the current employee's statistics, such as the number 
+    of phone sessions, as well as the ability to increment the phone session count via a POST request.
+
+    Attributes:
+        authentication_classes (list): A list of authentication classes that define how the user is authenticated. 
+                                        In this case, JWT authentication is used.
+        permission_classes (list): A list of permission classes to enforce access control. 
+                                   In this case, it allows any user.
+    
+    Methods:
+        get(self, request): Handles GET requests to retrieve the current employee's statistics.
+        post(self, request): Handles POST requests to increment the phone session count for the current employee.
+
+    Responses:
+        - 200 OK: Successfully retrieved or updated the employee's statistics.
+        - 404 Not Found: If the employee profile cannot be found.
+    """
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
 
     def get(self, request):
+
+        """
+        Handles GET requests to retrieve the current employee's statistics.
+
+        Args:
+            request (Request): The HTTP request object.
+
+        Returns:
+            Response: Returns the serialized employee statistics if found, or a 404 error if the profile is not found.
+        """
+
         try:
             # Get the Employee instance for the current user
             employee = Employee.objects.get(user=request.user)
@@ -536,6 +569,18 @@ class EmployeeStatisticsView(APIView):
             )
 
     def post(self, request):
+
+        """
+        Handles POST requests to increment the phone session count for the current employee.
+
+        Args:
+            request (Request): The HTTP request object.
+
+        Returns:
+            Response: Returns the updated serialized employee statistics if the phone session count was updated, 
+                      or a 404 error if the profile is not found.
+        """
+          
         try:
             employee = Employee.objects.get(user=request.user)
             employee.phone_session_counts += 1

@@ -846,9 +846,35 @@ class DeleteUserGallery(APIView):
 
 
 class DeleteAccountView(APIView):
+
+    """
+    API endpoint for deleting the authenticated user's account.
+
+    Methods:
+        - DELETE: Deletes the currently authenticated user's account.
+
+    Permission:
+        - Only authenticated users can access this endpoint.
+
+    Responses:
+        - 204 No Content: Successfully deleted the account.
+    """
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):
+
+        """
+        Handles DELETE request to delete the authenticated user's account.
+
+        Args:
+            request (Request): The incoming request from the user.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            Response: HTTP 204 status with a success message.
+        """
+
         user = request.user
         user.delete()
         return Response({"detail": "Account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)

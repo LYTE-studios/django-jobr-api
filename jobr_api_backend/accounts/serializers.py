@@ -12,6 +12,22 @@ from .models import (
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for the Employee model.
+
+    This serializer is used to serialize and deserialize employee-related data.
+
+    Fields:
+        - date_of_birth (DateField): The employee's date of birth.
+        - gender (CharField): The employee's gender.
+        - phone_number (CharField): The employee's contact number.
+        - city_name (CharField): The name of the city where the employee resides.
+        - biography (TextField): A brief biography of the employee.
+        - latitude (FloatField): The latitude coordinate of the employee's location.
+        - longitude (FloatField): The longitude coordinate of the employee's location.
+    """
+    
     class Meta:
         model = Employee
         fields = [
@@ -26,6 +42,24 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 
 class EmployerSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for the Employer model.
+
+    This serializer is used to serialize and deserialize employer-related data.
+
+    Fields:
+        - vat_number (CharField): The VAT number of the employer's company.
+        - company_name (CharField): The name of the company.
+        - street_name (CharField): The name of the street where the company is located.
+        - house_number (CharField): The house number of the company's address.
+        - city (CharField): The city where the company is located.
+        - postal_code (CharField): The postal code of the company's address.
+        - coordinates (JSONField or CharField): The geographic coordinates of the company.
+        - website (URLField): The company's website URL.
+        - biography (TextField): A brief biography or description of the company.
+    """
+
     class Meta:
         model = Employer
         fields = [

@@ -148,4 +148,58 @@ class GetMessagesViewTest(APITestCase):
         self.assertEqual(response.data["error"], "Either chatroom_id or user_id is required.")
 
 
-    
+class GetChatRoomListViewTest(APITestCase):
+    def setUp(self):
+        """Set up a test user, a chat room and messages."""
+          #Get custom user model
+        User = get_user_model()
+
+        # Create users with different roles
+        self.employee = User.objects.create_user(
+            username='employee_user',
+            email='employee@example.com',
+            password='password123',
+            role='employee'
+        )
+        self.employer = User.objects.create_user(
+            username='employer_user',
+            email='employer@example.com',
+            password='password123',
+            role='employer'
+        )
+        #Create a chat room and add users
+        self.chatroom = ChatRoom.objects.create()
+        self.chatroom.users.add(self.employee, self.employer)
+
+        #Create messages in the chatroom
+        self.message1 = Message.objects.create(chatroom=self.chatroom, sender=self.employee, content="Hello")
+        self.message2 = Message.objects.create(chatroom=self.chatroom, sender=self.employer, content="Hello world")
+
+        self.client.force_authenticate(user=self.employee)
+
+    def test_get_chat_rooms_for_authenticated_user(self):
+        """
+        Test if authenticated user can get the list of chat rooms with last message,
+        unread message count and other user.
+        """
+        url = reverse("get-chatrooms-all")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        chat_room_data = response.data[0]
+        self.assertIn("chat_room", chat_room_data)
+        self.assertIn("last_message", chat_room_data)
+        self.assertIn("unread_messages_count", chat_room_data)
+        self.assertIn("other_user", chat_room_data)
+        self.assertEqual(chat_room_data["chat_room"]["id"], self.chatroom.id)
+        self.assertEqual(chat_room_data["last_message"]["content"],"Hello world")
+        self.assertEqual(chat_room_data["unread_messages_count"], 2)
+        self.assertEqual(chat_room_data["other_user"]["id"], self.employer.id)
+
+    def test_get_chat_rooms_for_unauthenticated_user(self):
+        """Test that unauthenticated users cannot access the chat rooms list."""
+        self.client.logout()
+        url = reverse("get-chatrooms-all")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+

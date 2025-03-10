@@ -160,6 +160,12 @@ class Admin(models.Model):
 
 
 class Review(models.Model):
+
+    """
+    Represents a review given by either an employee, employer, or anonymously.
+
+    """
+
     REVIEWER_TYPE_CHOICES = [
         ("employee", "Employee"),
         ("employer", "Employer"),
@@ -189,6 +195,23 @@ class Review(models.Model):
 
 
 class CustomUser(AbstractUser):
+
+    """
+    Custom user model extending the AbstractUser class to include additional fields specific to the application's use case.
+
+    Attributes:
+        email (str): The email address of the user, which must be unique.
+        role (str): The role of the user, selected from predefined profile options (employee, employer, or admin).
+        employer_profile (Employer): A one-to-one relationship with the Employer profile, if the user is an employer.
+        employee_profile (Employee): A one-to-one relationship with the Employee profile, if the user is an employee.
+        admin_profile (Admin): A one-to-one relationship with the Admin profile, if the user is an admin.
+        profile_picture (Image): An optional field for the user's profile picture.
+
+    Methods:
+        __str__(self): Returns a string representation of the user, consisting of their role and email.
+        save(self, *args, **kwargs): Overridden save method to automatically create related profiles based on the user's role (employee, employer, or admin).
+    """
+
     email = models.EmailField(unique=True)
 
     role = models.CharField(
@@ -209,9 +232,32 @@ class CustomUser(AbstractUser):
     )
 
     def __str__(self) -> str:
+
+        """
+        Returns a string representatin of the CustomerUser instance.
+
+        Args:
+            self(CustomUser): Instance of CustomUser model.
+
+        Returns:
+            str: A string representation of the user's role and email.
+        """
+
+        
         return f'{self.role} {self.email}'
 
     def save(self, *args, **kwargs):
+
+        """
+        Overridden save method to automatically create related profiles for the user based on their role.
+        
+        Args:
+        self (CustomUser): Instance of the CustomUser model.
+        *args, **kwargs: Arguments passed to the parent save method.
+
+        Creates an employee, employer, or admin profile based on the user's role if it does not already exist.
+        """
+
         if self.role == ProfileOption.EMPLOYEE:
             self.employee_profile = Employee.objects.create()
         elif self.role == ProfileOption.EMPLOYER:

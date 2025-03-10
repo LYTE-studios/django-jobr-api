@@ -29,10 +29,38 @@ from .serializers import UserSerializer
 
 
 class ConnectionTestView(APIView):
+
+    """
+    A view to test the connection by returning the user's role.
+
+    This view checks if the user is authenticated using JWT authentication and ensures the user has the required permissions to access this view.
+
+    Attributes:
+        authentication_classes (list): A list of authentication classes that define how the user is authenticated. In this case, JWT authentication.
+        permission_classes (list): A list of permission classes to enforce access control. In this case, only authenticated users can access this view.
+
+    Methods:
+        get(self, request): Handles GET requests and returns a response with the user's role.
+
+    """
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+
+        """
+        Handles GET requests to test the connection and return the authenticated user's role.
+
+        Args:
+        self (ConnectionTestView): The instance of the ConnectionTestView class.
+        request (Request): The HTTP request object containing the user data.
+
+        Returns:
+        Response: A response containing the user's role.
+        
+        """
+
         return Response(
             {
                 "role": request.user.role,

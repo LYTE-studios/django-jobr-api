@@ -683,16 +683,63 @@ class AllUserGalleriesView(generics.ListAPIView):
         return CustomUser.objects.all().prefetch_related("users_gallery")
 
 class UserByUserView(generics.RetrieveAPIView):
+
+    """
+    Retrieve a specific user by their ID (primary key) along with their gallery information.
+
+    This view allows the retrieval of a user by their ID. The returned data includes the user's
+    details and their related gallery, which is preloaded using `prefetch_related`.
+
+    Attributes:
+        permission_classes (list): Specifies that any user can access this view (AllowAny).
+        serializer_class (UserSerializer): The serializer used to represent users and their galleries.
+        
+    Methods:
+        get_object(self): 
+            Retrieves a specific user by their primary key (`pk`) and includes the related `user_gallery` using `prefetch_related`.
+        get_queryset(self):
+            Get the base queryset of users, prefetching relation gallery data.
+        
+    Responses:
+        - 200 OK: Successfully retrieved the user details and gallery.
+        - 404 Not Found: If the user with the given ID does not exist.
+    """
+    
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
 
     def get_object(self):
+
+        """
+        Retrieve a user by their primary key (ID).
+
+        This method attempts to fetch a user using the `id` parameter from the request.
+        If the user does not exist, it raises an `Http404` exception.
+
+        Returns:
+        - `CustomUser` instance if found.
+
+        Raises:
+        - `Http404`: If the user with the specified ID does not exist.
+        """
+
         try:
             return CustomUser.objects.get(id=self.kwargs["pk"])
         except CustomUser.DoesNotExist:
             raise Http404("User does not exist")
 
     def get_queryset(self):
+
+        """
+        Get the base queryset of users, prefetching related gallery data.
+
+        This method optimizes database queries by using `prefetch_related("users_gallery")`,
+        ensuring that related user gallery data is fetched efficiently in a single query.
+
+        Returns:
+        - `QuerySet[CustomUser]`: A queryset of all users with preloaded gallery data.
+        """
+        
         return CustomUser.objects.prefetch_related("users_gallery")
 
 

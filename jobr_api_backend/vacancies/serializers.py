@@ -30,12 +30,32 @@ class LocationSerializer(serializers.ModelSerializer):
 
 
 class ContractTypeSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the ContractType model.
+    
+    This serializer converts ContractType model instances into JSON format for API responses.
+    It also validates data for creating or updating ContractType instances.
+
+    Meta:
+        model: ContractType
+        fields: ["id", "contract_type"]
+    """
     class Meta:
         model = ContractType
         fields = ["id", "contract_type"]
 
 
 class FunctionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Function model.
+    
+    This serializer converts Function model instances into JSON format for API responses.
+    It also validates data for creating or updating Function instances.
+
+    Meta:
+        model: Function
+        fields: ["id", "function"]
+    """
     class Meta:
         model = Function
         fields = ["id", "function"]
@@ -58,6 +78,16 @@ class LanguageSerializer(serializers.ModelSerializer):
 
 
 class QuestionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Question model.
+    
+    This serializer converts Question model instances into JSON format for API responses.
+    It also validates data for creating or updating Question instances.
+
+    Meta:
+        model: Question
+        fields: ["question"]
+    """
     class Meta:
         model = Question
         fields = ["question"]

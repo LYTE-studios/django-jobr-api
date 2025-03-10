@@ -110,30 +110,80 @@ class SkillSerializer(serializers.ModelSerializer):
 
 
 class ExtraSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Extra model.
+    
+    This serializer converts Extra model instances into JSON format for API responses.
+    It also validates data for creating or updating Extra instances.
+
+    Meta:
+        model: Extra
+        fields: ["extra"]
+    """
     class Meta:
         model = Extra
         fields = ["extra"]
 
 
 class VacancyLanguageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the VacancyLanguage model.
+    
+    This serializer converts VacancyLanguage model instances into JSON format for API responses.
+    It also validates data for creating or updating VacancyLanguage instances.
+
+    Meta:
+        model: VacancyLanguage
+        fields: ["language", "mastery"]
+    """
     class Meta:
         model = VacancyLanguage
         fields = ["language", "mastery"]
 
 
 class VacancyDescriptionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the VacancyDescription model.
+    
+    This serializer converts VacancyDescription model instances into JSON format for API responses.
+    It also validates data for creating or updating VacancyDescription instances.
+
+    Meta:
+        model: VacancyDescription
+        fields: ["question", "description"]
+    """
     class Meta:
         model = VacancyDescription
         fields = ["question", "description"]
 
 
 class VacancyQuestionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the VacancyQuestion model.
+    
+    This serializer converts VacancyQuestion model instances into JSON format for API responses.
+    It also validates data for creating or updating VacancyQuestion instances.
+
+    Meta:
+        model: VacancyQuestion
+        fields: ["question"]
+    """
     class Meta:
         model = VacancyQuestion
         fields = ["question"]
 
 
 class WeekdaySerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Weekday model.
+    
+    This serializer converts Weekday model instances into JSON format for API responses.
+    It also validates data for creating or updating Weekday instances.
+
+    Meta:
+        model: Weekday
+        fields: ["name"]
+    """
     class Meta:
         model = Weekday
         fields = ["name"]

@@ -27,7 +27,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         - latitude (FloatField): The latitude coordinate of the employee's location.
         - longitude (FloatField): The longitude coordinate of the employee's location.
     """
-    
+
     class Meta:
         model = Employee
         fields = [
@@ -76,6 +76,20 @@ class EmployerSerializer(serializers.ModelSerializer):
 
 
 class AdminSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for the Admin model.
+
+    This serializer handles the transformation of Admin model data into a format suitable for the API, including
+    the related user information.
+
+    Attributes:
+        user (PrimaryKeyRelatedField): The related user instance.
+
+    Returns:
+        dict: A dictionary containing the serialized Admin data.
+    """
+
     user = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), many=False
     )
@@ -86,6 +100,17 @@ class AdminSerializer(serializers.ModelSerializer):
 
 
 class UserGallerySerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for the UserGallery model.
+
+    This serializer is used to handle the transformation of UserGallery model data into a format suitable for the API,
+    including the gallery images.
+
+    Returns:
+        dict: A dictionary containing the serialized UserGallery data.
+    """
+
     class Meta:
         model = UserGallery
         fields = ["id", "gallery"]
@@ -139,6 +164,23 @@ class UserGalleryUpdateSerializer(serializers.Serializer):
         return data
     
 class UserAuthenticationSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for authenticating a user during the login or registration process.
+
+    This serializer handles the transformation of user data into a format suitable for the API,
+    particularly for authenticating users based on their credentials (username, email, and password).
+
+    Attributes:
+        username (str): The username of the user.
+        email (str): The email address of the user.
+        password (str): The password for the user.
+        role (str): The role assigned to the user.
+
+    Returns:
+        dict: A dictionary containing the serialized user data with the provided username, email, 
+              password, and role.
+    """
     class Meta:
         model = CustomUser
 
@@ -255,10 +297,49 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
+
+    """
+    Serializer for handling user login authentication.
+
+    This serializer takes in the user's username and password, and attempts to authenticate 
+    the user by checking the provided credentials. If the authentication is
+    successful, it will return the authenticated user. If the authentication fails, appropriate 
+    error messages are raised.
+
+    Attributes:
+        username (str): The username of the user trying to authenticate.
+        password (str): The password of the user trying to authenticate.
+
+    Methods:
+        validate(attrs):
+            Validates the provided username and password, authenticates the user, and checks if
+            the user is active.
+    
+    Returns:
+        dict: A dictionary containing the validated user data if authentication is successful.
+
+    """
     username = serializers.CharField()
     password = serializers.CharField()
 
     def validate(self, attrs):
+
+        """
+        Validate the username and password fields.
+
+        This method is responsible for checking whether the provided username and password are
+        valid, authenticating the user, and ensuring the user account is active.
+
+        Args:
+            attrs (dict): The dictionary containing the username and password to validate.
+
+        Returns:
+            dict: The validated data containing the authenticated user if successful.
+
+        Raises:
+            serializers.ValidationError: If the credentials are invalid, if the account is 
+                                         disabled, or if the username or password is missing.
+        """
         username = attrs.get("username")
         password = attrs.get("password")
 

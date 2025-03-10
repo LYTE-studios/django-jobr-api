@@ -222,20 +222,61 @@ class SalaryBenefit(models.Model):
         return f"{self.name} at {self.weight}"
 
 class ProfileInterest(models.Model):
+    """
+    Represents an interest or preference related to a profile, with a weight.
+    
+    Attributes:
+        name (CharField): The name of the interest.
+        weight (IntegerField, optional): An optional field that stores the weight of the interest. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the ProfileInterest in the format: "Interest at weight".
+    """
     name = models.CharField(max_length=255, unique=True)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the ProfileInterest in the format:
+        "Interest at weight".
+        
+        Returns:
+            str: A human-readable string representing the ProfileInterest instance.
+        """
         return f"{self.name} at {self.weight}"
     
 class JobListingPrompt(models.Model):
+    """
+    Represents a prompt used in job listings, which can be associated with different listings based on its weight.
+    
+    Attributes:
+        name (CharField): The name or description of the prompt (e.g., 'Urgent Hiring', 'Remote Friendly').
+        weight (IntegerField, optional): A numeric value representing the weight of the prompt. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the JobListingPrompt in the format: "Prompt at weight".
+    """
     name = models.CharField(max_length=255, unique=True)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the JobListingPrompt in the format:
+        "Prompt at weight".
+        
+        Returns:
+            str: A human-readable string representing the JobListingPrompt instance.
+        """
         return f"{self.name} at {self.weight}"
 
 class VacancyLanguage(models.Model):
+    """
+    Represents the language requirement for a vacancy, including the proficiency level required for that language.
+    
+    Attributes:
+        language (ForeignKey): A reference to the `Language` model, indicating the language required for the vacancy.
+        mastery (CharField): A field representing the proficiency level required for the language, using the `MasteryOption` choices.
+    """
     language = models.ForeignKey(Language, on_delete=models.CASCADE)
     mastery = models.CharField(max_length=255, choices=MasteryOption.choices)
 

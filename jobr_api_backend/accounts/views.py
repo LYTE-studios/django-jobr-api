@@ -320,7 +320,7 @@ class GoogleSignInView(APIView):
         Returns:
             Response: A response with the user's login status, user information, and tokens.
         """
-        
+
         try:
             # Get the ID token from the request
             id_token = request.data.get("id_token")
@@ -376,6 +376,25 @@ class GoogleSignInView(APIView):
 
 
 class AppleSignInView(APIView):
+
+    """
+    Handles Apple sign-in via Firebase authentication.
+
+    This view verifies the provided Firebase ID token and either logs in an existing user
+    or creates a new user based on the token information.
+
+    Attributes:
+        permission_classes (list): A list of permission classes that allow any user (no authentication required).
+
+    Methods:
+        post(self, request): Handles POST requests to authenticate and sign in the user via Firebase ID token.
+    
+    Responses:
+        - 200 OK: Successfully logged in or created the user.
+        - 400 BAD REQUEST: If the ID token is missing or invalid.
+        - 500 INTERNAL SERVER ERROR: If there is an issue with Apple authentication or other exceptions.
+    """
+
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
@@ -395,6 +414,18 @@ class AppleSignInView(APIView):
         }
     )
     def post(self, request):
+
+        """
+        Handles POST requests to log in the user with a Apple Firebase ID token.
+
+        Args:
+            self (AppleSignInView): Instance of the AppleSignInView class.
+            request (Request): The HTTP request object, containing the ID token.
+
+        Returns:
+            Response: A response with the user's login status, user information, and tokens.
+        """
+         
         try:
             # Get the ID token from the request
             id_token = request.data.get("id_token")

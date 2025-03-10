@@ -270,11 +270,53 @@ class ApplyViewSet(viewsets.ModelViewSet):
 
 
 class VacancyFilterView(generics.ListAPIView):
+    """
+    API view for filtering and retrieving job vacancies based on various criteria.
+    
+    This view allows users to filter job vacancies using multiple parameters such as:
+    - Contract type
+    - Function
+    - Required skills
+    - Distance from an employee's location
+    - Sorting by salary (ascending or descending)
+    
+    Authentication:
+        - JWT authentication is required to access this view.
+
+    Query Parameters:
+        - contract_type (int): ID of the contract type to filter vacancies.
+        - function (int): ID of the function (job role) to filter vacancies.
+        - skills (list of int): List of skill IDs to filter vacancies.
+        - employee_id (int): ID of the employee to filter vacancies by proximity.
+        - distance (float): Maximum distance (in km) from the employee's location.
+        - sort_by_salary (str): Sort vacancies by salary ('asc' for ascending, 'desc' for descending).
+
+    Methods:
+        - get_queryset(): Retrieves and filters vacancies based on query parameters.
+        - calculate_distance(lat1, lon1, lat2, lon2): Computes the great-circle distance (Haversine formula) between two geographic points.
+
+    Returns:
+        - A list of vacancies matching the given criteria.
+    """
     authentication_classes = [JWTAuthentication]
 
     serializer_class = VacancySerializer
 
     def get_queryset(self):
+        """
+        Retrieves and filters the vacancy queryset based on query parameters.
+
+        Filtering logic:
+            - Filters vacancies by contract type if provided.
+            - Filters vacancies by function if provided.
+            - Filters vacancies by required skills if provided.
+            - If an employee ID is provided, retrieves their latitude and longitude.
+            - If a maximum distance is provided, filters vacancies within that radius.
+            - Sorts vacancies by salary if sorting is requested.
+
+        Returns:
+            QuerySet: A filtered list of Vacancy objects.
+        """
         queryset = Vacancy.objects.all()
 
         # Get parameters from request
@@ -332,6 +374,15 @@ class VacancyFilterView(generics.ListAPIView):
         """
         Calculate the great-circle distance between two points
         on the Earth using the Haversine formula.
+        
+        Parameters:
+            - lat1 (float): Latitude of the first point.
+            - lon1 (float): Longitude of the first point.
+            - lat2 (float): Latitude of the second point.
+            - lon2 (float): Longitude of the second point.
+
+        Returns:
+            float: Distance in kilometers between the two points.
         """
         # Convert decimal degrees to radians
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])

@@ -4,21 +4,14 @@ from rest_framework import serializers
 from .models import (
     CustomUser,
     Employee,
-    EmployeeGallery,
     Employer,
-    EmployerGallery,
     Admin,
     Review,
-    ProfileOption, UserGallery,
+    UserGallery,
 )
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    # user = UserSerializer(required=True)
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
     class Meta:
         model = Employee
         fields = [
@@ -27,17 +20,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "phone_number",
             "city_name",
             "biography",
-            "user",
             "latitude",
             "longitude",
         ]
 
 
 class EmployerSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
     class Meta:
         model = Employer
         fields = [
@@ -50,7 +38,6 @@ class EmployerSerializer(serializers.ModelSerializer):
             "coordinates",
             "website",
             "biography",
-            "user",
         ]
 
 
@@ -64,17 +51,65 @@ class AdminSerializer(serializers.ModelSerializer):
         fields = ["full_name", "user"]
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserGallerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserGallery
+        fields = ["id", "gallery"]
+
+
+class UserGalleryUpdateSerializer(serializers.Serializer):
+    gallery = serializers.ListField(
+        child=serializers.ImageField(max_length=100000, allow_empty_file=False),
+        write_only=True,
+    )
+
+    def validate(self, data):
+        try:
+            CustomUser.objects.get(user=self.context.get("user"))
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError(
+                "User with this user ID does not exist."
+            )
+        gallery = data.get("gallery")
+        if not gallery:
+            raise serializers.ValidationError("At least one image is required.")
+        return data
+    
+class UserAuthenticationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        employer_profile = EmployerSerializer(read_only=True)
-        employee_profile = EmployeeSerializer(read_only=True)
-        admin_profile = AdminSerializer(read_only=True)
-        gallery = serializers.SerializerMethodField()
+
+        fields = [
+            "username",
+            "email",
+            "password",
+            "role",
+        ]
+
+        extra_kwargs = {
+            "password": {
+                "write_only": True,
+                "required": True,
+            },  # Make password optional for updates
+            "email": {"required": True},  # Make email optional for updates
+            "username": {"required": True},  # Make username optional for updates
+            "role": {"required": True},  # Make role optional for updates
+        }
+
+class UserSerializer(serializers.ModelSerializer):
+    employer_profile = EmployerSerializer(read_only=True)
+    employee_profile = EmployeeSerializer(read_only=True)
+    admin_profile = AdminSerializer(read_only=True)
+    user_gallery = UserGallerySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CustomUser
 
         fields = [
             "id",
             "username",
+            "first_name",
+            "last_name",
             "email",
             "password",
             "role",
@@ -82,6 +117,7 @@ class UserSerializer(serializers.ModelSerializer):
             "employee_profile",
             "admin_profile",
             "profile_picture",
+            "user_gallery"
         ]
 
         extra_kwargs = {
@@ -162,72 +198,6 @@ class ReviewSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class EmployeeGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EmployeeGallery
-        fields = ["id", "gallery"]
-
-
-class EmployeeWithGallerySerializer(serializers.ModelSerializer):
-    gallery = EmployeeGallerySerializer(many=True, source="employees_gallery")
-
-    class Meta:
-        model = Employee
-        fields = ["user", "gallery"]
-
-
-class EmployeeGalleryUpdateSerializer(serializers.Serializer):
-    gallery = serializers.ListField(
-        child=serializers.ImageField(max_length=100000, allow_empty_file=False),
-        write_only=True,
-    )
-
-    def validate(self, data):
-        try:
-            Employee.objects.get(user=self.context.get("user"))
-        except Employee.DoesNotExist:
-            raise serializers.ValidationError(
-                "Employee with this user ID does not exist."
-            )
-        gallery = data.get("gallery")
-        if not gallery:
-            raise serializers.ValidationError("At least one image is required.")
-        return data
-
-
-class EmployerGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EmployerGallery
-        fields = ["id", "gallery"]
-
-
-class EmployerWithGallerySerializer(serializers.ModelSerializer):
-    gallery = EmployerGallerySerializer(many=True, source="employers_gallery")
-
-    class Meta:
-        model = Employer
-        fields = ["user", "gallery"]
-
-
-class EmployerGalleryUpdateSerializer(serializers.Serializer):
-    gallery = serializers.ListField(
-        child=serializers.ImageField(max_length=100000, allow_empty_file=False),
-        write_only=True,
-    )
-
-    def validate(self, data):
-        try:
-            Employer.objects.get(user=self.context.get("user"))
-        except Employer.DoesNotExist:
-            raise serializers.ValidationError(
-                "Employer with this user ID does not exist."
-            )
-        gallery = data.get("gallery")
-        if not gallery:
-            raise serializers.ValidationError("At least one image is required.")
-        return data
-
-
 class EmployeeStatisticsSerializer(serializers.ModelSerializer):
     vacancies_count = serializers.SerializerMethodField()
     chats_count = serializers.SerializerMethodField()
@@ -246,36 +216,3 @@ class EmployeeStatisticsSerializer(serializers.ModelSerializer):
         from chat.models import Message
 
         return Message.objects.filter(sender=obj.user).count()
-
-
-class UserGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserGallery
-        fields = ["id", "gallery"]
-
-
-class UserWithGallerySerializer(serializers.ModelSerializer):
-    gallery = UserGallerySerializer(many=True, source="users_gallery")
-
-    class Meta:
-        model = CustomUser
-        fields = ["username", "gallery"]
-
-
-class UserGalleryUpdateSerializer(serializers.Serializer):
-    gallery = serializers.ListField(
-        child=serializers.ImageField(max_length=100000, allow_empty_file=False),
-        write_only=True,
-    )
-
-    def validate(self, data):
-        try:
-            CustomUser.objects.get(id=self.context.get("user"))
-        except CustomUser.DoesNotExist:
-            raise serializers.ValidationError(
-                "User with this ID does not exist."
-            )
-        gallery = data.get("gallery")
-        if not gallery:
-            raise serializers.ValidationError("At least one image is required.")
-        return data

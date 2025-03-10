@@ -4,47 +4,12 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from accounts.models import CustomUser, ProfileOption
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer, MessageSerializer
-from django.db.models import Q, Max
-
-
-class StartChatView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        employer_id = request.data.get("employer_id")  # Fixed: was employee_id
-        employee_id = request.data.get("employee_id")  # Fixed: was employer_id
-
-        if not employer_id or not employee_id:
-            return Response(
-                {"error": "Both employer_id and employee_id are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if employee_id == employer_id:
-            return Response(
-                {"error": "Employer and Employee cannot be the same user."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Verify the authenticated user is the employer
-        if request.user.id != employer_id:
-            return Response(
-                {"error": "You can only start chats as yourself"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        chat_room, created = ChatRoom.objects.get_or_create(
-            employer_id=employer_id, employee_id=employee_id
-        )
-        serializer = ChatRoomSerializer(chat_room)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
-        )
-
+from accounts.serializers import UserSerializer
+from django.db.models import Q, Max, Count
 
 class SendMessageView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -64,12 +29,14 @@ class SendMessageView(APIView):
             chat_room = get_object_or_404(ChatRoom, id=chat_room_id)
 
         else:
-            try:
-                chat_room = ChatRoom.objects.get(employee_id=user_id)
-            except ChatRoom.DoesNotExist:
-                chat_room = ChatRoom.objects.create(
-                    employer_id=request.user.id, employee_id=user_id
-                )
+            user = get_object_or_404(CustomUser, id=user_id)
+            chat_room = ChatRoom.objects.filter(users=self.request.user).filter(users=user).first()
+
+            if not chat_room:
+                chat_room = ChatRoom.objects.create()
+                chat_room.users.add(self.request.user)
+                chat_room.users.add(user)
+                chat_room.save()
 
         message = Message.objects.create(
             chatroom=chat_room,
@@ -78,10 +45,9 @@ class SendMessageView(APIView):
         )
 
         message.read_by.add(request.user)
-
         message.save()
 
-        serializer = MessageSerializer(message)
+        serializer = MessageSerializer(message, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -89,19 +55,30 @@ class GetMessagesView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, chatroom_id=None):
-        chat_room = get_object_or_404(ChatRoom, id=chatroom_id)
-
-        # Verify the user is part of the chat room
-        if request.user.id not in [chat_room.employer.id, chat_room.employee.id]:
+    def get(self, request, chatroom_id=None, user_id=None):
+        if chatroom_id:
+            chat_room = get_object_or_404(ChatRoom, id=chatroom_id)
+        elif user_id:
+            user = get_object_or_404(CustomUser, id=user_id)
+            try:
+                chat_room = ChatRoom.objects.filter(users=self.request.user).filter(users=user).first()
+            except ChatRoom.DoesNotExist:
+                  return Response([])
+        else:
             return Response(
-                {"error": "You are not authorized to view messages in this chat room"},
-                status=status.HTTP_403_FORBIDDEN,
+                {"error": "Either chatroom_id or user_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        messages = Message.objects.filter(chatroom=chat_room).order_by("-created_at")
+        messages = Message.objects.filter(chatroom=chat_room).order_by("created_at")
 
-        serializer = MessageSerializer(messages, many=True)
+        unread_messages = chat_room.get_unread_messages(request.user)
+
+        for message in unread_messages:
+            message.read_by.add(request.user)
+            message.save()
+
+        serializer = MessageSerializer(messages, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -112,7 +89,7 @@ class GetChatRoomListView(APIView):
     def get(self, request):
         # Get all chat rooms for a user and order by the latest message
         chat_rooms = (
-            ChatRoom.objects.filter(Q(employer=request.user) | Q(employee=request.user))
+            ChatRoom.objects.filter(users=request.user)
             .annotate(last_message_time=Max("messages__created_at"))
             .order_by("-last_message_time")
         )
@@ -120,20 +97,18 @@ class GetChatRoomListView(APIView):
         chat_rooms_data = []
         for chat_room in chat_rooms:
             last_message = chat_room.messages.order_by("-created_at").first()
-            unread_messages_count = chat_room.messages.filter(~Q(read_by=None)).count()
-            other_user = (
-                chat_room.employer
-                if chat_room.employer != request.user
-                else chat_room.employee
-            )
+
+            unread_messages_count = chat_room.get_unread_messages(request.user).count()
+
+            other_user = chat_room.users.exclude(id=request.user.id).first()
 
             chat_room_data = {
                 "chat_room": ChatRoomSerializer(chat_room).data,
                 "last_message": (
-                    MessageSerializer(last_message).data if last_message else None
+                    MessageSerializer(last_message, context={'request': request}).data if last_message else None
                 ),
                 "unread_messages_count": unread_messages_count,
-                "other_user": other_user.username,
+                "other_user": UserSerializer(other_user).data,
             }
             chat_rooms_data.append(chat_room_data)
 

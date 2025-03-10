@@ -10,10 +10,11 @@ class ProfileOption(models.TextChoices):
 
 
 class Employee(models.Model):
-    date_of_birth = models.DateField()
+    date_of_birth = models.DateField(null=True)
     gender = models.CharField(
         max_length=10,
         choices=[("male", "Male"), ("female", "Female"), ("other", "Other")],
+        null=True
     )
     phone_number = models.CharField(max_length=15)
     profile_picture = models.ImageField(
@@ -38,40 +39,42 @@ class Employee(models.Model):
     skill = models.ManyToManyField(Skill)
 
     def __str__(self):
-        return self.user.email
+        try:
+            user = CustomUser.objects.get(employee_profile=self)
+        except CustomUser.DoesNotExist:
+            return "Not Found"
 
-
-class EmployeeGallery(models.Model):
-    employees = models.ForeignKey(
-        Employee, on_delete=models.CASCADE, related_name="employees_gallery"
-    )
-    gallery = models.ImageField(upload_to="galleries/", blank=False)
-
+        return str(user)
 
 class Employer(models.Model):
-    vat_number = models.CharField(max_length=30)
-    company_name = models.CharField(max_length=100)
-    street_name = models.CharField(max_length=100)
-    house_number = models.CharField(max_length=10)
-    city = models.CharField(max_length=100)
-    postal_code = models.CharField(max_length=20)
-    coordinates = models.JSONField()  # Stores latitude and longitude as JSON
+    vat_number = models.CharField(max_length=30, null=True)
+    company_name = models.CharField(max_length=100, null=True)
+    street_name = models.CharField(max_length=100, null=True)
+    house_number = models.CharField(max_length=10, null=True)
+    city = models.CharField(max_length=100, null=True)
+    postal_code = models.CharField(max_length=20, null=True)
+    coordinates = models.JSONField(null=True)
     website = models.URLField(blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return self.vat_number
+        try:
+            user = CustomUser.objects.get(employer_profile=self)
+        except CustomUser.DoesNotExist:
+            return "Not Found"
 
-
-class EmployerGallery(models.Model):
-    employers = models.ForeignKey(
-        Employer, on_delete=models.CASCADE, related_name="employers_gallery"
-    )
-    gallery = models.ImageField(upload_to="galleries/", blank=False)
-
+        return str(user)
 
 class Admin(models.Model):
     full_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        try:
+            user = CustomUser.objects.get(admin_profile=self)
+        except CustomUser.DoesNotExist:
+            return "Not Found"
+
+        return str(user)
 
 
 class Review(models.Model):
@@ -116,27 +119,28 @@ class CustomUser(AbstractUser):
     employee_profile = models.OneToOneField(
         Employee, null=True, on_delete=models.CASCADE
     )
+
     admin_profile = models.OneToOneField(Admin, null=True, on_delete=models.CASCADE)
+
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", blank=True, null=True
     )
 
+    def __str__(self) -> str:
+        return f'{self.role} {self.email}'
+
     def save(self, *args, **kwargs):
         if self.role == ProfileOption.EMPLOYEE:
-            if not self.employee_profile:
-                self.employee_profile = Employee.objects.create(user=self)
+            self.employee_profile = Employee.objects.create()
         elif self.role == ProfileOption.EMPLOYER:
-            if not self.employer_profile:
-                self.employer_profile = Employer.objects.create(user=self)
+            self.employer_profile = Employer.objects.create()
         elif self.role == ProfileOption.ADMIN:
-            if not self.admin_profile:
-                self.admin_profile = Admin.objects.create(user=self)
+            self.admin_profile = Admin.objects.create()
 
         super().save(*args, **kwargs)
 
-
 class UserGallery(models.Model):
-    employers = models.ForeignKey(
+    user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="user_gallery"
     )
     gallery = models.ImageField(upload_to="galleries/", blank=False)

@@ -65,10 +65,10 @@ STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
 ALLOWED_HOSTS = []
 
-# CSRF_TRUSTED_ORIGINS = [
-#     "https://api.jobr.lytestudios.be",
-#     "http://api.jobr.lytestudios.be",  # if you also use http
-# ]
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.jobr.lytestudios.be",
+    "http://api.jobr.lytestudios.be",
+]
 
 
 # Application definition

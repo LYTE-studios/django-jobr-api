@@ -219,12 +219,32 @@ class ContractsTypesView(generics.GenericAPIView):
 
 
 class VacancyViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Vacancy objects.
+    
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        - create: Creates a new vacancy and assigns the current user as the employer.
+    """
     authentication_classes = [JWTAuthentication]
 
     queryset = Vacancy.objects.all()
     serializer_class = VacancySerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Creates a new Vacancy instance.
+        
+        This method automatically adds the current user's ID as the employer when creating a vacancy.
+        
+        Args:
+            request: The HTTP request containing vacancy data.
+
+        Returns:
+            Response: A response with the serialized vacancy data or errors.
+        """
         data = request.data.copy()
         data["employer"] = request.user.id
         serializer = self.get_serializer(data=data)
@@ -237,6 +257,12 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
 
 class ApplyViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing ApplyVacancy objects.
+    
+    Authentication:
+        JWT authentication is required to access this view.
+    """
     authentication_classes = [JWTAuthentication]
 
     queryset = ApplyVacancy.objects.all()

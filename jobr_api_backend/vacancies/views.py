@@ -27,72 +27,207 @@ from chat.serializers import ChatRoomSerializer
 
 
 class LocationsView(generics.GenericAPIView):
+    """
+    This view handles the retrieval of all Location objects.
+
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        get: Retrieves all Location objects from the database and returns them serialized in the response.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve all Location objects.
+
+        Arguments:
+            request: The HTTP request object.
+        
+        Returns:
+            Response: A serialized list of all Location objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class SkillsView(generics.GenericAPIView):
+    """
+    This view handles the retrieval of all Skill objects.
+
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        get: Retrieves all Skill objects from the database and returns them serialized in the response.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Skill.objects.all()
     serializer_class = SkillSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve all Skill objects.
+
+        Arguments:
+            request: The HTTP request object.
+        
+        Returns:
+            Response: A serialized list of all Skill objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class LanguagesView(generics.GenericAPIView):
+    """
+    This view handles the retrieval of all Language objects.
+
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        get: Retrieves all Language objects from the database and returns them serialized in the response.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Language.objects.all()
     serializer_class = LanguageSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve all Language objects.
+
+        Arguments:
+            request: The HTTP request object.
+        
+        Returns:
+            Response: A serialized list of all Language objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class FunctionsView(generics.GenericAPIView):
+    """
+    API view to retrieve a list of Function instances.
+    
+    This view allows authenticated users to retrieve a list of all available 
+    functions from the Function model. It returns data serialized into JSON format.
+
+    Authentication:
+        JWT authentication is required to access this view.
+
+     Methods:
+        get:
+            Handles GET requests to retrieve a list of Function instances.
+            Returns a list of serialized Function objects as JSON data.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Function.objects.all()
     serializer_class = FunctionSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve a list of Function instances.
+        
+        This method retrieves all Function objects from the database,
+        serializes them using the FunctionSerializer, and returns the 
+        serialized data in JSON format.
+
+        Returns:
+            Response: A response containing a list of serialized Function objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class QuestionsView(generics.GenericAPIView):
+    """
+    API view to retrieve a list of Question instances.
+    
+    This view allows authenticated users to retrieve a list of all available 
+    questions from the Question model. It returns data serialized into JSON format.
+
+    Authentication:
+       JWT authentication is required to access this view.
+
+    Methods:
+        get:
+            Handles GET requests to retrieve a list of Question instances.
+            Returns a list of serialized Question objects as JSON data.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve a list of Question instances.
+        
+        This method retrieves all Question objects from the database,
+        serializes them using the QuestionSerializer, and returns the 
+        serialized data in JSON format.
+
+        Returns:
+            Response: A response containing a list of serialized Question objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class ContractsTypesView(generics.GenericAPIView):
+    """
+    API view to retrieve a list of ContractType instances.
+    
+    This view allows authenticated users to retrieve a list of all available 
+    contract types from the ContractType model. It returns data serialized into JSON format.
+
+    Authentication:
+        JWT authentication is required to access this view.
+
+    Methods:
+        get:
+            Handles GET requests to retrieve a list of ContractType instances.
+            Returns a list of serialized ContractType objects as JSON data.
+    """
     authentication_classes = [JWTAuthentication]
     queryset = ContractType.objects.all()
     serializer_class = ContractTypeSerializer
 
     def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve a list of ContractType instances.
+        
+        This method retrieves all ContractType objects from the database,
+        serializes them using the ContractTypeSerializer, and returns the 
+        serialized data in JSON format.
+
+        Returns:
+            Response: A response containing a list of serialized ContractType objects.
+        """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
 class VacancyViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Vacancy objects.
+    
+    Authentication:
+        JWT authentication is required to access this view.
+    
+    Methods:
+        - create: Creates a new vacancy and assigns the current user as the employer.
+    """
     authentication_classes = [JWTAuthentication]
 
     queryset = Vacancy.objects.all()
@@ -107,9 +242,36 @@ class VacancyViewSet(viewsets.ModelViewSet):
     #         return Response(serializer.data, status=status.HTTP_201_CREATED)
     #
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def create(self, request, *args, **kwargs):
+        """
+        Creates a new Vacancy instance.
+        
+        This method automatically adds the current user's ID as the employer when creating a vacancy.
+        
+        Args:
+            request: The HTTP request containing vacancy data.
+
+        Returns:
+            Response: A response with the serialized vacancy data or errors.
+        """
+        data = request.data.copy()
+        data["employer"] = request.user.id
+        serializer = self.get_serializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ApplyViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing ApplyVacancy objects.
+    
+    Authentication:
+        JWT authentication is required to access this view.
+    """
     authentication_classes = [JWTAuthentication]
 
     queryset = ApplyVacancy.objects.all()
@@ -117,11 +279,53 @@ class ApplyViewSet(viewsets.ModelViewSet):
 
 
 class VacancyFilterView(generics.ListAPIView):
+    """
+    API view for filtering and retrieving job vacancies based on various criteria.
+    
+    This view allows users to filter job vacancies using multiple parameters such as:
+    - Contract type
+    - Function
+    - Required skills
+    - Distance from an employee's location
+    - Sorting by salary (ascending or descending)
+    
+    Authentication:
+        - JWT authentication is required to access this view.
+
+    Query Parameters:
+        - contract_type (int): ID of the contract type to filter vacancies.
+        - function (int): ID of the function (job role) to filter vacancies.
+        - skills (list of int): List of skill IDs to filter vacancies.
+        - employee_id (int): ID of the employee to filter vacancies by proximity.
+        - distance (float): Maximum distance (in km) from the employee's location.
+        - sort_by_salary (str): Sort vacancies by salary ('asc' for ascending, 'desc' for descending).
+
+    Methods:
+        - get_queryset(): Retrieves and filters vacancies based on query parameters.
+        - calculate_distance(lat1, lon1, lat2, lon2): Computes the great-circle distance (Haversine formula) between two geographic points.
+
+    Returns:
+        - A list of vacancies matching the given criteria.
+    """
     authentication_classes = [JWTAuthentication]
 
     serializer_class = VacancySerializer
 
     def get_queryset(self):
+        """
+        Retrieves and filters the vacancy queryset based on query parameters.
+
+        Filtering logic:
+            - Filters vacancies by contract type if provided.
+            - Filters vacancies by function if provided.
+            - Filters vacancies by required skills if provided.
+            - If an employee ID is provided, retrieves their latitude and longitude.
+            - If a maximum distance is provided, filters vacancies within that radius.
+            - Sorts vacancies by salary if sorting is requested.
+
+        Returns:
+            QuerySet: A filtered list of Vacancy objects.
+        """
         queryset = Vacancy.objects.all()
 
         # Get parameters from request
@@ -179,6 +383,15 @@ class VacancyFilterView(generics.ListAPIView):
         """
         Calculate the great-circle distance between two points
         on the Earth using the Haversine formula.
+
+        Parameters:
+            - lat1 (float): Latitude of the first point.
+            - lon1 (float): Longitude of the first point.
+            - lat2 (float): Latitude of the second point.
+            - lon2 (float): Longitude of the second point.
+
+        Returns:
+            float: Distance in kilometers between the two points.
         """
         # Convert decimal degrees to radians
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
@@ -193,10 +406,49 @@ class VacancyFilterView(generics.ListAPIView):
 
 
 class ApplyForJobView(generics.CreateAPIView):
+    """
+    API view for applying for a job vacancy.
+
+    This view allows an authenticated employee to apply for a job vacancy. If the application is 
+    successful, a new chatroom will be created between the employee and employer.
+
+    Authentication:
+        - JWT authentication is required.
+    
+    Permission:
+        - Only authenticated users can apply for a job.
+    
+    Methods:
+        - post: Allows an authenticated employee to apply for a job vacancy.
+    """
+
     permission_classes = [IsAuthenticated]
     serializer_class = ApplySerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Handles the application for a job vacancy.
+
+        This method retrieves the vacancy based on the vacancy_id passed in the URL, validates the 
+        application data, and creates an application. Additionally, it creates a chatroom for communication 
+        between the employee and employer.
+
+        Steps:
+            1. Retrieve the vacancy based on the vacancy_id from the URL.
+            2. If the vacancy exists, prepare application data (employee and vacancy).
+            3. Validate the application data.
+            4. If valid, save the application and create a new chatroom.
+            5. Return the application data and chatroom data in the response.
+
+        Parameters:
+            - request (Request): The HTTP request object containing the user and application data.
+            - *args (tuple): Additional positional arguments.
+            - **kwargs (dict): Additional keyword arguments, including the vacancy_id from URL.
+
+        Returns:
+            - Response: The response containing the application and chatroom details if successful, 
+                        or error messages if the application is invalid or the vacancy does not exist.
+        """
         vacancy_id = self.kwargs.get('vacancy_id')
         try:
             vacancy = Vacancy.objects.get(id=vacancy_id)

@@ -124,9 +124,33 @@ class Employer(models.Model):
         return str(user)
 
 class Admin(models.Model):
+
+    """ Represents the admin's profile with their full-name.
+
+    Attributes:
+        full_name (str): The full name of the admin.
+
+    Methods:
+        __str__(self): Returns the string representation of the admin's associated user if exists.
+
+    """
+
     full_name = models.CharField(max_length=100)
 
     def __str__(self):
+
+        """
+        Returns the string representation of the admin by looking up the associated user.
+
+        If no associated user is found, it returns "Not Found".
+
+        Args:
+        self (Admin): Instance of the Admin model.
+
+        Returns:
+        str: The user's name if found, otherwise "Not Found".
+        """
+
         try:
             user = CustomUser.objects.get(admin_profile=self)
         except CustomUser.DoesNotExist:

@@ -97,6 +97,23 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         }
 
 class UserSerializer(serializers.ModelSerializer):
+
+    """
+    Serializer for handling user data in the system. This serializer is responsible
+    for serializing and deserializing `CustomUser` instances, including related profiles 
+    and galleries.
+
+    Attributes:
+        employer_profile (EmployerSerializer): Nested serializer for the employer profile.
+        employee_profile (EmployeeSerializer): Nested serializer for the employee profile.
+        admin_profile (AdminSerializer): Nested serializer for the admin profile.
+        user_gallery (UserGallerySerializer): Nested serializer for the user's gallery.
+
+    Methods:
+        create(validated_data): Creates a new `CustomUser` instance and sets the password.
+        update(instance, validated_data): Updates an existing `CustomUser` instance, handling password updates.
+    """
+
     employer_profile = EmployerSerializer(read_only=True)
     employee_profile = EmployeeSerializer(read_only=True)
     admin_profile = AdminSerializer(read_only=True)
@@ -131,12 +148,36 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+
+        """
+        Creates a new `CustomUser` instance and sets the password.
+
+        Args:
+            validated_data (dict): The validated data to create a user.
+
+        Returns:
+            CustomUser: The newly created `CustomUser` instance.
+        """
+         
         user = CustomUser(**validated_data)
         user.set_password(validated_data["password"])
         user.save()
         return user
 
     def update(self, instance, validated_data):
+
+        """
+        Updates an existing `CustomUser` instance with the validated data.
+        Handles password separately if it's provided.
+
+        Args:
+            instance (CustomUser): The existing `CustomUser` instance to update.
+            validated_data (dict): The validated data to update the user.
+
+        Returns:
+            CustomUser: The updated `CustomUser` instance.
+        """
+
         # Handle password separately if it's provided
         if "password" in validated_data:
             password = validated_data.pop("password")

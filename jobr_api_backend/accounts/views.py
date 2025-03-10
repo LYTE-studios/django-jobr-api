@@ -596,10 +596,35 @@ class EmployeeStatisticsView(APIView):
 
 
 class AISuggestionsView(generics.ListAPIView):
+
+    """
+    A view that returns a list of users with the role "employee". 
+
+    This view is used to get suggestions based on the employee role in the system.
+
+    Attributes:
+        serializer_class (UserSerializer): The serializer used to serialize the employee data.
+        permission_classes (list): The list of permission classes to define access control.
+            - AllowAny: This view is accessible by any user, without authentication.
+
+    Methods:
+        get_queryset(self): Filters and retrieves the list of users with the role "employee".
+    """
+
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+
+        """
+        Retrieves the list of users who have the role 'employee'.
+
+        This method is responsible for filtering users by role in the database.
+
+        Returns:
+            queryset: A QuerySet of users with the role "employee".
+        """
+        
         return CustomUser.objects.filter(role="employee")
 
 

@@ -3,26 +3,77 @@ from django.conf import settings
 
 
 class Location(models.Model):
+    """
+    Represents a location in the system with an associated weight.
+    
+    Attributes:
+        location (CharField): A string field that stores the name of the location. The maximum length is 255 characters.
+        weight (IntegerField): An optional field that stores the weight of the location. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Location in the format: "Location at weight".
+    """
     location = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the Location in the format:
+        "Location at weight".
+        
+        Returns:
+            str: A human-readable string that represents the Location instance.
+        """
         return f"{self.location} at {self.weight}"
 
 
 class ContractType(models.Model):
+    """
+    Represents the type of contract with an associated weight.
+    
+    Attributes:
+        contract_type (CharField): A string field that stores the type of contract. The maximum length is 255 characters.
+        weight (IntegerField): An optional field that stores the weight of the contract type. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the ContractType in the format: "ContractType at weight".
+    """
     contract_type = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the ContractType in the format:
+        "ContractType at weight".
+        
+        Returns:
+            str: A human-readable string that represents the ContractType instance.
+        """
         return f"{self.contract_type} at {self.weight}"
 
 
 class Function(models.Model):
+    """
+    Represents a job function with an associated weight.
+    
+    Attributes:
+        function (CharField): A string field that stores the job function. The maximum length is 255 characters.
+        weight (IntegerField): An optional field that stores the weight of the function. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Function in the format: "Function at weight".
+    """
     function = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
+        """
+        Returns a string representation of the Function in the format:
+        "Function at weight".
+        
+        Returns:
+            str: A human-readable string that represents the Function instance.
+        """
         return f"{self.function} at {self.weight}"
 
 

@@ -195,6 +195,33 @@ class UserLoginView(generics.GenericAPIView):
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+
+    """
+    View for handling user details.
+
+    This view handles retrieving, updating, and deleting user information.
+    It allows authenticated users to access their own details and make changes to their profile.
+
+    Attributes:
+        authentication_classes (list): A list of authentication classes that define how the user is authenticated. In this case, JWT authentication.
+        permission_classes (list): A list of permission classes to enforce access control. In this case, only authenticated users can access this view.
+        queryset (QuerySet): A queryset of `CustomUser` objects that will be used to retrieve the user details.
+        serializer_class (LoginSerializer): The serializer used to validate and authenticate the user's login credentials.
+
+    Methods:
+        get(self, request, *args, **kwargs): Handles GET requests to retrieve the user's details.
+        put(self, request, *args, **kwargs): Handles PUT requests to update the user's details.
+        delete(self, request, *args, **kwargs): Handles DELETE requests to delete the user's details.
+
+    Responses:
+        - 200 OK: Successfully retrieved or updated the user's details.
+        - 204 No Content: Successfully deleted the user's profile.
+        - 401 Unauthorized: If the user is not authenticated.
+        - 403 Forbidden: If the user does not have permission to access or modify the requested resource.
+        - 404 Not Found: If the user does not exist or cannot be found.
+    """
+    
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -202,12 +229,45 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
 
     def get(self, request, *args, **kwargs):
+
+        """
+        Handle GET request to retrieve user details.
+
+        Args:
+            request (Request): The HTTP request object.
+        
+        Returns:
+            Response: The HTTP response with user details.
+        """
+
         return self.retrieve(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
+
+        """
+        Handle PUT request to retrieve user details.
+
+        Args:
+            request (Request): The HTTP request object with user data to update.
+        
+        Returns:
+            Response: The HTTP response indicating the success or failure of the update.
+        """
+
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
+               
+        """
+        Handle DELETE request to delete user details.
+
+        Args:
+            request (Request): The HTTP request object with user data to delete.
+        
+        Returns:
+            Response: The HTTP response indicating the success or failure of the deletion.
+        """
+
         return self.destroy(request, *args, **kwargs)
 
 class GoogleSignInView(APIView):

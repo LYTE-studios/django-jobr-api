@@ -66,3 +66,40 @@ class ChatRoomModelTest(TestCase):
         #Assert employer has a message unread
         self.assertEqual(unread_messages_employer.count(), 1)
         self.assertEqual(unread_messages_employer.first(), self.message2)
+
+class MessageModelTest(TestCase):
+    def setUp(self):
+        """Set up test environment by creating users and chat rooms."""
+        #Get custom user model
+        User = get_user_model()
+
+        # Create users with different roles
+        self.employee = User.objects.create_user(
+            username='employee_user',
+            email='employee@example.com',
+            password='password123',
+            role='employee'
+        )
+        self.employer = User.objects.create_user(
+            username='employer_user',
+            email='employer@example.com',
+            password='password123',
+            role='employer'
+        )
+        self.admin = User.objects.create_user(
+            username='admin_user',
+            email='admin@example.com',
+            password='password123',
+            role='admin'
+        )
+        #Create a chat room and add users
+        self.chatroom = ChatRoom.objects.create()
+        self.chatroom.users.add(self.employee, self.employer)
+
+        #Create a message in the chatroom
+        self.message = Message.objects.create(chatroom=self.chatroom, content="Hello", sender=self.employer)
+
+    def test_message_str_method(self):
+        """Test the string representation of the Message model"""
+        expected_str=f"Message {self.message.id} from {str(self.message.sender)}"
+        self.assertEqual(str(self.message), expected_str)

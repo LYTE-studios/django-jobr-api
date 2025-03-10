@@ -1,1 +1,1 @@
-from .models_tests import ChatRoomModelTest
+from .models_tests import ChatRoomModelTest, MessageModelTest

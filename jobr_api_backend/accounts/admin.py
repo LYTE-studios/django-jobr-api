@@ -14,7 +14,9 @@ admin.site.unregister(OutstandingToken)
 ## END REMOVE
 
 # Register your models here.
-from .models import Review, CustomUser
+from .models import Review, CustomUser, Employee, Employer
 
 admin.site.register(CustomUser)
 admin.site.register(Review)
+admin.site.register(Employer)   
+admin.site.register(Employee)

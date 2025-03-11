@@ -56,6 +56,8 @@ class ExtraSerializer(serializers.ModelSerializer):
 
 
 class VacancyLanguageSerializer(serializers.ModelSerializer):
+    language = LanguageSerializer()
+
     class Meta:
         model = VacancyLanguage
         fields = ["language", "mastery"]
@@ -120,6 +122,14 @@ class VacancySerializer(serializers.ModelSerializer):
         week_days_data = validated_data.pop("week_day")
         skills_data = validated_data.pop("skill")
         contract_types_data = validated_data.pop("contract_type")
+        location_data = validated_data.pop("location")
+
+        if location_data:
+            if location_data.get("id"):
+                location = Location.objects.get(id=location_data.get("id"))
+            else:
+                location = Location.objects.create(**location_data)
+            validated_data["location"] = location
 
         vacancy = Vacancy.objects.create(**validated_data)
 

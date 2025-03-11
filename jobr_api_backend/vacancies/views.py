@@ -94,20 +94,11 @@ class ContractsTypesView(generics.GenericAPIView):
 
 class VacancyViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
-
-    queryset = Vacancy.objects.all()
     serializer_class = VacancySerializer
 
-    # def create(self, request, *args, **kwargs):
-    #     data = request.data.copy()
-    #     serializer = self.get_serializer(data=data)
-    #
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    #
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    def get_queryset(self):
+        # This ensures that only vacancies created by the logged-in user are returned
+        return Vacancy.objects.filter(employer_id=self.request.user.id)
 
 class ApplyViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]

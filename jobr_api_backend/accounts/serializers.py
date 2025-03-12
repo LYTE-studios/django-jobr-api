@@ -137,18 +137,21 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        # Handle password separately if it's provided
-        if "password" in validated_data:
-            password = validated_data.pop("password")
-            instance.set_password(password)
+        request = self.context.get('request')
 
-        # Update other fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-        return instance
-
+        employer_profile = request.data.get("employer_profile", None)
+        if employer_profile:
+            # Check if the instance already has an employer profile
+            if hasattr(instance, "employer_profile") and instance.employer_profile:
+                # Update existing employer profile
+                for attr, value in employer_profile.items():
+                    setattr(instance.employer_profile, attr, value)
+                instance.employer_profile.save()
+                return instance
+            else:
+                # Create a new employer profile if none exists
+                Employer.objects.create(user=instance, **employer_profile)
+                return instance
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()

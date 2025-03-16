@@ -38,7 +38,6 @@ class MessageSerializerTest(APITestCase):
         #Serialize the message
         response = self.client.get("/send-message")
         serializer = MessageSerializer(self.message, context={"request": response.wsgi_request})
-        print(self.client.request)
 
         data = serializer.data
         #Check that the necessary fields are included in the serialized data

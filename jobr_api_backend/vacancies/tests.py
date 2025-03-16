@@ -1,141 +1,134 @@
-from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APITestCase, APIClient
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from rest_framework.test import APITestCase
 from rest_framework import status
-from datetime import date
-from decimal import Decimal
-from accounts.models import Employer, Employee, CustomUser
-from .models import ContractType, Function, Question, Skill, Language
-from vacancies.models import Vacancy, ApplyVacancy
-from vacancies.serializers import VacancySerializer, ApplySerializer
+from datetime import date, timedelta
 
+from .models import (
+    Vacancy, 
+    ContractType, 
+    Function, 
+    Location, 
+    Skill, 
+    Language, 
+    VacancyLanguage, 
+    VacancyDescription, 
+    VacancyQuestion, 
+    Weekday
+)
+from accounts.models import CustomUser, Employer, ProfileOption
+
+User = get_user_model()
 
 class VacancyTests(APITestCase):
     def setUp(self):
-        # Create basic models first
+        # Create a test employer
+        self.user = CustomUser.objects.create_user(
+            username="testemployer", 
+            email="employer@example.com", 
+            password="testpass",
+            role=ProfileOption.EMPLOYER
+        )
+        
+        # Refresh the user to ensure the employer_profile is created
+        self.user.refresh_from_db()
+
+        # Create supporting models
         self.contract_type = ContractType.objects.create(contract_type="Full-time")
         self.function = Function.objects.create(function="Software Development")
-        self.skill = Skill.objects.create(skill="Python", category="Programming")
+        self.location = Location.objects.create(location="New York")
+        self.skill = Skill.objects.create(skill="Python", category="hard")
         self.language = Language.objects.create(language="English")
-        self.question = Question.objects.create(question="What is your experience?")
+        self.weekday = Weekday.objects.create(name="Monday")
 
-        # Then create user and related models
-        self.user = CustomUser.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
-        )
+        # Authenticate the employer
+        self.client.force_authenticate(user=self.user)
 
-        self.employer = Employer.objects.create(
-            user=self.user, company_name="Test Company", coordinates="40.7128,-74.0060"
-        )
+    def test_create_vacancy_full_details(self):
+        """
+        Test creating a vacancy with all possible details
+        """
+        vacancy_data = {
+            "expected_mastery": "Intermediate",
+            "contract_type": [{"id": self.contract_type.id}],
+            "location": {"id": self.location.id},
+            "function": {"id": self.function.id},
+            "week_day": [{"name": self.weekday.name}],
+            "job_date": str(date.today() + timedelta(days=30)),
+            "salary": "50000.00",
+            "skill": [{"id": self.skill.id}],
+            "languages": [
+                {
+                    "language": self.language.id,
+                    "mastery": "Intermediate"
+                }
+            ],
+            "descriptions": [],
+            "questions": [
+                {"question": "Are you available for full-time work?"}
+            ]
+        }
 
-        # Create employee user
-        self.employee_user = CustomUser.objects.create_user(
-            username="employeeuser",
-            email="employee@example.com",
-            password="testpass123",
-        )
+        url = reverse('vacancy-list')
+        response = self.client.post(url, vacancy_data, format='json')
 
-        self.employee = Employee.objects.create(
-            user=self.employee_user,
-            latitude=40.7128,
-            longitude=-74.0060,
-            date_of_birth=date(1990, 1, 1),
-        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify vacancy was created with correct details
+        vacancy = Vacancy.objects.get(id=response.data['id'])
+        self.assertEqual(vacancy.employer, self.user)
+        self.assertEqual(vacancy.expected_mastery, "Intermediate")
+        self.assertEqual(vacancy.location, self.location)
+        self.assertEqual(vacancy.function, self.function)
+        self.assertTrue(self.contract_type in vacancy.contract_type.all())
+        self.assertTrue(self.skill in vacancy.skill.all())
 
-        # Create vacancy last
-        self.vacancy = Vacancy.objects.create(
-            employer=self.employer,
-            title="Test Position",
-            contract_type=self.contract_type,
-            function=self.function,
-            location="distance",
-            week_day="Monday-Friday",
-            salary=Decimal("50000.00"),
-            description="Test description",
-            latitude=40.7128,
-            longitude=-74.0060,
-        )
-
-        # Add many-to-many relationships after creation
-        self.vacancy.skill.set([self.skill])
-        self.vacancy.language.set([self.language])
-        self.vacancy.question.set([self.question])
-
-        # Set up authentication
-        self.client = APIClient()
-        response = self.client.post(
-            reverse("token_obtain_pair"),
-            {"username": "testuser", "password": "testpass123"},
-        )
-        self.token = response.data.get("access")
-        if self.token is None:
-            self.fail("Access token not found in response data")
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
-
-
-class VacancyModelTests(TestCase):
-    def setUp(self):
-
-        self.employer = Employer.objects.create(
-            company_name="Test Company",
-            coordinates="40.7128,-74.0060",  # Added coordinates
-        )
-        self.user = CustomUser.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123",
-            employer_profile=self.employer
-        )
-        self.contract_type1 = ContractType.objects.create(contract_type='Full-time')
-        self.contract_type2 = ContractType.objects.create(contract_type='Part-time')
-        self.function = Function.objects.create(function="Software Development")
-
-    def test_vacancy_creation(self):
-        """Test the creation of a Vacancy instance"""
-        vacancy = Vacancy.objects.create(
+    def test_update_vacancy(self):
+        """
+        Test updating an existing vacancy
+        """
+        # First create a vacancy
+        initial_vacancy = Vacancy.objects.create(
             employer=self.user,
-            title="Test Position",
-            function=self.function,
-            location="distance",
-            week_day="Monday-Friday",
-            salary=Decimal("50000.00"),
-            description="Test description",
-            latitude=40.7128,
-            longitude=-74.0060,
+            expected_mastery="Beginner",
+            location=self.location,
+            function=self.function
         )
-        vacancy.contract_type.add(self.contract_type1, self.contract_type2)
-        self.assertEqual(vacancy.contract_type.count(), 2)
-        self.assertIn(self.contract_type1, vacancy.contract_type.all())
-        self.assertIn(self.contract_type2, vacancy.contract_type.all())
+        initial_vacancy.contract_type.add(self.contract_type)
+        initial_vacancy.skill.add(self.skill)
 
+        # Prepare update data
+        update_data = {
+            "expected_mastery": "Advanced",
+            "contract_type": [{"id": self.contract_type.id}],
+            "location": {"id": self.location.id},
+            "function": {"id": self.function.id},
+            "salary": "75000.00",
+            "skill": [{"id": self.skill.id}]
+        }
 
-class SerializerTests(TestCase):
-    def setUp(self):
-        self.language = Language.objects.create(language="English")
+        url = reverse('vacancy-detail', kwargs={'pk': initial_vacancy.id})
+        response = self.client.put(url, update_data, format='json')
 
-        self.employer = Employer.objects.create(
-            company_name="Test Company",
-            coordinates="40.7128,-74.0060",  # Added coordinates
-        )
-        self.user = CustomUser.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123",
-            employer_profile=self.employer
-        )
-        self.contract_type = ContractType.objects.create(contract_type="Full-time")
-        self.function = Function.objects.create(function="Software Development")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_vacancy_serializer(self):
-        """Test VacancySerializer"""
-        vacancy = Vacancy.objects.create(
-            employer=self.user,
-            title="Test Position",
-            contract_type=self.contract_type,
-            function=self.function,
-            location="distance",
-            week_day="Monday-Friday",
-            salary=Decimal("50000.00"),
-            description="Test description",
-            latitude=40.7128,
-            longitude=-74.0060,
-        )
-        serializer = VacancySerializer(vacancy)
-        self.assertEqual(serializer.data["title"], "Test Position")
-        self.assertEqual(serializer.data["employer"], self.user.id)
+        # Refresh vacancy from database
+        updated_vacancy = Vacancy.objects.get(id=initial_vacancy.id)
+        self.assertEqual(updated_vacancy.expected_mastery, "Advanced")
+        self.assertEqual(float(updated_vacancy.salary), 75000.00)
+        self.assertTrue(self.contract_type in updated_vacancy.contract_type.all())
+
+    def test_vacancy_validation(self):
+        """
+        Test vacancy creation with invalid data
+        """
+        invalid_vacancy_data = {
+            "expected_mastery": "Invalid Mastery",  # Invalid mastery level
+            "contract_type": [{"id": 9999}],  # Non-existent contract type
+        }
+
+        url = reverse('vacancy-list')
+        response = self.client.post(url, invalid_vacancy_data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

@@ -1,4 +1,3 @@
-# accounts/serializers.py
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from .models import (
@@ -8,8 +7,9 @@ from .models import (
     Admin,
     Review,
     UserGallery,
+    ProfileOption
 )
-
+from datetime import datetime
 
 class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,7 +23,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
         ]
-
 
 class EmployerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,7 +39,6 @@ class EmployerSerializer(serializers.ModelSerializer):
             "biography",
         ]
 
-
 class AdminSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), many=False
@@ -50,12 +48,10 @@ class AdminSerializer(serializers.ModelSerializer):
         model = Admin
         fields = ["full_name", "user"]
 
-
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = UserGallery
         fields = ["id", "gallery"]
-
 
 class UserGalleryUpdateSerializer(serializers.Serializer):
     gallery = serializers.ListField(
@@ -74,11 +70,10 @@ class UserGalleryUpdateSerializer(serializers.Serializer):
         if not gallery:
             raise serializers.ValidationError("At least one image is required.")
         return data
-    
+
 class UserAuthenticationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-
         fields = [
             "username",
             "email",
@@ -90,10 +85,10 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
             "password": {
                 "write_only": True,
                 "required": True,
-            },  # Make password optional for updates
-            "email": {"required": True},  # Make email optional for updates
-            "username": {"required": True},  # Make username optional for updates
-            "role": {"required": True},  # Make role optional for updates
+            },
+            "email": {"required": True},
+            "username": {"required": True},
+            "role": {"required": True},
         }
 
 class UserSerializer(serializers.ModelSerializer):
@@ -104,7 +99,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-
         fields = [
             "id",
             "username",
@@ -124,10 +118,10 @@ class UserSerializer(serializers.ModelSerializer):
             "password": {
                 "write_only": True,
                 "required": False,
-            },  # Make password optional for updates
-            "email": {"required": False},  # Make email optional for updates
-            "username": {"required": False},  # Make username optional for updates
-            "role": {"required": False},  # Make role optional for updates
+            },
+            "email": {"required": False},
+            "username": {"required": False},
+            "role": {"required": False},
         }
 
     def create(self, validated_data):
@@ -138,39 +132,59 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         request = self.context.get('request')
+        employee_profile_data = request.data.get("employee_profile", {})
+        employer_profile_data = request.data.get("employer_profile", {})
 
-        # Handle employer profile update
-        employer_profile = request.data.get("employer_profile", None)
-        if employer_profile:
-            # Check if the instance already has an employer profile
-            if hasattr(instance, "employer_profile") and instance.employer_profile:
-                # Update existing employer profile
-                for attr, value in employer_profile.items():
-                    setattr(instance.employer_profile, attr, value)
+        # Update employee profile
+        if employee_profile_data:
+            try:
+                # Ensure employee profile exists
+                if not instance.employee_profile:
+                    try:
+                        instance.employee_profile = Employee.objects.create()
+                    except Exception as create_error:
+                        print(f"Error creating employee profile: {create_error}")
+                        raise serializers.ValidationError("Could not create employee profile")
+                
+                EmployeeSerializer().update(instance.employee_profile, employee_profile_data)
+
+            except Exception as employee_update_error:
+                print(f"Error updating employee profile: {employee_update_error}")
+                raise serializers.ValidationError("Could not update employee profile")
+
+        # Update employer profile
+        if employer_profile_data:
+            try:
+                instance.role = ProfileOption.EMPLOYER
+                
+                # Ensure employer profile exists
+                if not instance.employer_profile:
+                    try:
+                        instance.employer_profile = Employer.objects.create()
+                    except Exception as create_error:
+                        print(f"Error creating employer profile: {create_error}")
+                        raise serializers.ValidationError("Could not create employer profile")
+                
+                            
+                profile = EmployerSerializer().update(instance.employer_profile, employer_profile_data)
+
+                # Update user's employee profile
+                instance.employer_profile = profile
+
                 instance.employer_profile.save()
-            else:
-                # Create a new employer profile if none exists
-                Employer.objects.create(user=instance, **employer_profile)
 
-        # Handle employee profile update
-        employee_profile = request.data.get("employee_profile", None)
-        if employee_profile:
-            # Check if the instance already has an employee profile
-            if hasattr(instance, "employee_profile") and instance.employee_profile:
-                # Update existing employee profile
-                for attr, value in employee_profile.items():
-                    setattr(instance.employee_profile, attr, value)
-                instance.employee_profile.save()
-            else:
-                # Create a new employee profile if none exists
-                Employee.objects.create(user=instance, **employee_profile)
+            except Exception as employer_update_error:
+                print(f"Error updating employer profile: {employer_update_error}")
+                raise serializers.ValidationError("Could not update employer profile")
 
-        # Update base user fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        return instance
+        # Save the user to ensure profile relationships are updated
+        try:
+            instance.save()
+        except Exception as user_save_error:
+            print(f"Error saving user: {user_save_error}")
+            raise serializers.ValidationError("Could not save user")
+        
+        return super().update(instance, validated_data)
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -192,7 +206,6 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Invalid credentials.")
         else:
             raise serializers.ValidationError('Must include "username" and "password".')
-
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
@@ -218,7 +231,6 @@ class ReviewSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Rating must be between 1 and 5.")
 
         return attrs
-
 
 class EmployeeStatisticsSerializer(serializers.ModelSerializer):
     vacancies_count = serializers.SerializerMethodField()

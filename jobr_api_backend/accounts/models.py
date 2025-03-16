@@ -255,27 +255,6 @@ class CustomUser(AbstractUser):
         
         return f'{self.role} {self.email}'
 
-    def save(self, *args, **kwargs):
-
-        """
-        Overridden save method to automatically create related profiles for the user based on their role.
-        
-        Args:
-        self (CustomUser): Instance of the CustomUser model.
-        *args, **kwargs: Arguments passed to the parent save method.
-
-        Creates an employee, employer, or admin profile based on the user's role if it does not already exist.
-        """
-
-        if self.role == ProfileOption.EMPLOYEE:
-            self.employee_profile = Employee.objects.create()
-        elif self.role == ProfileOption.EMPLOYER:
-            self.employer_profile = Employer.objects.create()
-        elif self.role == ProfileOption.ADMIN:
-            self.admin_profile = Admin.objects.create()
-
-        super().save(*args, **kwargs)
-
 class UserGallery(models.Model):
 
     """

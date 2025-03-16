@@ -18,29 +18,29 @@ class CommonModelsTestCase(TestCase):
         self.extra = Extra.objects.create(extra="Additional Information")
 
     def test_contract_type_creation(self):
-        self.assertEqual(str(self.contract_type), "Full-time")
+        self.assertEqual(str(self.contract_type), "Full-time at None")
         self.assertEqual(self.contract_type.contract_type, "Full-time")
 
     def test_function_creation(self):
-        self.assertEqual(str(self.function), "Software Developer")
+        self.assertEqual(str(self.function), "Software Developer at None")
         self.assertEqual(self.function.function, "Software Developer")
 
     def test_question_creation(self):
-        self.assertEqual(str(self.question), "Tell me about your experience")
+        self.assertEqual(str(self.question), "Tell me about your experience at None")
         self.assertEqual(self.question.question, "Tell me about your experience")
 
     def test_language_creation(self):
-        self.assertEqual(str(self.language), "English")
+        self.assertEqual(str(self.language), "English at None")
         self.assertEqual(self.language.language, "English")
 
     def test_skill_creation(self):
         # Test hard skill
-        self.assertEqual(str(self.skill_hard), "Python")
+        self.assertEqual(str(self.skill_hard), "Python - hard at None")
         self.assertEqual(self.skill_hard.skill, "Python")
         self.assertEqual(self.skill_hard.category, "hard")
 
         # Test soft skill
-        self.assertEqual(str(self.skill_soft), "Communication")
+        self.assertEqual(str(self.skill_soft), "Communication - soft at None")
         self.assertEqual(self.skill_soft.skill, "Communication")
         self.assertEqual(self.skill_soft.category, "soft")
 

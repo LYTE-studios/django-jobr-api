@@ -30,9 +30,14 @@ urlpatterns = [
     path("contracts", ContractsTypesView.as_view(), name="contracts"),
     path("questions", QuestionsView.as_view(), name="questions"),
     path("filter", VacancyFilterView.as_view(), name="vacancy-filter"),
+        path(
+        "vacancies/<int:pk>",
+        VacancyViewSet.as_view({"get": "retrieve", "put": "update"}),
+        name="vacancy-detail",
+    ),
     path(
         "vacancies",
         VacancyViewSet.as_view({"get": "list", "post": "create"}),
-        name="vacancies",
+        name="vacancy-list",
     ),
 ]

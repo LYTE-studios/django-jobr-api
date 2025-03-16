@@ -4,12 +4,36 @@ from vacancies.models import Language, ContractType, Function, Skill
 
 
 class ProfileOption(models.TextChoices):
+
+    """
+    An enumeration of profile types for users in the application.
+
+    This class defines the available profile options for a user, which include:
+    - Employee
+    - Employer
+    - Admin
+
+    Each profile type has a database value.
+
+    Attributes:
+        EMPLOYEE (str): Represents an employee profile type with value 'employee'.
+        EMPLOYER (str): Represents an employer profile type with value 'employer'.
+        ADMIN (str): Represents an admin profile type with value 'admin'.
+    """
+    
     EMPLOYEE = "employee", "Employee"
     EMPLOYER = "employer", "Employer"
     ADMIN = "admin", "Admin"
 
 
 class Employee(models.Model):
+
+    """ Represents an employee's profile with personal, contact, and work-related information.
+
+    Methods:
+        __str__(self): Returns the string representation of the employee's associated user if exists.
+
+    """
     date_of_birth = models.DateField(null=True)
     gender = models.CharField(
         max_length=10,
@@ -39,6 +63,19 @@ class Employee(models.Model):
     skill = models.ManyToManyField(Skill)
 
     def __str__(self):
+
+        """
+        Returns the string representation of the employee by looking up the associated user.
+
+        If no associated user is found, it returns "Not Found".
+
+        Args:
+        self (Employee): Instance of the Employee model.
+
+        Returns:
+        str: The user's name if found, otherwise "Not Found".
+        """
+
         try:
             user = CustomUser.objects.get(employee_profile=self)
         except CustomUser.DoesNotExist:
@@ -47,6 +84,14 @@ class Employee(models.Model):
         return str(user)
 
 class Employer(models.Model):
+
+    """ Represents an employer's profile with personal, contact, and work-related information.
+
+    Methods:
+        __str__(self): Returns the string representation of the employer's associated user if exists.
+
+    """
+
     vat_number = models.CharField(max_length=30, null=True)
     company_name = models.CharField(max_length=100, null=True)
     street_name = models.CharField(max_length=100, null=True)
@@ -58,6 +103,19 @@ class Employer(models.Model):
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
+
+        """
+        Returns the string representation of the employer by looking up the associated user.
+
+        If no associated user is found, it returns "Not Found".
+
+        Args:
+        self (Employer): Instance of the Employer model.
+
+        Returns:
+        str: The user's name if found, otherwise "Not Found".
+        """
+         
         try:
             user = CustomUser.objects.get(employer_profile=self)
         except CustomUser.DoesNotExist:
@@ -66,9 +124,33 @@ class Employer(models.Model):
         return str(user)
 
 class Admin(models.Model):
+
+    """ Represents the admin's profile with their full-name.
+
+    Attributes:
+        full_name (str): The full name of the admin.
+
+    Methods:
+        __str__(self): Returns the string representation of the admin's associated user if exists.
+
+    """
+
     full_name = models.CharField(max_length=100)
 
     def __str__(self):
+
+        """
+        Returns the string representation of the admin by looking up the associated user.
+
+        If no associated user is found, it returns "Not Found".
+
+        Args:
+        self (Admin): Instance of the Admin model.
+
+        Returns:
+        str: The user's name if found, otherwise "Not Found".
+        """
+
         try:
             user = CustomUser.objects.get(admin_profile=self)
         except CustomUser.DoesNotExist:
@@ -78,6 +160,21 @@ class Admin(models.Model):
 
 
 class Review(models.Model):
+
+    """
+    Represents a review given by either an employee, employer, or anonymously.
+
+    Attributes:
+        employee (ForeignKey): A reference to the Employee associated with the review, if applicable.
+        employer (ForeignKey): A reference to the Employer associated with the review, if applicable.
+        anonymous_name (str): The name of the reviewer if the review is anonymous.
+        rating (int): The rating given in the review, typically on a scale of 1 to 5.
+        comment (str): The comment provided in the review.
+        created_at (datetime): The timestamp when the review was created.
+        reviewer_type (str): Indicates the type of reviewer (employee, employer, or anonymous).
+
+    """
+
     REVIEWER_TYPE_CHOICES = [
         ("employee", "Employee"),
         ("employer", "Employer"),
@@ -107,6 +204,23 @@ class Review(models.Model):
 
 
 class CustomUser(AbstractUser):
+
+    """
+    Custom user model extending the AbstractUser class to include additional fields specific to the application's use case.
+
+    Attributes:
+        email (str): The email address of the user, which must be unique.
+        role (str): The role of the user, selected from predefined profile options (employee, employer, or admin).
+        employer_profile (Employer): A one-to-one relationship with the Employer profile, if the user is an employer.
+        employee_profile (Employee): A one-to-one relationship with the Employee profile, if the user is an employee.
+        admin_profile (Admin): A one-to-one relationship with the Admin profile, if the user is an admin.
+        profile_picture (Image): An optional field for the user's profile picture.
+
+    Methods:
+        __str__(self): Returns a string representation of the user, consisting of their role and email.
+        save(self, *args, **kwargs): Overridden save method to automatically create related profiles based on the user's role (employee, employer, or admin).
+    """
+
     email = models.EmailField(unique=True)
 
     role = models.CharField(
@@ -127,9 +241,32 @@ class CustomUser(AbstractUser):
     )
 
     def __str__(self) -> str:
+
+        """
+        Returns a string representatin of the CustomerUser instance.
+
+        Args:
+            self(CustomUser): Instance of CustomUser model.
+
+        Returns:
+            str: A string representation of the user's role and email.
+        """
+
+        
         return f'{self.role} {self.email}'
 
     def save(self, *args, **kwargs):
+
+        """
+        Overridden save method to automatically create related profiles for the user based on their role.
+        
+        Args:
+        self (CustomUser): Instance of the CustomUser model.
+        *args, **kwargs: Arguments passed to the parent save method.
+
+        Creates an employee, employer, or admin profile based on the user's role if it does not already exist.
+        """
+
         if self.role == ProfileOption.EMPLOYEE:
             self.employee_profile = Employee.objects.create()
         elif self.role == ProfileOption.EMPLOYER:
@@ -140,6 +277,16 @@ class CustomUser(AbstractUser):
         super().save(*args, **kwargs)
 
 class UserGallery(models.Model):
+
+    """
+    Represents a gallery for a user, where the user can upload images.
+
+    Attributes:
+        user (CustomUser): A foreign key to the CustomUser model, representing the user who owns the gallery.
+        gallery (Image): The image file uploaded by the user.
+
+    """
+     
     user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="user_gallery"
     )

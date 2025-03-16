@@ -139,6 +139,7 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         request = self.context.get('request')
 
+        # Handle employer profile update
         employer_profile = request.data.get("employer_profile", None)
         if employer_profile:
             # Check if the instance already has an employer profile
@@ -147,11 +148,29 @@ class UserSerializer(serializers.ModelSerializer):
                 for attr, value in employer_profile.items():
                     setattr(instance.employer_profile, attr, value)
                 instance.employer_profile.save()
-                return instance
             else:
                 # Create a new employer profile if none exists
                 Employer.objects.create(user=instance, **employer_profile)
-                return instance
+
+        # Handle employee profile update
+        employee_profile = request.data.get("employee_profile", None)
+        if employee_profile:
+            # Check if the instance already has an employee profile
+            if hasattr(instance, "employee_profile") and instance.employee_profile:
+                # Update existing employee profile
+                for attr, value in employee_profile.items():
+                    setattr(instance.employee_profile, attr, value)
+                instance.employee_profile.save()
+            else:
+                # Create a new employee profile if none exists
+                Employee.objects.create(user=instance, **employee_profile)
+
+        # Update base user fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()

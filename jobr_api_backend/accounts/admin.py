@@ -11,12 +11,39 @@ admin.site.unregister(OutstandingToken)
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    list_display = ('username', 'email', 'role', 'is_active', 'date_joined', 'last_login')
-    list_filter = ('role', 'is_active', 'is_staff', 'date_joined')
+    list_display = ('username', 'email', 'role', 'is_active', 'is_blocked', 'date_joined', 'last_login')
+    list_filter = ('role', 'is_active', 'is_blocked', 'is_staff', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     ordering = ('-date_joined',)
     list_per_page = 25
     date_hierarchy = 'date_joined'
+    actions = ['block_users', 'unblock_users']
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        # Add is_blocked to the permissions fieldset
+        if obj:  # Only show when editing existing user
+            fieldsets[2][1]['fields'] = fieldsets[2][1]['fields'] + ('is_blocked',)
+        return fieldsets
+
+    def block_users(self, request, queryset):
+        queryset.update(is_blocked=True, is_active=False)
+        self.message_user(request, f"{queryset.count()} users were successfully blocked.")
+    block_users.short_description = "Block selected users"
+
+    def unblock_users(self, request, queryset):
+        queryset.update(is_blocked=False, is_active=True)
+        self.message_user(request, f"{queryset.count()} users were successfully unblocked.")
+    unblock_users.short_description = "Unblock selected users"
+
+    def save_model(self, request, obj, form, change):
+        # If user is being blocked, also set is_active to False
+        if 'is_blocked' in form.changed_data:
+            if obj.is_blocked:
+                obj.is_active = False
+            else:
+                obj.is_active = True
+        super().save_model(request, obj, form, change)
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):

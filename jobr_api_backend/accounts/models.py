@@ -199,10 +199,15 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
 
     role = models.CharField(
-        max_length=10, 
-        choices=ProfileOption.choices, 
-        null=True, 
+        max_length=10,
+        choices=ProfileOption.choices,
+        null=True,
         blank=True
+    )
+
+    is_blocked = models.BooleanField(
+        default=False,
+        help_text="Designates whether this user is blocked from accessing the platform."
     )
 
     employer_profile = models.OneToOneField(

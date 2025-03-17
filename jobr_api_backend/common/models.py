@@ -1,45 +1,114 @@
 from django.db import models
-from django.core.exceptions import ValidationError
 
-
-class Extra(models.Model):
+class BaseModel(models.Model):
     """
-    The `Extra` model is used to store additional information in the database. 
-    It consists of a single field that can store a string of up to 255 characters.
-
-    Fields:
-    - `extra`: A `CharField` with a maximum length of 255 characters, storing extra information or items.
-    
-    Methods:
-    - `__str__(self)`: Returns a string representation of the `Extra` instance, which is the value of the `extra` field.
-    - `clean(self)`: Validates that the extra field is not empty or just whitespace.
+    Base model with common fields and documentation.
     """
-    extra = models.CharField(max_length=255)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this record was created"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this record was last updated"
+    )
 
-    def clean(self):
-        """
-        Validates the extra field.
-        
-        Raises:
-            ValidationError: If the extra field is empty or contains only whitespace.
-        """
-        if not self.extra or not self.extra.strip():
-            raise ValidationError("Extra field cannot be empty or contain only whitespace.")
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
 
-    def save(self, *args, **kwargs):
+    @classmethod
+    def get_field_help_texts(cls):
         """
-        Overrides the save method to run full validation before saving.
+        Get help texts for model fields.
         """
-        self.full_clean()
-        super().save(*args, **kwargs)
+        return {
+            field.name: field.help_text
+            for field in cls._meta.fields
+            if hasattr(field, 'help_text') and field.help_text
+        }
+
+    @classmethod
+    def get_required_fields(cls):
+        """
+        Get list of required fields.
+        """
+        return [
+            field.name
+            for field in cls._meta.fields
+            if not field.blank and not field.auto_created
+        ]
+
+    @classmethod
+    def get_field_choices(cls):
+        """
+        Get choices for fields that have them.
+        """
+        return {
+            field.name: field.choices
+            for field in cls._meta.fields
+            if hasattr(field, 'choices') and field.choices
+        }
+
+    @classmethod
+    def get_field_validators(cls):
+        """
+        Get validators for fields that have them.
+        """
+        validators = {}
+        for field in cls._meta.fields:
+            if hasattr(field, 'validators') and field.validators:
+                validators[field.name] = [
+                    {
+                        'name': validator.__class__.__name__,
+                        'description': str(validator)
+                    }
+                    for validator in field.validators
+                ]
+        return validators
+
+    @classmethod
+    def get_model_documentation(cls):
+        """
+        Get comprehensive model documentation.
+        """
+        return {
+            'name': cls.__name__,
+            'description': cls.__doc__,
+            'help_texts': cls.get_field_help_texts(),
+            'required_fields': cls.get_required_fields(),
+            'choices': cls.get_field_choices(),
+            'validators': cls.get_field_validators(),
+            'ordering': cls._meta.ordering,
+            'abstract': cls._meta.abstract,
+            'app_label': cls._meta.app_label,
+            'model_name': cls._meta.model_name,
+        }
 
     def __str__(self):
         """
-        Returns a string representation of the `Extra` instance.
-        
-        This method returns the value of the `extra` field.
-
-        Returns:
-            str: The value of the `extra` field.
+        Default string representation.
         """
-        return self.extra
+        return f"{self.__class__.__name__} {self.id}"
+
+class BaseModelWithMetadata(BaseModel):
+    """
+    Base model with metadata fields.
+    """
+    metadata = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Additional metadata stored as JSON"
+    )
+    notes = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Additional notes or comments"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this record is active"
+    )
+
+    class Meta:
+        abstract = True

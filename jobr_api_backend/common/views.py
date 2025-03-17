@@ -1,197 +1,133 @@
-from django.shortcuts import render
-from django.db.models import Q
-from accounts.models import Employee
-from vacancies.models import Vacancy
-from django.http import JsonResponse
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 
-
-# Create your views here.
-def get_relevant_vacancies(employee):
-
+class SwaggerViewMixin:
     """
-    Retrieves relevant vacancies for a given employee based on matching contract type,
-    function, languages, and skills.
-
-    This function filters the `Vacancy` model to return vacancies that match the 
-    employee's contract type, function, and languages. It also filters vacancies based on
-    the skills that the employee possesses. The results are distinct to avoid duplicates.
-
-    Args:
-        employee (Employee): An instance of the Employee model, representing the employee 
-                              whose relevant vacancies are to be retrieved.
-
-    Returns:
-        QuerySet: A queryset of `Vacancy` objects that are relevant to the given employee.
+    Mixin to add Swagger documentation features to views.
     """
-    return Vacancy.objects.filter(
-        Q(contract_type=employee.contract_type)
-        & Q(function=employee.function)
-        & Q(language__in=employee.language.all())
-        & Q(skill__in=employee.skill.all())
-    ).distinct()
-
-
-def get_relevant_employees(vacancy):
-
-    """
-    Retrieves relevant employees for a given vacancy based on matching contract type,
-    function, languages, and skills.
-
-    This function filters the `Employee` model to return employees who match the 
-    vacancy's contract type, function, and languages. It also filters employees based on
-    the skills required by the vacancy. The results are distinct to avoid duplicates.
-
-    Args:
-        vacancy (Vacancy): An instance of the Vacancy model, representing the vacancy 
-                           for which relevant employees are to be retrieved.
-
-    Returns:
-        QuerySet: A queryset of `Employee` objects that are relevant to the given vacancy.
-    """
-    return Employee.objects.filter(
-        Q(contract_type=vacancy.contract_type)
-        & Q(function=vacancy.function)
-        & Q(language__in=vacancy.language.all())
-        & Q(skill__in=vacancy.skill.all())
-    ).distinct()
-
-
-def generate_matchmaking_prompt(entity_type, data, preferences):
-
-    """
-     Generates a matchmaking prompt for either an employee or an employer based on provided data.
-
-    This function generates a detailed prompt that can be used by an assistant (such as an AI) 
-    to rate job vacancies for an employee or rate potential employees for an employer. The prompt 
-    includes the relevant profile information for the entity (either employee or employer) and 
-    requests a ranking of preferences based on matching criteria.
-
-    Args:
-        entity_type (str): The type of the entity. Can be either "employee" or "employer". 
-                           It determines whether the matchmaking is for an employee looking for 
-                           a job or an employer looking for employees.
-        data (dict): A dictionary containing the profile data for the entity. 
-        preferences (str): A string representing the list of job vacancies or employee profiles 
-                           that will be compared against the `data`. This could be a formatted 
-                           list or detailed descriptions, depending on the context.
-
-    Returns:
-        str: A formatted prompt string that provides the assistant with all necessary information 
-             to perform matchmaking and rank options (job vacancies or employees).
-    """
-
-    if entity_type == "employee":
-        prompt = f"""
-        You are an assistant helping employees find their best match among job vacancies. 
-        The employee has the following profile: 
-        - Skills: {', '.join(data['skills'])}
-        - Contract Type: {data['contract_type']}
-        - Function: {data['function']}
-        - Preferred Languages: {', '.join(data['languages'])}
-        - Desired Location: {data['location']}
-        - Salary Expectation: {data['salary']}
-        
-        Here are the job vacancies:
-        {preferences}
-
-        Based on this information, rate them between 1~100 and find the top 3 matches and explain why they are a good fit.
+    @classmethod
+    def add_swagger_documentation(cls, tags=None, operation_description=None):
         """
-    elif entity_type == "employer":
-        prompt = f"""
-        You are an assistant helping employers find the best employees for their vacancies.
-        The employer is looking for candidates with the following requirements:
-        - Skills: {', '.join(data['skills'])}
-        - Contract Type: {data['contract_type']}
-        - Function: {data['function']}
-        - Preferred Languages: {', '.join(data['languages'])}
-        - Week Day Availability: {data['week_day']}
+        Add Swagger documentation to view methods.
         
-        Here are the employees:
-        {preferences}
-
-        Based on this information, rate them between 1~100 and find the top 3 matches and explain why they are a good fit.
+        Args:
+            tags (list): List of tags for grouping endpoints
+            operation_description (str): Description of the view operations
         """
-    return prompt
+        if not tags:
+            tags = [cls.__module__.split('.')[0]]  # Use app name as default tag
 
+        def decorator(func):
+            return swagger_auto_schema(
+                tags=tags,
+                operation_description=operation_description
+            )(func)
+        return decorator
 
-def matchmaking(request, entity_type, entity_id):
-
+class BaseModelViewSet(SwaggerViewMixin, viewsets.ModelViewSet):
     """
-    Handles the matchmaking process for either employees or employers by generating a prompt 
-    for an assistant to rate job matches for employees or employee matches for employers.
-
-    This function retrieves the relevant data for either an employee or employer based on the 
-    `entity_type` and `entity_id`, creates a prompt that includes the necessary details, 
-    and sends the prompt to a chatbot (such as ChatGPT) to get a response. The matchmaking 
-    process is based on the attributes of skills, languages, contract type, function, and 
-    location for employees, and similar criteria for employers.
-
-    Args:
-        request (HttpRequest): The HTTP request object that triggered the matchmaking process.
-        entity_type (str): The type of the entity, either "employee" or "employer". 
-                           This determines whether the matchmaking process is for an employee 
-                           looking for job vacancies or an employer looking for candidates.
-        entity_id (int): The ID of the entity (either an employee or an employer) to retrieve 
-                         from the database for matchmaking.
-
-    Returns:
-        JsonResponse: A JSON response containing the assistant's matchmaking response. 
-                      The response contains a `response` field with the chatbot's output.
-                      In case of an invalid entity type, returns a 400 error response with an 
-                      error message.
+    Base ViewSet with Swagger documentation support.
     """
-    if entity_type == "employee":
-        employee = Employee.objects.get(id=entity_id)
-        vacancies = get_relevant_vacancies(employee)
-        serialized_vacancies = [
-            {
-                "title": v.title,
-                "salary": v.salary,
-                "skills": [s.name for s in v.skill.all()],
-                "languages": [l.name for l in v.language.all()],
-            }
-            for v in vacancies
-        ]
-        prompt = generate_matchmaking_prompt(
-            "employee",
-            {
-                "skills": [s.name for s in employee.skill.all()],
-                "contract_type": (
-                    employee.contract_type.name if employee.contract_type else "None"
-                ),
-                "function": employee.function.name if employee.function else "None",
-                "languages": [l.name for l in employee.language.all()],
-                "location": f"{employee.latitude}, {employee.longitude}",
-                "salary": "Not specified",
-            },
-            serialized_vacancies,
-        )
-    elif entity_type == "employer":
-        vacancy = Vacancy.objects.get(id=entity_id)
-        employees = get_relevant_employees(vacancy)
-        serialized_employees = [
-            {
-                "name": e.user.username,
-                "skills": [s.name for s in e.skill.all()],
-                "languages": [l.name for l in e.language.all()],
-            }
-            for e in employees
-        ]
-        prompt = generate_matchmaking_prompt(
-            "employer",
-            {
-                "skills": [s.name for s in vacancy.skill.all()],
-                "contract_type": (
-                    vacancy.contract_type.name if vacancy.contract_type else "None"
-                ),
-                "function": vacancy.function.name if vacancy.function else "None",
-                "languages": [l.name for l in vacancy.language.all()],
-                "week_day": vacancy.week_day,
-            },
-            serialized_employees,
-        )
-    else:
-        return JsonResponse({"error": "Invalid entity type"}, status=400)
+    @swagger_auto_schema(
+        operation_description="List all objects",
+        responses={200: "List of objects with pagination"}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
-    chatgpt_response = get_chatgpt_response(prompt)
-    return JsonResponse({"response": chatgpt_response})
+    @swagger_auto_schema(
+        operation_description="Create a new object",
+        responses={201: "Object created successfully"}
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a specific object",
+        responses={200: "Object details", 404: "Object not found"}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Update an object",
+        responses={200: "Object updated successfully", 404: "Object not found"}
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Partially update an object",
+        responses={200: "Object updated successfully", 404: "Object not found"}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Delete an object",
+        responses={204: "Object deleted successfully", 404: "Object not found"}
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+class PaginatedViewMixin:
+    """
+    Mixin to add pagination documentation to views.
+    """
+    pagination_schema = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'count': openapi.Schema(type=openapi.TYPE_INTEGER, description='Total number of items'),
+            'next': openapi.Schema(type=openapi.TYPE_STRING, description='URL to next page', nullable=True),
+            'previous': openapi.Schema(type=openapi.TYPE_STRING, description='URL to previous page', nullable=True),
+            'results': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_OBJECT))
+        }
+    )
+
+    def get_paginated_response_schema(self, schema):
+        """
+        Add pagination information to response schema.
+        """
+        return openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'count': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'next': openapi.Schema(type=openapi.TYPE_STRING, nullable=True),
+                'previous': openapi.Schema(type=openapi.TYPE_STRING, nullable=True),
+                'results': schema
+            }
+        )
+
+class ErrorResponseMixin:
+    """
+    Mixin to add common error responses to views.
+    """
+    error_responses = {
+        400: 'Bad Request - Invalid input',
+        401: 'Unauthorized - Authentication required',
+        403: 'Forbidden - Insufficient permissions',
+        404: 'Not Found - Resource does not exist',
+        500: 'Internal Server Error'
+    }
+
+    def get_error_responses(self):
+        """
+        Get error response schemas for Swagger.
+        """
+        return {
+            status_code: openapi.Response(
+                description=description,
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'error': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description=description
+                        )
+                    }
+                )
+            )
+            for status_code, description in self.error_responses.items()
+        }

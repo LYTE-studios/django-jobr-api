@@ -3,10 +3,25 @@ from .models import Education, WorkExperience, PortfolioItem
 from django.utils import timezone
 
 class EducationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Education model.
+    """
+    achievements = serializers.ListField(
+        child=serializers.CharField(help_text="Individual achievement or accomplishment"),
+        required=False,
+        default=list,
+        help_text="List of achievements during education"
+    )
+
     class Meta:
         model = Education
         fields = '__all__'
         read_only_fields = ['employee', 'created_at', 'updated_at']
+        swagger_schema_fields = {
+            "title": "Education",
+            "description": "Educational qualification details",
+            "required": ["institution", "degree", "field_of_study", "start_date", "description"]
+        }
 
     def validate(self, data):
         """
@@ -34,10 +49,31 @@ class EducationSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class WorkExperienceSerializer(serializers.ModelSerializer):
+    """
+    Serializer for WorkExperience model.
+    """
+    responsibilities = serializers.ListField(
+        child=serializers.CharField(help_text="Individual job responsibility"),
+        required=False,
+        default=list,
+        help_text="List of job responsibilities"
+    )
+    achievements = serializers.ListField(
+        child=serializers.CharField(help_text="Individual achievement or accomplishment"),
+        required=False,
+        default=list,
+        help_text="List of achievements in this position"
+    )
+
     class Meta:
         model = WorkExperience
         fields = '__all__'
         read_only_fields = ['employee', 'created_at', 'updated_at']
+        swagger_schema_fields = {
+            "title": "Work Experience",
+            "description": "Work experience details",
+            "required": ["company_name", "position", "description", "start_date", "employment_type"]
+        }
 
     def validate(self, data):
         """
@@ -65,13 +101,45 @@ class WorkExperienceSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
-    view_count = serializers.IntegerField(read_only=True)
-    like_count = serializers.IntegerField(read_only=True)
+    """
+    Serializer for PortfolioItem model.
+    """
+    images = serializers.ListField(
+        child=serializers.URLField(help_text="URL of an image"),
+        required=False,
+        default=list,
+        help_text="List of image URLs for the portfolio item"
+    )
+    collaborators = serializers.ListField(
+        child=serializers.CharField(help_text="Name of a collaborator"),
+        required=False,
+        default=list,
+        help_text="List of collaborators who worked on this project"
+    )
+    tags = serializers.ListField(
+        child=serializers.CharField(help_text="Individual tag or keyword"),
+        required=False,
+        default=list,
+        help_text="List of tags describing the project"
+    )
+    view_count = serializers.IntegerField(
+        read_only=True,
+        help_text="Number of times this item has been viewed"
+    )
+    like_count = serializers.IntegerField(
+        read_only=True,
+        help_text="Number of likes this item has received"
+    )
 
     class Meta:
         model = PortfolioItem
         fields = '__all__'
         read_only_fields = ['employee', 'created_at', 'updated_at', 'view_count', 'like_count']
+        swagger_schema_fields = {
+            "title": "Portfolio Item",
+            "description": "Portfolio project or work sample",
+            "required": ["title", "description", "date"]
+        }
 
     def validate(self, data):
         """

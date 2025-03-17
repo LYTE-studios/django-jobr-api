@@ -39,7 +39,6 @@ inflection = "==0.5.1"
 msgpack = "==1.1.0"
 oauthlib = "==3.2.2"
 packaging = "==24.2"
-pillow = "==11.0.0"
 pipenv = "==2024.4.0"
 platformdirs = "==4.3.6"
 proto-plus = "==1.25.0"
@@ -64,6 +63,9 @@ django-storages = "*"
 boto3 = "*"
 djangorestframework-simplejwt = "*"
 django-extensions = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.12"
+
+[dev-packages]

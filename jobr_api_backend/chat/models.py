@@ -1,104 +1,95 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from accounts.models import CustomUser
+from vacancies.models import Vacancy
 
-# from django.contrib.auth.models import User
-from django.conf import settings
-
-# Create your models here.
 class ChatRoom(models.Model):
-
     """
-    Represents a chat room that can have multiple users and messages.
-
-    Attributes:
-        users (ManyToManyField): The users that are part of the chat room.
-        created_at (DateTimeField): The date and time when the chat room was created.
+    Represents a chat room between an employee and an employer.
     
-    Methods:
-        __str__(self): Returns a string representation of the chat room, including the user names.
-        get_unread_messages(self, user): Returns unread messages for a specific user.
+    Attributes:
+        employee (ForeignKey): Reference to the employee user.
+        employer (ForeignKey): Reference to the employer user.
+        vacancy (ForeignKey): Reference to the vacancy being discussed.
+        created_at (DateTimeField): When the chat room was created.
+        updated_at (DateTimeField): When the chat room was last updated.
     """
-
-
-    users = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name="chatroom_users",
+    employee = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='employee_chatrooms',
+        null=True,
+        blank=True
     )
-
+    employer = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='employer_chatrooms',
+        null=True,
+        blank=True
+    )
+    vacancy = models.ForeignKey(
+        Vacancy, 
+        on_delete=models.CASCADE, 
+        related_name='chatrooms',
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
+        employee_name = self.employee.username if self.employee else "Unknown"
+        employer_name = self.employer.username if self.employer else "Unknown"
+        return f"Chat between {employee_name} and {employer_name}"
 
-        """
-        Returns a string representation of the chat room, listing the users in the chat room.
-
-        Returns:
-            str: The string representation of the chat room.
-        """
-        return f"ChatRoom {self.id} ({[user.username for user in self.users.all()]})"
-
-    def get_unread_messages(self, user):
-
-        """
-        Returns the unread messages for a specific user in the chat room.
-
-        This method annotates the messages with a boolean indicating whether they have been read 
-        by the specified user and filters them to return only unread messages.
-
-        Args:
-            user (User): The user for whom the unread messages are being retrieved.
-
-        Returns:
-            QuerySet: A queryset of unread messages for the specified user.
-        """
-
-        from django.db.models import Exists, OuterRef
-
-        return self.messages.annotate(
-            is_read=Exists(
-                Message.objects.filter(
-                    pk=OuterRef('pk'), 
-                    read_by=user
-                )
-            )
-        ).filter(is_read=False)
+    class Meta:
+        ordering = ['-updated_at']
 
 class Message(models.Model):
-
     """
-    Represents a message in a chat room sent by a user.
-
-    Attributes:
-        chatroom (ForeignKey): The chat room to which the message belongs.
-        sender (ForeignKey): The user who sent the message.
-        content (TextField): The content of the message.
-        created_at (DateTimeField): The date and time when the message was created.
-        modified_at (DateTimeField): The date and time when the message was last modified.
-        read_by (ManyToManyField): The users who have read the message.
+    Represents a message in a chat room.
     
-    Methods:
-        __str__(self): Returns a string representation of the message, including the sender's username.
+    Attributes:
+        chatroom (ForeignKey): Reference to the chat room this message belongs to.
+        sender (ForeignKey): Reference to the user who sent the message.
+        content (TextField): The content of the message.
+        created_at (DateTimeField): When the message was sent.
+        is_read (BooleanField): Whether the message has been read by the recipient.
     """
-
     chatroom = models.ForeignKey(
-        ChatRoom, on_delete=models.CASCADE, related_name="messages"
+        ChatRoom, 
+        on_delete=models.CASCADE, 
+        related_name='messages'
     )
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sender = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='sent_messages'
+    )
     content = models.TextField()
-
     created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True)
+    is_read = models.BooleanField(default=False)
 
-    read_by = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, related_name="read_messages", blank=True
-    )            
+    def clean(self):
+        """
+        Validate the message content.
+        
+        Raises:
+            ValidationError: If the content is empty or contains only whitespace.
+        """
+        if not self.content or not self.content.strip():
+            raise ValidationError("Message content cannot be empty or contain only whitespace.")
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to run full validation before saving.
+        """
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
+        return f"Message from {self.sender.username} at {self.created_at}"
 
-        """
-        Returns a string representation of the message, including the sender's username.
-
-        Returns:
-            str: The string representation of the message.
-        """
-        
-        return f"Message {self.id} from {self.sender}"
+    class Meta:
+        ordering = ['-created_at']

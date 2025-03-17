@@ -1,252 +1,98 @@
-from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import (
-    CustomUser,
-    Employee,
-    Employer,
-    Admin,
-    Review,
-    UserGallery,
-    ProfileOption
-)
-from datetime import datetime
-
-class EmployeeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Employee
-        fields = [
-            "date_of_birth",
-            "gender",
-            "phone_number",
-            "city_name",
-            "biography",
-            "latitude",
-            "longitude",
-        ]
-
-class EmployerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Employer
-        fields = [
-            "vat_number",
-            "company_name",
-            "street_name",
-            "house_number",
-            "city",
-            "postal_code",
-            "coordinates",
-            "website",
-            "biography",
-        ]
-
-class AdminSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=False
-    )
-
-    class Meta:
-        model = Admin
-        fields = ["full_name", "user"]
-
-class UserGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserGallery
-        fields = ["id", "gallery"]
-
-class UserGalleryUpdateSerializer(serializers.Serializer):
-    gallery = serializers.ListField(
-        child=serializers.ImageField(max_length=100000, allow_empty_file=False),
-        write_only=True,
-    )
-
-    def validate(self, data):
-        try:
-            CustomUser.objects.get(user=self.context.get("user"))
-        except CustomUser.DoesNotExist:
-            raise serializers.ValidationError(
-                "User with this user ID does not exist."
-            )
-        gallery = data.get("gallery")
-        if not gallery:
-            raise serializers.ValidationError("At least one image is required.")
-        return data
-
-class UserAuthenticationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = [
-            "username",
-            "email",
-            "password",
-            "role",
-        ]
-
-        extra_kwargs = {
-            "password": {
-                "write_only": True,
-                "required": True,
-            },
-            "email": {"required": True},
-            "username": {"required": True},
-            "role": {"required": True},
-        }
+from django.contrib.auth import authenticate
+from .models import CustomUser, Employee, Employer, Review, UserGallery, ProfileOption
+from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 
 class UserSerializer(serializers.ModelSerializer):
-    employer_profile = EmployerSerializer(read_only=True)
-    employee_profile = EmployeeSerializer(read_only=True)
-    admin_profile = AdminSerializer(read_only=True)
-    user_gallery = UserGallerySerializer(many=True, read_only=True)
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'role', 'profile_picture', 'profile_banner']
+        read_only_fields = ['profile_picture', 'profile_banner']
+
+class UserAuthenticationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = CustomUser
-        fields = [
-            "id",
-            "username",
-            "first_name",
-            "last_name",
-            "email",
-            "password",
-            "role",
-            "employer_profile",
-            "employee_profile",
-            "admin_profile",
-            "profile_picture",
-            "user_gallery"
-        ]
-
-        extra_kwargs = {
-            "password": {
-                "write_only": True,
-                "required": False,
-            },
-            "email": {"required": False},
-            "username": {"required": False},
-            "role": {"required": False},
-        }
+        fields = ['username', 'email', 'password', 'role']
 
     def create(self, validated_data):
+        """
+        Create and return a new user instance, given the validated data.
+        """
+        password = validated_data.pop('password')
         user = CustomUser(**validated_data)
-        user.set_password(validated_data["password"])
+        user.set_password(password)  # Properly hash the password
         user.save()
         return user
-
-    def update(self, instance, validated_data):
-        request = self.context.get('request')
-        employee_profile_data = request.data.get("employee_profile", {})
-        employer_profile_data = request.data.get("employer_profile", {})
-
-        # Update employee profile
-        if employee_profile_data:
-            try:
-                # Ensure employee profile exists
-                if not instance.employee_profile:
-                    try:
-                        instance.employee_profile = Employee.objects.create()
-                    except Exception as create_error:
-                        print(f"Error creating employee profile: {create_error}")
-                        raise serializers.ValidationError("Could not create employee profile")
-                
-                EmployeeSerializer().update(instance.employee_profile, employee_profile_data)
-
-            except Exception as employee_update_error:
-                print(f"Error updating employee profile: {employee_update_error}")
-                raise serializers.ValidationError("Could not update employee profile")
-
-        # Update employer profile
-        if employer_profile_data:
-            try:
-                instance.role = ProfileOption.EMPLOYER
-                
-                # Ensure employer profile exists
-                if not instance.employer_profile:
-                    try:
-                        instance.employer_profile = Employer.objects.create()
-                    except Exception as create_error:
-                        print(f"Error creating employer profile: {create_error}")
-                        raise serializers.ValidationError("Could not create employer profile")
-                
-                            
-                profile = EmployerSerializer().update(instance.employer_profile, employer_profile_data)
-
-                # Update user's employee profile
-                instance.employer_profile = profile
-
-                instance.employer_profile.save()
-
-            except Exception as employer_update_error:
-                print(f"Error updating employer profile: {employer_update_error}")
-                raise serializers.ValidationError("Could not update employer profile")
-
-        # Save the user to ensure profile relationships are updated
-        try:
-            instance.save()
-        except Exception as user_save_error:
-            print(f"Error saving user: {user_save_error}")
-            raise serializers.ValidationError("Could not save user")
-        
-        return super().update(instance, validated_data)
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
 
-    def validate(self, attrs):
-        username = attrs.get("username")
-        password = attrs.get("password")
-
-        if username and password:
-            user = authenticate(username=username, password=password)
-            if user:
-                if user.is_active:
-                    attrs["user"] = user
-                    return attrs
-                else:
-                    raise serializers.ValidationError("User account is disabled.")
-            else:
-                raise serializers.ValidationError("Invalid credentials.")
-        else:
-            raise serializers.ValidationError('Must include "username" and "password".')
+    def validate(self, data):
+        """
+        Validate user credentials.
+        """
+        user = authenticate(username=data['username'], password=data['password'])
+        if user and user.is_active:
+            data['user'] = user
+            return data
+        raise serializers.ValidationError("Invalid credentials.")
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = [
-            "employee",
-            "employer",
-            "anonymous_name",
-            "rating",
-            "comment",
-            "reviewer_type",
-        ]
+        fields = '__all__'
 
-    def validate(self, attrs):
-        # Ensure either employee or anonymous_name is provided
-        if not attrs.get("employee") and not attrs.get("anonymous_name"):
-            raise serializers.ValidationError(
-                "Either an employee or an anonymous name must be provided."
-            )
-
-        # Additional validation rules can be added here (e.g., rating range)
-        if attrs.get("rating") not in range(1, 6):
-            raise serializers.ValidationError("Rating must be between 1 and 5.")
-
-        return attrs
-
-class EmployeeStatisticsSerializer(serializers.ModelSerializer):
-    vacancies_count = serializers.SerializerMethodField()
-    chats_count = serializers.SerializerMethodField()
-    phone_session_counts = serializers.IntegerField(read_only=True)
-
+class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Employee
-        fields = ["user", "vacancies_count", "chats_count", "phone_session_counts"]
+        model = UserGallery
+        fields = '__all__'
 
-    def get_vacancies_count(self, obj):
-        from vacancies.models import ApplyVacancy
+class ProfileImageUploadSerializer(serializers.Serializer):
+    image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])
+    image = serializers.ImageField(
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+        ]
+    )
 
-        return ApplyVacancy.objects.filter(employee=obj).count()
+    def validate_image(self, value):
+        """
+        Validate image size.
+        """
+        if value.size > 5 * 1024 * 1024:  # 5MB
+            raise ValidationError("The maximum file size that can be uploaded is 5MB")
+        return value
 
-    def get_chats_count(self, obj):
-        from chat.models import Message
+    def update(self, instance, validated_data):
+        """
+        Update user's profile picture or banner.
+        """
+        image_type = validated_data['image_type']
+        image = validated_data['image']
 
-        return Message.objects.filter(sender=obj.user).count()
+        if image_type == 'profile_picture':
+            if instance.profile_picture:
+                instance.profile_picture.delete(save=False)
+            instance.profile_picture = image
+        else:
+            if instance.profile_banner:
+                instance.profile_banner.delete(save=False)
+            instance.profile_banner = image
+
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        """
+        Return a representation of the instance.
+        """
+        image_type = self.validated_data['image_type']
+        image_url = instance.profile_picture.url if image_type == 'profile_picture' else instance.profile_banner.url
+        return {
+            'message': f'{image_type.replace("_", " ").title()} uploaded successfully',
+            'image_url': image_url
+        }

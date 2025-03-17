@@ -1,93 +1,85 @@
 from rest_framework import serializers
-
+from .models import Message, ChatRoom
 from accounts.serializers import UserSerializer
-from .models import ChatRoom, Message
-
+from django.db.models import Q
 
 class MessageSerializer(serializers.ModelSerializer):
-
-    """
-    Serializer for the Message model, used to serialize message data for API responses.
-
-    Fields:
-        id (int): The unique identifier of the message.
-        sender (UserSerializer): The user who sent the message.
-        content (str): The content of the message.
-        created_at (datetime): The timestamp when the message was created.
-        modified_at (datetime): The timestamp when the message was last modified.
-        read_by (UserSerializer): List of users who have read the message.
-        is_sent_by_me (bool): A flag indicating whether the message was sent by the current authenticated user.
-
-    Methods:
-        validate_content(value):
-            Validates the content of the message to ensure it is not empty or just whitespace.
-
-        get_is_sent_by_me(obj):
-            Checks whether the message was sent by the currently authenticated user.
-    """
-    read_by = UserSerializer(many=True, read_only=True)
     sender = UserSerializer(read_only=True)
     is_sent_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ["id", "sender", "content", "created_at", "modified_at", "read_by", "is_sent_by_me"]
+        fields = ['id', 'sender', 'content', 'created_at', 'is_read', 'is_sent_by_me']
+        read_only_fields = ['sender', 'created_at', 'is_read']
 
-    def validate_content(self, value):
-
-        """
-        Validate the content of the message.
-
-        Args:
-            value (str): The content of the message.
-
-        Returns:
-            str: The validated content of the message.
-
-        Raises:
-            serializers.ValidationError: If the message content is empty or consists of only whitespace.
-        """
-        if not value.strip():
-            raise serializers.ValidationError("Message content cannot be empty.")
-        return value
-    
     def get_is_sent_by_me(self, obj):
-
-        """
-        Check if the message was sent by the current authenticated user.
-
-        Args:
-            obj (Message): The message object being serialized.
-
-        Returns:
-            bool: True if the message was sent by the authenticated user, False otherwise.
-        """
         request = self.context.get('request')
-
-        if request:
+        if request and hasattr(request, 'user'):
             return obj.sender == request.user
-        
         return False
 
+    def validate_content(self, value):
+        """
+        Validate that the message content is not empty or whitespace.
+        """
+        if not value or not value.strip():
+            raise serializers.ValidationError("Message content cannot be empty or contain only whitespace.")
+        return value
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-
-    """
-    Serializer for the ChatRoom model.
-
-    This serializer is used to convert ChatRoom model instances into JSON format and vice versa.
-    It includes the `users` (a list of users in the chat room) and `messages` (a list of messages in the chat room).
-    
-    Fields:
-        id (int): The unique identifier for the chat room.
-        users (List[UserSerializer]): A list of user objects in the chat room, serialized using the UserSerializer.
-        created_at (datetime): The timestamp of when the chat room was created.
-        messages (List[MessageSerializer]): A list of message objects in the chat room, serialized using the MessageSerializer.
-    """
-    users = UserSerializer(many=True, read_only=True)
-
+    employee = UserSerializer(read_only=True)
+    employer = UserSerializer(read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
+    unread_messages_count = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
-        fields = ["id", "users", "created_at", "messages"]
+        fields = ['id', 'employee', 'employer', 'vacancy', 'created_at', 'updated_at', 'messages', 'unread_messages_count', 'last_message']
+        read_only_fields = ['created_at', 'updated_at']
+
+    def get_unread_messages_count(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.messages.filter(
+                ~Q(sender=request.user),
+                is_read=False
+            ).count()
+        return 0
+
+    def get_last_message(self, obj):
+        last_message = obj.messages.first()  # Using first() since messages are ordered by -created_at
+        if last_message:
+            return MessageSerializer(last_message, context=self.context).data
+        return None
+
+class SendMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ['content']
+
+    def validate_content(self, value):
+        """
+        Validate that the message content is not empty or whitespace.
+        """
+        if not value or not value.strip():
+            raise serializers.ValidationError("Message content cannot be empty or contain only whitespace.")
+        return value
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        chatroom = self.context.get('chatroom')
+        
+        if not request or not chatroom:
+            raise serializers.ValidationError("Missing request or chatroom context")
+        
+        message = Message.objects.create(
+            chatroom=chatroom,
+            sender=request.user,
+            content=validated_data['content']
+        )
+        
+        # Update chatroom's updated_at timestamp
+        chatroom.save()  # This will trigger the auto_now field
+        
+        return message

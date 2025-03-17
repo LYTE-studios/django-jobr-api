@@ -321,6 +321,8 @@ class Vacancy(models.Model):
         descriptions (ManyToManyField): The descriptions associated with the vacancy, linked to the `VacancyDescription` model.
         questions (ManyToManyField): A list of questions related to the vacancy, linked to the `VacancyQuestion` model.
         skill (ManyToManyField): The skills required for the vacancy, related to the `Skill` model.
+        latitude (DecimalField): The latitude coordinate of the vacancy location.
+        longitude (DecimalField): The longitude coordinate of the vacancy location.
     """
 
     employer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -339,7 +341,7 @@ class Vacancy(models.Model):
         Function, on_delete=models.CASCADE, blank=True, null=True
     )
 
-    week_day = models.ManyToManyField(Weekday, null=True)
+    week_day = models.ManyToManyField(Weekday, blank=True)
     job_date = models.DateField(null=True)
 
     salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -353,6 +355,9 @@ class Vacancy(models.Model):
     questions = models.ManyToManyField(VacancyQuestion)
 
     skill = models.ManyToManyField(Skill)
+
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
 
 class ApplyVacancy(models.Model):

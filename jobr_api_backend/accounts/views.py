@@ -1,337 +1,118 @@
-# accounts/views.py
+from django.contrib.auth import authenticate, get_user_model
+from django.conf import settings
+from django.http import Http404
+
 from rest_framework import generics, status, viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+import google.auth.transport.requests
+import google.oauth2.id_token
+import firebase_admin
+from firebase_admin import auth as firebase_auth
 
 from .services import TokenService
+from .models import Employee, Employer, UserGallery, ProfileOption
 from .serializers import (
     LoginSerializer,
     UserAuthenticationSerializer,
     ReviewSerializer,
-    EmployeeStatisticsSerializer, 
-    UserGalleryUpdateSerializer,
+    UserGallerySerializer,
+    UserSerializer,
+    ProfileImageUploadSerializer
 )
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from django.conf import settings
-from django.http import Http404
-from firebase_admin import auth as firebase_auth
-import google.auth.transport.requests
-import google.oauth2.id_token
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import CustomUser, Employee, Employer, UserGallery
-from .serializers import UserSerializer
-
+User = get_user_model()
 
 class ConnectionTestView(APIView):
-
     """
     A view to test the connection by returning the user's role.
-
-    This view checks if the user is authenticated using JWT authentication and ensures the user has the required permissions to access this view.
-
-    Attributes:
-        authentication_classes (list): A list of authentication classes that define how the user is authenticated. In this case, JWT authentication.
-        permission_classes (list): A list of permission classes to enforce access control. In this case, only authenticated users can access this view.
-
-    Methods:
-        get(self, request): Handles GET requests and returns a response with the user's role.
-
     """
-
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-
-        """
-        Handles GET requests to test the connection and return the authenticated user's role.
-
-        Args:
-        self (ConnectionTestView): The instance of the ConnectionTestView class.
-        request (Request): The HTTP request object containing the user data.
-
-        Returns:
-        Response: A response containing the user's role.
-
-        """
-
-        return Response(
-            {
-                "role": request.user.role,
-            }
-        )
-
+        return Response({
+            "role": request.user.role,
+        })
 
 class UserRegistrationView(generics.CreateAPIView):
-
     """
     View for registering a new user and generating authentication tokens.
-
-    This view handles the user registration process by accepting the user data,
-    validating it using the provided serializer, saving the user, and generating 
-    JWT authentication tokens for the newly created user.
-
-    Attributes:
-        serializer_class (UserAuthenticationSerializer): The serializer used to validate and save the user data.
-
-    Methods:
-        post(self, request, *args, **kwargs): Handles POST requests to register a new user and return authentication tokens.
-
-    Responses:
-        201 Created: The user's account is successfully created, and authentication tokens are returned in the response.
-
     """
-
     serializer_class = UserAuthenticationSerializer
 
     def post(self, request, *args, **kwargs):
-
-        """
-        Handles POST requests to register a new user and generate JWT tokens.
-
-        This method:
-            - Validates the input data using the `UserAuthenticationSerializer`.
-            - Saves the user data and creates the new user.
-            - Generates authentication tokens (access and refresh tokens) for the user using the `TokenService`.
-            - Returns the access and refresh tokens in the response.
-
-        Args:
-            self (UserRegistrationView): The instance of the UserRegistrationView class.
-            request (Request): The HTTP request object containing user data to be registered.
-
-        Returns:
-            Response: A response containing the access and refresh tokens for the newly created user.
-        """
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
         tokens = TokenService.get_tokens_for_user(user)
 
-        return Response(
-            {"access": tokens["access"], "refresh": tokens["refresh"]},
-            status=status.HTTP_201_CREATED,
-        )
-
+        return Response({
+            "access": tokens["access"], 
+            "refresh": tokens["refresh"]
+        }, status=status.HTTP_201_CREATED)
 
 class UserLoginView(generics.GenericAPIView):
-
     """
     View for handling user login and generating authentication tokens.
-
-    This view handles the login process by accepting the user's credentials,
-    validating them using the provided serializer, authenticating the user,
-    and generating JWT authentication tokens (access and refresh) for the authenticated user.
-
-    Attributes:
-        serializer_class (LoginSerializer): The serializer used to validate and authenticate the user's login credentials.
-
-    Methods:
-        post(self, request): Handles POST requests for logging in and generating authentication tokens.
-
-    Responses:
-        200 OK: The login is successful, and authentication tokens are returned along with the username and role.
-
     """
-
     serializer_class = LoginSerializer
 
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response(
-                description="Login successful",
-                examples={
-                    "application/json": {
-                        "message": "Login successful",
-                        "user": "username",
-                        "access": "access_token_string",
-                        "refresh": "refresh_token_string",
-                    }
-                },
-            )
-        }
-    )
     def post(self, request):
-
-        """
-        Handles POST requests to log the user in and generate authentication tokens.
-
-        This method:
-            - Validates the user's login credentials using the `LoginSerializer`.
-            - Authenticates the user based on the provided credentials.
-            - Generates access and refresh tokens for the authenticated user using `TokenService`.
-            - Returns the username, role, and authentication tokens (access and refresh) in the response.
-
-        Args:
-            self (UserLoginView): The instance of the UserLoginView class.
-            request (Request): The HTTP request object containing the login credentials (username and password).
-
-        Returns:
-            Response: A response containing a success message, the authenticated user's username, role, and the access and refresh tokens.
-        """
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         tokens = TokenService.get_tokens_for_user(user)
 
-        return Response(
-            {
-                "message": "Login successful",
-                "user": user.username,
-                "role": user.role,
-                "access": tokens["access"],
-                "refresh": tokens["refresh"],
-            },
-            status=status.HTTP_200_OK,
-        )
-
+        return Response({
+            "message": "Login successful",
+            "user": user.username,
+            "role": user.role,
+            "access": tokens["access"],
+            "refresh": tokens["refresh"]
+        }, status=status.HTTP_200_OK)
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
-
     """
     View for handling user details.
-
-    This view handles retrieving, updating, and deleting user information.
-    It allows authenticated users to access their own details and make changes to their profile.
-
-    Attributes:
-        authentication_classes (list): A list of authentication classes that define how the user is authenticated. In this case, JWT authentication.
-        permission_classes (list): A list of permission classes to enforce access control. In this case, only authenticated users can access this view.
-        queryset (QuerySet): A queryset of `CustomUser` objects that will be used to retrieve the user details.
-        serializer_class (LoginSerializer): The serializer used to validate and authenticate the user's login credentials.
-
-    Methods:
-        get(self, request, *args, **kwargs): Handles GET requests to retrieve the user's details.
-        put(self, request, *args, **kwargs): Handles PUT requests to update the user's details.
-        delete(self, request, *args, **kwargs): Handles DELETE requests to delete the user's details.
-
-    Responses:
-        - 200 OK: Successfully retrieved or updated the user's details.
-        - 204 No Content: Successfully deleted the user's profile.
-        - 401 Unauthorized: If the user is not authenticated.
-        - 403 Forbidden: If the user does not have permission to access or modify the requested resource.
-        - 404 Not Found: If the user does not exist or cannot be found.
     """
-    
-
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
 
-    queryset = CustomUser.objects.all()
+class MyProfileView(generics.RetrieveUpdateAPIView):
+    """
+    View for retrieving and updating the current user's profile.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
 
-    def get(self, request, *args, **kwargs):
-
-        """
-        Handle GET request to retrieve user details.
-
-        Args:
-            request (Request): The HTTP request object.
-        
-        Returns:
-            Response: The HTTP response with user details.
-        """
-
-        return self.retrieve(request, *args, **kwargs)
-
-    def put(self, request, *args, **kwargs):
-
-        """
-        Handle PUT request to retrieve user details.
-
-        Args:
-            request (Request): The HTTP request object with user data to update.
-        
-        Returns:
-            Response: The HTTP response indicating the success or failure of the update.
-        """
-
-        return self.update(request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-               
-        """
-        Handle DELETE request to delete user details.
-
-        Args:
-            request (Request): The HTTP request object with user data to delete.
-        
-        Returns:
-            Response: The HTTP response indicating the success or failure of the deletion.
-        """
-
-        return self.destroy(request, *args, **kwargs)
+    def get_object(self):
+        return self.request.user
 
 class GoogleSignInView(APIView):
-
     """
     Handles Google sign-in via Firebase authentication.
-
-    This view verifies the provided Firebase ID token and either logs in an existing user
-    or creates a new user based on the token information.
-
-    Attributes:
-        permission_classes (list): A list of permission classes that allow any user (no authentication required).
-
-    Methods:
-        post(self, request): Handles POST requests to authenticate and sign in the user via Firebase ID token.
-    
-    Responses:
-        - 200 OK: Successfully logged in or created the user.
-        - 400 BAD REQUEST: If the ID token is missing or invalid.
-        - 500 INTERNAL SERVER ERROR: If there is an issue with Google authentication or other exceptions.
     """
-
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response(
-                description="Google Login successful",
-                examples={
-                    "application/json": {
-                        "message": "Google Login successful",
-                        "created": "01/01/2000 00:00:00",
-                        "user": "username",
-                        "access": "access_token_string",
-                        "refresh": "refresh_token_string",
-                    }
-                },
-            )
-        }
-    )
     def post(self, request):
-
-        """
-        Handles POST requests to log in the user with a Google Firebase ID token.
-
-        Args:
-            self (GoogleSignInView): Instance of the GoogleSignInView class.
-            request (Request): The HTTP request object, containing the ID token.
-
-        Returns:
-            Response: A response with the user's login status, user information, and tokens.
-        """
-
         try:
-            # Get the ID token from the request
             id_token = request.data.get("id_token")
 
             if not id_token:
                 return Response(
                     {"error": "ID token is required"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Verify Google ID token
             request_google = google.auth.transport.requests.Request()
             try:
                 id_info = google.oauth2.id_token.verify_firebase_token(
@@ -340,15 +121,13 @@ class GoogleSignInView(APIView):
             except ValueError as e:
                 return Response(
                     {"error": "Invalid token", "details": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Extract user information
             email = id_info.get("email")
             name = id_info.get("name", "")
 
-            # Check if user exists, if not create
-            user, created = CustomUser.objects.get_or_create(
+            user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
                     "username": email,
@@ -357,7 +136,6 @@ class GoogleSignInView(APIView):
                 },
             )
 
-            # Return response
             return Response(
                 {
                     "message": "Google Login successful",
@@ -365,99 +143,49 @@ class GoogleSignInView(APIView):
                     "created": created,
                 }
                 | TokenService.get_tokens_for_user(user),
-                status=status.HTTP_200_OK,
+                status=status.HTTP_200_OK
             )
 
         except Exception as e:
             return Response(
                 {"error": "Google Authentication failed", "details": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 class AppleSignInView(APIView):
-
     """
     Handles Apple sign-in via Firebase authentication.
-
-    This view verifies the provided Firebase ID token and either logs in an existing user
-    or creates a new user based on the token information.
-
-    Attributes:
-        permission_classes (list): A list of permission classes that allow any user (no authentication required).
-
-    Methods:
-        post(self, request): Handles POST requests to authenticate and sign in the user via Firebase ID token.
-    
-    Responses:
-        - 200 OK: Successfully logged in or created the user.
-        - 400 BAD REQUEST: If the ID token is missing or invalid.
-        - 500 INTERNAL SERVER ERROR: If there is an issue with Apple authentication or other exceptions.
     """
-
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response(
-                description="Apple Login successful",
-                examples={
-                    "application/json": {
-                        "message": "Apple Login successful",
-                        "created": "01/01/2000 00:00:00",
-                        "user": "username",
-                        "access": "access_token_string",
-                        "refresh": "refresh_token_string",
-                    }
-                },
-            )
-        }
-    )
     def post(self, request):
-
-        """
-        Handles POST requests to log in the user with a Apple Firebase ID token.
-
-        Args:
-            self (AppleSignInView): Instance of the AppleSignInView class.
-            request (Request): The HTTP request object, containing the ID token.
-
-        Returns:
-            Response: A response with the user's login status, user information, and tokens.
-        """
-         
         try:
-            # Get the ID token from the request
             id_token = request.data.get("id_token")
 
             if not id_token:
                 return Response(
                     {"error": "ID token is required"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Verify Apple ID token using Firebase
             try:
                 decoded_token = firebase_auth.verify_id_token(id_token)
             except (ValueError, firebase_auth.InvalidIdTokenError) as e:
                 return Response(
                     {"error": "Invalid token", "details": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Extract user information
             email = decoded_token.get("email")
             apple_uid = decoded_token.get("uid")
 
-            # Check if user exists, if not create
-            user, created = CustomUser.objects.get_or_create(
+            user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
                     "username": f"apple_{apple_uid}",
                 },
             )
 
-            # Return response
             return Response(
                 {
                     "message": "Apple Login successful",
@@ -465,416 +193,69 @@ class AppleSignInView(APIView):
                     "created": created,
                 }
                 | TokenService.get_tokens_for_user(user),
-                status=status.HTTP_200_OK,
+                status=status.HTTP_200_OK
             )
 
         except Exception as e:
             return Response(
                 {"error": "Apple Authentication failed", "details": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
-class ReviewCreateView(generics.CreateAPIView):
-
+class ProfileImageUploadView(APIView):
     """
-    View for creating a review. This view allows any user to submit a review.
-
-    Attributes:
-        serializer_class (ReviewSerializer): The serializer class used to validate and create the review.
-        permission_classes (list): A list of permission classes that define access control. 
-                                   In this case, anyone (authenticated or anonymous) can post a review.
-    
-    Methods:
-        perform_create(self, serializer): Saves the review based on the reviewer's type (employee, employer, or anonymous).
-    
-    Responses:
-        - 201 Created: Successfully created the review.
+    View for uploading profile pictures and banners.
     """
-
-    serializer_class = ReviewSerializer
-    permission_classes = [AllowAny]  # Allow anyone to post a review
-
-    def perform_create(self, serializer):
-
-        """
-        This method determines the reviewer type (employee, employer, or anonymous) 
-        and saves the review accordingly.
-
-        Args:
-            serializer (ReviewSerializer): The validated serializer instance to save the review.
-        
-        """
-        user = self.request.user
-
-        # Determine reviewer type and save accordingly
-        if hasattr(user, "employee"):
-            reviewer_type = "employee"
-            serializer.save(employee=user.employee, reviewer_type=reviewer_type)
-        elif hasattr(user, "employer"):
-            reviewer_type = "employer"
-            serializer.save(employer=user.employer, reviewer_type=reviewer_type)
-        else:
-            # For anonymous users
-            reviewer_type = "anonymous"
-            serializer.save(reviewer_type=reviewer_type)
-
-class EmployeeStatisticsView(APIView):
-
-    """
-    View for retrieving and updating employee statistics.
-
-    This view allows the retrieval of the current employee's statistics, such as the number 
-    of phone sessions, as well as the ability to increment the phone session count via a POST request.
-
-    Attributes:
-        authentication_classes (list): A list of authentication classes that define how the user is authenticated. 
-                                        In this case, JWT authentication is used.
-        permission_classes (list): A list of permission classes to enforce access control. 
-                                   In this case, it allows any user.
-    
-    Methods:
-        get(self, request): Handles GET requests to retrieve the current employee's statistics.
-        post(self, request): Handles POST requests to increment the phone session count for the current employee.
-
-    Responses:
-        - 200 OK: Successfully retrieved or updated the employee's statistics.
-        - 404 Not Found: If the employee profile cannot be found.
-    """
-
     authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-
-        """
-        Handles GET requests to retrieve the current employee's statistics.
-
-        Args:
-            request (Request): The HTTP request object.
-
-        Returns:
-            Response: Returns the serialized employee statistics if found, or a 404 error if the profile is not found.
-        """
-
-        try:
-            # Get the Employee instance for the current user
-            employee = Employee.objects.get(user=request.user)
-            serializer = EmployeeStatisticsSerializer(employee)
-            return Response(serializer.data)
-        except Employee.DoesNotExist:
-            return Response(
-                {"detail": "Employee profile not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-    def post(self, request):
-
-        """
-        Handles POST requests to increment the phone session count for the current employee.
-
-        Args:
-            request (Request): The HTTP request object.
-
-        Returns:
-            Response: Returns the updated serialized employee statistics if the phone session count was updated, 
-                      or a 404 error if the profile is not found.
-        """
-          
-        try:
-            employee = Employee.objects.get(user=request.user)
-            employee.phone_session_counts += 1
-            employee.save()
-
-            serializer = EmployeeStatisticsSerializer(employee)
-            return Response(serializer.data)
-        except Employee.DoesNotExist:
-            return Response(
-                {"detail": "Employee profile not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-
-class AISuggestionsView(generics.ListAPIView):
-
-    """
-    A view that returns a list of users with the role "employee". 
-
-    This view is used to get suggestions based on the employee role in the system.
-
-    Attributes:
-        serializer_class (UserSerializer): The serializer used to serialize the employee data.
-        permission_classes (list): The list of permission classes to define access control.
-            - AllowAny: This view is accessible by any user, without authentication.
-
-    Methods:
-        get_queryset(self): Filters and retrieves the list of users with the role "employee".
-    """
-
-    serializer_class = UserSerializer
-    permission_classes = [AllowAny]
-
-    def get_queryset(self):
-
-        """
-        Retrieves the list of users who have the role 'employee'.
-
-        This method is responsible for filtering users by role in the database.
-
-        Returns:
-            queryset: A QuerySet of users with the role "employee".
-        """
-
-        return CustomUser.objects.filter(role="employee")
-
-
-class MyProfileView(generics.RetrieveUpdateAPIView):
-
-    """
-    This view allows authenticated users to retrieve and update their profile information.
-
-    Attributes:
-        serializer_class (UserSerializer): The serializer used to validate and serialize user data.
-        permission_classes (list): A list of permission classes, where the user must be authenticated.
-
-    Methods:
-        get_object(self): Returns the user object of the currently authenticated user.
-    """
-
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-
-        """
-        Override the method to retrieve the current authenticated user.
-
-        Returns:
-            CustomUser: The current authenticated user.
-        """
-
-        return self.request.user
-
-class AllUserGalleriesView(generics.ListAPIView):
-
-    """
-    This view returns a list of all users along with their galleries.
-
-    Attributes:
-        permission_classes (list): Allows access to any user.
-        serializer_class (UserSerializer): The serializer used to represent users and their galleries.
-        
-    Methods:
-        get_queryset(self): Returns the queryset of all users with their related galleries.
-    """
-
-    permission_classes = [AllowAny]
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-
-        """
-        Retrieves the queryset of all CustomUser instances and prefetches the related users_gallery.
-        
-        Returns:
-            QuerySet: A queryset of all CustomUser instances, prefetching their related galleries.
-        """
-
-        return CustomUser.objects.all().prefetch_related("users_gallery")
-
-class UserByUserView(generics.RetrieveAPIView):
-
-    """
-    Retrieve a specific user by their ID (primary key) along with their gallery information.
-
-    This view allows the retrieval of a user by their ID. The returned data includes the user's
-    details and their related gallery, which is preloaded using `prefetch_related`.
-
-    Attributes:
-        permission_classes (list): Specifies that any user can access this view (AllowAny).
-        serializer_class (UserSerializer): The serializer used to represent users and their galleries.
-        
-    Methods:
-        get_object(self): 
-            Retrieves a specific user by their primary key (`pk`) and includes the related `user_gallery` using `prefetch_related`.
-        get_queryset(self):
-            Get the base queryset of users, prefetching relation gallery data.
-        
-    Responses:
-        - 200 OK: Successfully retrieved the user details and gallery.
-        - 404 Not Found: If the user with the given ID does not exist.
-    """
-    
-    permission_classes = [AllowAny]
-    serializer_class = UserSerializer
-
-    def get_object(self):
-
-        """
-        Retrieve a user by their primary key (ID).
-
-        This method attempts to fetch a user using the `id` parameter from the request.
-        If the user does not exist, it raises an `Http404` exception.
-
-        Returns:
-        - `CustomUser` instance if found.
-
-        Raises:
-        - `Http404`: If the user with the specified ID does not exist.
-        """
-
-        try:
-            return CustomUser.objects.get(id=self.kwargs["pk"])
-        except CustomUser.DoesNotExist:
-            raise Http404("User does not exist")
-
-    def get_queryset(self):
-
-        """
-        Get the base queryset of users, prefetching related gallery data.
-
-        This method optimizes database queries by using `prefetch_related("users_gallery")`,
-        ensuring that related user gallery data is fetched efficiently in a single query.
-
-        Returns:
-        - `QuerySet[CustomUser]`: A queryset of all users with preloaded gallery data.
-        """
-        
-        return CustomUser.objects.prefetch_related("users_gallery")
-
-
-class UpdateUserGalleryView(APIView):
-
-    """
-    Update the authenticated user's gallery.
-
-    This view allows authenticated users to update their gallery images.  
-    The existing gallery images are deleted before adding the new ones.
-
-    Attributes:
-        permission_classes: Ensures only authenticated users can update their gallery.
-        parser_classes: Allows handling of file uploads (`MultiPartParser`, `FormParser`).
-        http_method_names: Restricts the view to only allow `PUT` requests.
-
-    Methods:
-        PUT: Handles PUT requests to replace the user's gallery with new images.
-
-    """
-
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ["put"]
 
     def put(self, request):
-
-        """
-        Handle the PUT request to update the user's gallery.
-
-        Args:
-            request (Request): The HTTP request object containing the user's uploaded images.
-
-        Process:
-            - Validates the uploaded images.
-            - Deletes the user's existing gallery images.
-            - Saves the new images to the gallery.
-
-        Returns:
-            Response:
-                - 200 OK: If the gallery is successfully updated, returns the updated user profile.
-                - 400 Bad Request: If the provided data is invalid, returns validation errors.
-        """
-
-        serializer = UserGalleryUpdateSerializer(
-            data=request.data, context={"user": request.user.id}
+        serializer = ProfileImageUploadSerializer(
+            instance=request.user, 
+            data=request.data, 
+            context={'request': request}
         )
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        validated_data = serializer.validated_data
-        user_id = request.user.id
-        gallery_image = validated_data.get("gallery")
 
-        user = CustomUser.objects.get(id=user_id)
-        UserGallery.objects.filter(user=user).delete()
-        for image in gallery_image:
-            UserGallery.objects.create(user=user, gallery=image)
-
-        serializer = UserSerializer(
-            CustomUser.objects.prefetch_related("users_gallery").get(pk=user.id)
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class DeleteUserGallery(APIView):
-
-    """
-    API endpoint for deleting a user's gallery.
-
-    Methods:
-        - DELETE: Deletes all gallery images associated with the authenticated user.
-
-    Permission:
-        - Only authenticated users can access this endpoint.
-
-    Responses:
-        - 204 No Content: Successfully deleted all images.
-        - 404 Not Found: If the current user does not exist.
-    """
-
-    permission_classes = [IsAuthenticated]
+        if serializer.is_valid():
+            try:
+                user = serializer.save()
+                return Response({
+                    'message': f'{serializer.validated_data["image_type"].replace("_", " ").title()} uploaded successfully',
+                    'image_url': user.profile_picture.url if serializer.validated_data['image_type'] == 'profile_picture' else user.profile_banner.url
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({
+                    'error': f'Error uploading image: {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
+        image_type = request.query_params.get('image_type')
 
-        """
-        Handle DELETE request to remove all images from the user's gallery.
-
-        Args:
-            request (Request): The incoming request from the user.
-
-        Returns:
-            Response: HTTP 204 status if successful, or 404 if the user does not exist.
-        """
-
-        try:
-            employer = CustomUser.objects.get(id=request.user.id)
-            UserGallery.objects.filter(user=employer).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Employer.DoesNotExist:
-            return Response(
-                {"details": "Current user isn't an User"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-
-class DeleteAccountView(APIView):
-
-    """
-    API endpoint for deleting the authenticated user's account.
-
-    Methods:
-        - DELETE: Deletes the currently authenticated user's account.
-
-    Permission:
-        - Only authenticated users can access this endpoint.
-
-    Responses:
-        - 204 No Content: Successfully deleted the account.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request, *args, **kwargs):
-
-        """
-        Handles DELETE request to delete the authenticated user's account.
-
-        Args:
-            request (Request): The incoming request from the user.
-            *args: Additional positional arguments.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            Response: HTTP 204 status with a success message.
-        """
+        if image_type not in ['profile_picture', 'profile_banner']:
+            return Response({
+                'error': 'Invalid image type. Must be profile_picture or profile_banner.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.user
-        user.delete()
-        return Response({"detail": "Account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            if image_type == 'profile_picture':
+                if user.profile_picture:
+                    user.profile_picture.delete()
+                    user.profile_picture = None
+            else:
+                if user.profile_banner:
+                    user.profile_banner.delete()
+                    user.profile_banner = None
+            
+            user.save()
+            return Response({
+                'message': f'{image_type.replace("_", " ").title()} deleted successfully'
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                'error': f'Error deleting {image_type}: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)

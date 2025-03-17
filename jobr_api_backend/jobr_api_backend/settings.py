@@ -99,9 +99,11 @@ TEMPLATES = [
 
 ASGI_APPLICATION = "jobr_api_backend.asgi.application"
 
+from .my_secrets import database
+
 # Database configuration
 DATABASES = {
-    'default': {
+    'default': database or  {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }

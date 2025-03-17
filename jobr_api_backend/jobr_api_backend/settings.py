@@ -47,6 +47,32 @@ CSRF_TRUSTED_ORIGINS = [
     "http://api.jobr.lytestudios.be",
 ]
 
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "https://jobr.lytestudios.be",
+    "http://jobr.lytestudios.be",
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -60,6 +86,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",
+    "corsheaders",
     "accounts",
     "vacancies",
     "common",
@@ -71,6 +98,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

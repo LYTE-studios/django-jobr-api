@@ -2,10 +2,11 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.db.models import Q, Max, F, Count
+from django.db.models import Q, Max, F, Count, Prefetch
 from .models import Message, ChatRoom
 from .serializers import MessageSerializer, ChatRoomSerializer, SendMessageSerializer
 from accounts.models import CustomUser, ProfileOption
+from django.db.models import Q, Max, F, Count, Prefetch, Case, When, Value, IntegerField
 
 class SendMessageView(generics.CreateAPIView):
     """
@@ -85,7 +86,7 @@ class GetMessagesView(generics.ListAPIView):
 
         if chatroom_id:
             chatroom = ChatRoom.objects.get(id=chatroom_id)
-            messages = chatroom.messages.all()
+            messages = chatroom.messages.all().order_by('created_at')
         else:
             # Get messages from chat room with specified user
             chatroom = ChatRoom.objects.filter(
@@ -94,7 +95,7 @@ class GetMessagesView(generics.ListAPIView):
             ).first()
             if not chatroom:
                 return Message.objects.none()
-            messages = chatroom.messages.all()
+            messages = chatroom.messages.all().order_by('created_at')
 
         # Mark messages as read
         messages.filter(
@@ -103,6 +104,19 @@ class GetMessagesView(generics.ListAPIView):
         ).update(is_read=True)
 
         return messages
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        # Add unread messages count for each chat room
+        for room_data in data:
+            room = ChatRoom.objects.get(id=room_data['id'])
+            room_data['unread_messages_count'] = room.messages.filter(
+                ~Q(sender=request.user),
+                is_read=False
+            ).count()
+        return Response(data)
 
 class GetChatRoomListView(generics.ListAPIView):
     """
@@ -116,6 +130,21 @@ class GetChatRoomListView(generics.ListAPIView):
         return ChatRoom.objects.filter(
             Q(employee=self.request.user) |
             Q(employer=self.request.user)
+        ).prefetch_related(
+            Prefetch(
+                'messages',
+                queryset=Message.objects.order_by('-created_at')
+            )
         ).annotate(
-            last_message_time=Max('messages__created_at')
+            last_message_time=Max('messages__created_at'),
+            messages_count=Count('messages'),
+            unread_messages_count=Count(
+                'messages',
+                filter=~Q(messages__sender=self.request.user) & Q(messages__is_read=False)
+            )
         ).order_by('-last_message_time')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

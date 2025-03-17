@@ -171,10 +171,38 @@ class VacancySerializerTests(TestCase):
         self.assertTrue(serializer.is_valid())
         
         vacancy = serializer.save()
+        
+        # Test basic fields
         self.assertEqual(vacancy.employer, self.employer)
+        self.assertEqual(vacancy.expected_mastery, MasteryOption.ADVANCED)
         self.assertEqual(vacancy.location, self.location)
         self.assertEqual(vacancy.function, self.function)
         self.assertEqual(vacancy.salary, Decimal('60000.00'))
+        self.assertEqual(vacancy.job_date.isoformat(), data['job_date'])
+        
+        # Test many-to-many relationships
+        self.assertEqual(vacancy.contract_type.count(), 1)
+        self.assertEqual(vacancy.skill.count(), 1)
+        self.assertIn(self.contract_type, vacancy.contract_type.all())
+        self.assertIn(self.skill, vacancy.skill.all())
+
+    def test_vacancy_creation_missing_required_fields(self):
+        """
+        Test vacancy creation fails with missing required fields
+        """
+        request = self.factory.post('/vacancies/')
+        request.user = self.employer
+        
+        # Missing required fields
+        data = {
+            'salary': '60000.00'
+        }
+        
+        serializer = VacancySerializer(data=data, context={'request': request})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('expected_mastery', serializer.errors)
+        self.assertIn('location', serializer.errors)
+        self.assertIn('function', serializer.errors)
 
 class ApplySerializerTests(TestCase):
     def setUp(self):

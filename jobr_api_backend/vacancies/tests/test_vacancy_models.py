@@ -61,6 +61,7 @@ class VacancyModelTests(TestCase):
         """
         Test creating a Vacancy instance with all fields
         """
+        # Test basic fields
         self.assertEqual(self.vacancy.employer, self.employer)
         self.assertEqual(self.vacancy.expected_mastery, MasteryOption.ADVANCED)
         self.assertEqual(self.vacancy.location, self.location)
@@ -68,9 +69,18 @@ class VacancyModelTests(TestCase):
         self.assertEqual(self.vacancy.salary, Decimal('50000.00'))
         
         # Test many-to-many relationships
+        self.assertEqual(self.vacancy.contract_type.count(), 1)
+        self.assertEqual(self.vacancy.skill.count(), 1)
+        self.assertEqual(self.vacancy.week_day.count(), 1)
+        
         self.assertIn(self.contract_type, self.vacancy.contract_type.all())
         self.assertIn(self.skill, self.vacancy.skill.all())
         self.assertIn(self.weekday, self.vacancy.week_day.all())
+        
+        # Test reverse relationships
+        self.assertIn(self.vacancy, self.contract_type.vacancy_set.all())
+        self.assertIn(self.vacancy, self.skill.vacancy_set.all())
+        self.assertIn(self.vacancy, self.weekday.vacancy_set.all())
 
     def test_vacancy_optional_fields(self):
         """

@@ -105,6 +105,27 @@ class VacancySerializer(serializers.ModelSerializer):
         from accounts.serializers import UserSerializer
         return UserSerializer(obj.employer).data
 
+    def validate(self, data):
+        """
+        Validate required fields for vacancy creation
+        """
+        errors = {}
+        
+        # Check required fields in initial data
+        if not self.initial_data.get('expected_mastery'):
+            errors['expected_mastery'] = 'This field is required.'
+        
+        if not self.initial_data.get('location'):
+            errors['location'] = 'This field is required.'
+        
+        if not self.initial_data.get('function'):
+            errors['function'] = 'This field is required.'
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return data
+
     def create(self, validated_data):
         """
         Create a new Vacancy instance with related objects

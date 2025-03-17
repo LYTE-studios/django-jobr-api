@@ -145,6 +145,19 @@ class VacancyViewSetTests(APITestCase):
         """
         Test listing vacancies
         """
+        # Delete any existing vacancies
+        Vacancy.objects.all().delete()
+        
+        # Create a new vacancy for this test
+        self.vacancy = Vacancy.objects.create(
+            employer=self.employer,
+            expected_mastery=MasteryOption.ADVANCED,
+            location=self.location,
+            function=self.function,
+            job_date=timezone.now().date(),
+            salary=Decimal('50000.00')
+        )
+        
         url = reverse('vacancy-list')
         response = self.client.get(url)
         
@@ -200,14 +213,14 @@ class VacancyFilterViewTests(APITestCase):
             role=ProfileOption.EMPLOYEE
         )
         
-        # Create employee profile
-        self.employee_profile = Employee.objects.create(
-            date_of_birth='1990-01-01',
-            gender='male',
-            phone_number='1234567890',
-            latitude=50.8503,  # Brussels latitude
-            longitude=4.3517   # Brussels longitude
-        )
+        # Employee profile is automatically created by CustomUser model
+        self.employee_profile = self.employee.employee_profile
+        self.employee_profile.date_of_birth = '1990-01-01'
+        self.employee_profile.gender = 'male'
+        self.employee_profile.phone_number = '1234567890'
+        self.employee_profile.latitude = 50.8503  # Brussels latitude
+        self.employee_profile.longitude = 4.3517  # Brussels longitude
+        self.employee_profile.save()
         
         # Create base models
         self.contract_type = ContractType.objects.create(contract_type='Full-time')

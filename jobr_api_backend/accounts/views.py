@@ -43,6 +43,7 @@ class UserRegistrationView(generics.CreateAPIView):
     """
     View for registering a new user and generating authentication tokens.
     """
+    permission_classes = [AllowAny]
     serializer_class = UserAuthenticationSerializer
 
     def post(self, request, *args, **kwargs):
@@ -56,11 +57,12 @@ class UserRegistrationView(generics.CreateAPIView):
             "access": tokens["access"], 
             "refresh": tokens["refresh"]
         }, status=status.HTTP_201_CREATED)
-
 class UserLoginView(generics.GenericAPIView):
     """
     View for handling user login and generating authentication tokens.
     """
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
     serializer_class = LoginSerializer
 
     def post(self, request):

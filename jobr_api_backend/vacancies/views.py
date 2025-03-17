@@ -98,7 +98,10 @@ class VacancyViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # This ensures that only vacancies created by the logged-in user are returned
-        return Vacancy.objects.filter(employer_id=self.request.user.id)
+        queryset = Vacancy.objects.select_related('employer', 'location', 'function')
+        if self.request.method == 'GET' and 'pk' not in self.kwargs:
+            return queryset.filter(employer=self.request.user).distinct()
+        return queryset.filter(employer=self.request.user).distinct()
 
 class ApplyViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
@@ -109,11 +112,10 @@ class ApplyViewSet(viewsets.ModelViewSet):
 
 class VacancyFilterView(generics.ListAPIView):
     authentication_classes = [JWTAuthentication]
-
     serializer_class = VacancySerializer
 
     def get_queryset(self):
-        queryset = Vacancy.objects.all()
+        queryset = Vacancy.objects.all().distinct()
 
         # Get parameters from request
         contract_type = self.request.query_params.get("contract_type")
@@ -147,14 +149,21 @@ class VacancyFilterView(generics.ListAPIView):
             queryset = queryset.filter(skill__id__in=skills).distinct()
         # Filter by distance if latitude and longitude are available
         if max_distance and user_latitude is not None and user_longitude is not None:
-            queryset = [
-                vacancy
-                for vacancy in queryset
-                if self.calculate_distance(
-                    user_latitude, user_longitude, vacancy.latitude, vacancy.longitude
-                )
-                <= float(max_distance)
-            ]
+            max_distance = float(max_distance)
+            # Using raw SQL for distance calculation
+            queryset = queryset.extra(
+                select={'distance': '''
+                    6371 * 2 * ASIN(
+                        SQRT(
+                            POW(SIN(RADIANS(%s - ABS(latitude)) / 2), 2) +
+                            COS(RADIANS(%s)) * COS(RADIANS(ABS(latitude))) *
+                            POW(SIN(RADIANS(%s - longitude) / 2), 2)
+                        )
+                    )
+                '''},
+                select_params=[user_latitude, user_latitude, user_longitude],
+                where=['latitude IS NOT NULL', 'longitude IS NOT NULL']
+            ).filter(distance__lte=max_distance)
 
         # Sort by salary
         if sort_by_salary:
@@ -164,6 +173,11 @@ class VacancyFilterView(generics.ListAPIView):
                 queryset = queryset.order_by("-salary")
 
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @staticmethod
     def calculate_distance(lat1, lon1, lat2, lon2):

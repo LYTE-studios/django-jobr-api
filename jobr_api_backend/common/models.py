@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 class BaseModel(models.Model):
     """
@@ -112,3 +114,32 @@ class BaseModelWithMetadata(BaseModel):
 
     class Meta:
         abstract = True
+
+class Extra(models.Model):
+    """
+    Extra model for storing additional data
+    """
+    extra = models.CharField(
+        max_length=255,
+        help_text="Additional data"
+    )
+    created_at = models.DateTimeField(
+        default=timezone.now
+    )
+    updated_at = models.DateTimeField(
+        default=timezone.now
+    )
+
+    def __str__(self):
+        return self.extra
+
+    def clean(self):
+        if not self.extra or self.extra.isspace():
+            raise ValidationError("Extra field cannot be empty or whitespace only")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['-created_at']

@@ -42,6 +42,9 @@ STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
 ALLOWED_HOSTS = ["*"]
 
+# Ensure URLs end with a slash
+APPEND_SLASH = True
+
 CSRF_TRUSTED_ORIGINS = [
     "https://api.jobr.lytestudios.be",
     "http://api.jobr.lytestudios.be",

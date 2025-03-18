@@ -12,7 +12,9 @@ from .models import (
     Question,
     Skill,
     Language,
-    Location
+    Location,
+    ProfileInterest,
+    SalaryBenefit
 )
 from accounts.models import ProfileOption
 
@@ -208,6 +210,16 @@ class VacancySerializer(serializers.ModelSerializer):
 
         vacancy.save()
         return vacancy
+
+class ProfileInterestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProfileInterest
+        fields = ["id", "name"]
+
+class SalaryBenefitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalaryBenefit
+        fields = ["id", "name"]
 
 class ApplySerializer(serializers.ModelSerializer):
     employee = serializers.PrimaryKeyRelatedField(

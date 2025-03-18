@@ -1,7 +1,10 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from .models import ContractType, Function, Language, Skill, Location, Question
+from .models import (
+    ContractType, Function, Language, Skill, Location, Question,
+    ProfileInterest, SalaryBenefit
+)
 from accounts.models import Employer
 from .models import Vacancy, ApplyVacancy
 from .serializers import (
@@ -13,6 +16,8 @@ from .serializers import (
     SkillSerializer,
     LocationSerializer,
     QuestionSerializer,
+    ProfileInterestSerializer,
+    SalaryBenefitSerializer,
 )
 from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
@@ -85,6 +90,28 @@ class ContractsTypesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
     queryset = ContractType.objects.all()
     serializer_class = ContractTypeSerializer
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class ProfileInterestsView(generics.GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    queryset = ProfileInterest.objects.all()
+    serializer_class = ProfileInterestSerializer
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class SalaryBenefitsView(generics.GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    queryset = SalaryBenefit.objects.all()
+    serializer_class = SalaryBenefitSerializer
 
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()

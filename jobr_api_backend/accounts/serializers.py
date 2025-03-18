@@ -4,11 +4,57 @@ from .models import CustomUser, Employee, Employer, Review, UserGallery, Profile
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = [
+            'date_of_birth', 'gender', 'phone_number', 'profile_picture',
+            'city_name', 'biography', 'latitude', 'longitude',
+            'phone_session_counts', 'language', 'contract_type',
+            'function', 'skill'
+        ]
+
+class EmployerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employer
+        fields = [
+            'vat_number', 'company_name', 'street_name', 'house_number',
+            'city', 'postal_code', 'coordinates', 'website', 'biography'
+        ]
+
 class UserSerializer(serializers.ModelSerializer):
+    employee_profile = EmployeeSerializer(required=False)
+    employer_profile = EmployerSerializer(required=False)
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'profile_picture', 'profile_banner']
-        read_only_fields = ['profile_picture', 'profile_banner']
+        fields = [
+            'id', 'username', 'email', 'role', 'profile_picture',
+            'profile_banner', 'employee_profile', 'employer_profile'
+        ]
+
+    def update(self, instance, validated_data):
+        employee_data = validated_data.pop('employee_profile', None)
+        employer_data = validated_data.pop('employer_profile', None)
+
+        # Update the user instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update employee profile if it exists and data is provided
+        if employee_data and instance.employee_profile:
+            for attr, value in employee_data.items():
+                setattr(instance.employee_profile, attr, value)
+            instance.employee_profile.save()
+
+        # Update employer profile if it exists and data is provided
+        if employer_data and instance.employer_profile:
+            for attr, value in employer_data.items():
+                setattr(instance.employer_profile, attr, value)
+            instance.employer_profile.save()
+
+        return instance
 
 class UserAuthenticationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

@@ -11,7 +11,9 @@ from .views import (
     SkillsView,
     LocationsView,
     QuestionsView,
-    ApplyForJobView
+    ApplyForJobView,
+    ProfileInterestsView,
+    SalaryBenefitsView
 )
 
 router = DefaultRouter()
@@ -29,6 +31,8 @@ urlpatterns = [
     path("functions/", FunctionsView.as_view(), name="functions"),
     path("contracts/", ContractsTypesView.as_view(), name="contracts"),
     path("questions/", QuestionsView.as_view(), name="questions"),
+    path("profile-interests/", ProfileInterestsView.as_view(), name="profile-interests"),
+    path("salary-benefits/", SalaryBenefitsView.as_view(), name="salary-benefits"),
     path("filter/", VacancyFilterView.as_view(), name="vacancy-filter"),
         path(
         "vacancies/<int:pk>/",

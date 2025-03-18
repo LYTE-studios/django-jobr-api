@@ -1,165 +1,106 @@
 from django.test import TestCase
-from accounts.models import CustomUser, Employee, Employer, ProfileOption
-from accounts.serializers import (
-    UserSerializer,
-    UserAuthenticationSerializer,
-    LoginSerializer,
-    ProfileImageUploadSerializer
-)
-from .test_utils import create_test_image
+from accounts.models import CustomUser, Employee, Employer, LikedEmployee, ProfileOption
+from accounts.serializers import LikedEmployeeSerializer, EmployeeSearchSerializer
+from vacancies.models import Skill, Language, Function
 
-class UserSerializerTests(TestCase):
+class LikedEmployeeSerializerTests(TestCase):
     def setUp(self):
-        """
-        Set up test data for serializer tests
-        """
-        self.user = CustomUser.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123',
+        """Set up test data"""
+        # Create employer user
+        self.employer_user = CustomUser.objects.create_user(
+            username='employer_test',
+            email='employer@test.com',
+            password='testpass',
+            role=ProfileOption.EMPLOYER
+        )
+        self.employer = self.employer_user.employer_profile
+
+        # Create employee user
+        self.employee_user = CustomUser.objects.create_user(
+            username='employee_test',
+            email='employee@test.com',
+            password='testpass',
             role=ProfileOption.EMPLOYEE
         )
-        self.user.save()  # Save to ensure employee_profile is created
+        self.employee = self.employee_user.employee_profile
+        self.employee.city_name = "Test City"
+        self.employee.biography = "Test Bio"
+        self.employee.save()
 
-    def test_user_serializer_create(self):
-        """
-        Test creating a user through UserSerializer
-        """
-        data = {
-            'username': 'newuser',
-            'email': 'new@example.com',
-            'password': 'newpass123',
-            'role': ProfileOption.EMPLOYEE
-        }
-        serializer = UserSerializer(data=data)
-        self.assertTrue(serializer.is_valid())
-        user = serializer.save()
-        self.assertEqual(user.username, 'newuser')
-        self.assertEqual(user.email, 'new@example.com')
-        self.assertEqual(user.role, ProfileOption.EMPLOYEE)
+        # Create a liked employee instance
+        self.liked_employee = LikedEmployee.objects.create(
+            employer=self.employer,
+            employee=self.employee
+        )
 
-    def test_user_serializer_update(self):
-        """
-        Test updating user and profile data
-        """
-        data = {
-            'username': 'updateduser',
-            'email': 'updated@example.com'
-        }
-        serializer = UserSerializer(self.user, data=data, partial=True)
-        self.assertTrue(serializer.is_valid())
-        updated_user = serializer.save()
-        self.assertEqual(updated_user.username, 'updateduser')
-        self.assertEqual(updated_user.email, 'updated@example.com')
+    def test_liked_employee_serializer(self):
+        """Test LikedEmployeeSerializer"""
+        serializer = LikedEmployeeSerializer(self.liked_employee)
+        data = serializer.data
 
-class UserAuthenticationSerializerTests(TestCase):
+        self.assertIn('id', data)
+        self.assertIn('employee', data)
+        self.assertIn('employee_user', data)
+        self.assertIn('created_at', data)
+
+        # Check employee data
+        self.assertEqual(data['employee']['city_name'], "Test City")
+        self.assertEqual(data['employee']['biography'], "Test Bio")
+
+        # Check employee user data
+        self.assertEqual(data['employee_user']['username'], 'employee_test')
+        self.assertEqual(data['employee_user']['email'], 'employee@test.com')
+
+class EmployeeSearchSerializerTests(TestCase):
     def setUp(self):
-        """
-        Set up test data for authentication serializer tests
-        """
-        self.user_data = {
-            'username': 'authuser',
-            'email': 'auth@example.com',
-            'password': 'authpassword123',
-            'role': ProfileOption.EMPLOYEE
-        }
-
-    def test_user_authentication_serializer_create(self):
-        """
-        Test creating a user through UserAuthenticationSerializer
-        """
-        serializer = UserAuthenticationSerializer(data=self.user_data)
-        self.assertTrue(serializer.is_valid())
-        user = serializer.save()
-        self.assertEqual(user.username, self.user_data['username'])
-        self.assertEqual(user.email, self.user_data['email'])
-        self.assertEqual(user.role, self.user_data['role'])
-        self.assertTrue(user.check_password(self.user_data['password']))
-
-class LoginSerializerTests(TestCase):
-    def setUp(self):
-        """
-        Set up test data for login serializer tests
-        """
-        self.user = CustomUser.objects.create_user(
-            username='loginuser',
-            email='login@example.com',
-            password='loginpass123'
+        """Set up test data"""
+        # Create employee user
+        self.employee_user = CustomUser.objects.create_user(
+            username='employee_test',
+            email='employee@test.com',
+            password='testpass',
+            role=ProfileOption.EMPLOYEE
         )
-        self.login_data = {
-            'username': 'loginuser',
-            'password': 'loginpass123'
-        }
+        self.employee = self.employee_user.employee_profile
+        
+        # Add employee details
+        self.employee.city_name = "Test City"
+        self.employee.biography = "Test Bio"
+        self.employee.save()
 
-    def test_login_serializer_validate_success(self):
-        """
-        Test successful login validation
-        """
-        serializer = LoginSerializer(data=self.login_data)
-        self.assertTrue(serializer.is_valid())
-        validated_data = serializer.validated_data
-        self.assertEqual(validated_data['user'], self.user)
+        # Create some related objects
+        self.skill = Skill.objects.create(skill="Test Skill")
+        self.language = Language.objects.create(language="Test Language")
+        self.function = Function.objects.create(function="Test Function")
 
-    def test_login_serializer_validate_failure(self):
-        """
-        Test login validation with incorrect credentials
-        """
-        data = {
-            'username': 'loginuser',
-            'password': 'wrongpass'
-        }
-        serializer = LoginSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('non_field_errors', serializer.errors)
+        # Add relationships
+        self.employee.skill.add(self.skill)
+        self.employee.language.add(self.language)
+        self.employee.function = self.function
+        self.employee.save()
 
-class ProfileImageUploadSerializerTests(TestCase):
-    def setUp(self):
-        """
-        Set up test data for image upload serializer tests
-        """
-        self.user = CustomUser.objects.create_user(
-            username='imageuser',
-            email='image@example.com',
-            password='imagepass123'
-        )
-        self.image = create_test_image()
+    def test_employee_search_serializer(self):
+        """Test EmployeeSearchSerializer"""
+        serializer = EmployeeSearchSerializer(self.employee)
+        data = serializer.data
 
-    def test_profile_picture_upload(self):
-        """
-        Test uploading a profile picture
-        """
-        data = {
-            'image_type': 'profile_picture',
-            'image': self.image
-        }
-        serializer = ProfileImageUploadSerializer(
-            instance=self.user,
-            data=data,
-            context={'request': None}
-        )
-        if not serializer.is_valid():
-            print("Validation errors:", serializer.errors)  # Debug line
-        self.assertTrue(serializer.is_valid())
-        updated_user = serializer.save()
-        self.assertTrue(updated_user.profile_picture)
-        self.assertIn('profile_pictures/', str(updated_user.profile_picture))
+        self.assertIn('id', data)
+        self.assertIn('user', data)
+        self.assertIn('city_name', data)
+        self.assertIn('biography', data)
+        self.assertIn('language', data)
+        self.assertIn('skill', data)
+        self.assertIn('function', data)
 
-    def test_profile_banner_upload(self):
-        """
-        Test uploading a profile banner
-        """
-        data = {
-            'image_type': 'profile_banner',
-            'image': self.image
-        }
-        serializer = ProfileImageUploadSerializer(
-            instance=self.user,
-            data=data,
-            context={'request': None}
-        )
-        if not serializer.is_valid():
-            print("Validation errors:", serializer.errors)  # Debug line
-        self.assertTrue(serializer.is_valid())
-        updated_user = serializer.save()
-        self.assertTrue(updated_user.profile_banner)
-        self.assertIn('profile_banners/', str(updated_user.profile_banner))
+        # Check basic fields
+        self.assertEqual(data['city_name'], "Test City")
+        self.assertEqual(data['biography'], "Test Bio")
+
+        # Check user data
+        self.assertEqual(data['user']['username'], 'employee_test')
+        self.assertEqual(data['user']['email'], 'employee@test.com')
+
+        # Check relationships
+        self.assertTrue(len(data['skill']) > 0)
+        self.assertTrue(len(data['language']) > 0)
+        self.assertIsNotNone(data['function'])

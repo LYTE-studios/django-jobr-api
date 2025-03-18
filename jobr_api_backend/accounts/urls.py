@@ -8,7 +8,10 @@ from .views import (
     ConnectionTestView,
     GoogleSignInView,
     AppleSignInView,
-    UserDetailView
+    UserDetailView,
+    LikeEmployeeView,
+    LikedEmployeesListView,
+    EmployeeSearchView
 )
 
 urlpatterns = [
@@ -26,4 +29,9 @@ urlpatterns = [
     
     # Utility endpoints
     path('test-connection/', ConnectionTestView.as_view(), name='test-connection'),
+
+    # Employee interaction endpoints
+    path('employees/search/', EmployeeSearchView.as_view(), name='employee-search'),
+    path('employees/liked/', LikedEmployeesListView.as_view(), name='liked-employees-list'),
+    path('employees/<int:employee_id>/like/', LikeEmployeeView.as_view(), name='like-employee'),
 ]

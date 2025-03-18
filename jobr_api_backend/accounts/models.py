@@ -268,6 +268,33 @@ class CustomUser(AbstractUser):
         return self.username
 
 
+class LikedEmployee(models.Model):
+    """
+    Represents an employee that has been liked by an employer.
+    
+    Attributes:
+        employer (ForeignKey): The employer who liked the employee
+        employee (ForeignKey): The employee who was liked
+        created_at (DateTimeField): When the like was created
+    """
+    employer = models.ForeignKey(
+        Employer,
+        on_delete=models.CASCADE,
+        related_name='liked_employees'
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='liked_by_employers'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('employer', 'employee')
+
+    def __str__(self):
+        return f"{self.employer} likes {self.employee}"
+
 class UserGallery(models.Model):
     """
     Represents a gallery for a user, where the user can upload images.

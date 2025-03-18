@@ -2,12 +2,13 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import (
-    CustomUser, 
-    Employee, 
-    Employer, 
-    Admin, 
-    UserGallery, 
-    ProfileOption
+    CustomUser,
+    Employee,
+    Employer,
+    Admin,
+    UserGallery,
+    ProfileOption,
+    LikedEmployee
 )
 from datetime import date
 import tempfile
@@ -221,3 +222,57 @@ class UserGalleryModelTests(TestCase):
             self.assertIsNotNone(gallery_entry)
             self.assertEqual(gallery_entry.user, self.user)
             self.assertTrue(gallery_entry.gallery)
+
+class LikedEmployeeModelTests(TestCase):
+    def setUp(self):
+        """
+        Set up test data for LikedEmployee model
+        """
+        # Create employer user
+        self.employer_user = CustomUser.objects.create_user(
+            username='employer_test',
+            email='employer@test.com',
+            password='testpass',
+            role=ProfileOption.EMPLOYER
+        )
+        self.employer = self.employer_user.employer_profile
+
+        # Create employee user
+        self.employee_user = CustomUser.objects.create_user(
+            username='employee_test',
+            email='employee@test.com',
+            password='testpass',
+            role=ProfileOption.EMPLOYEE
+        )
+        self.employee = self.employee_user.employee_profile
+
+    def test_liked_employee_creation(self):
+        """
+        Test creating a liked employee relationship
+        """
+        liked = LikedEmployee.objects.create(
+            employer=self.employer,
+            employee=self.employee
+        )
+
+        self.assertEqual(str(liked), f"{self.employer} likes {self.employee}")
+        self.assertEqual(liked.employer, self.employer)
+        self.assertEqual(liked.employee, self.employee)
+        self.assertIsNotNone(liked.created_at)
+
+    def test_unique_constraint(self):
+        """
+        Test that an employer cannot like the same employee twice
+        """
+        # Create first like
+        LikedEmployee.objects.create(
+            employer=self.employer,
+            employee=self.employee
+        )
+
+        # Attempt to create duplicate like
+        with self.assertRaises(Exception):
+            LikedEmployee.objects.create(
+                employer=self.employer,
+                employee=self.employee
+            )

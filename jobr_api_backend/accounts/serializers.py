@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import CustomUser, Employee, Employer, Review, UserGallery, ProfileOption
+from .models import (
+    CustomUser, Employee, Employer, Review, UserGallery,
+    ProfileOption, LikedEmployee
+)
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 
@@ -91,6 +94,37 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = '__all__'
+
+class LikedEmployeeSerializer(serializers.ModelSerializer):
+    employee = EmployeeSerializer(read_only=True)
+    employee_user = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LikedEmployee
+        fields = ['id', 'employee', 'employee_user', 'created_at']
+        read_only_fields = ['created_at']
+
+    def get_employee_user(self, obj):
+        user = CustomUser.objects.filter(employee_profile=obj.employee).first()
+        if user:
+            return UserSerializer(user).data
+        return None
+
+class EmployeeSearchSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Employee
+        fields = [
+            'id', 'user', 'city_name', 'biography', 'latitude', 'longitude',
+            'language', 'contract_type', 'function', 'skill'
+        ]
+
+    def get_user(self, obj):
+        user = CustomUser.objects.filter(employee_profile=obj).first()
+        if user:
+            return UserSerializer(user).data
+        return None
 
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:

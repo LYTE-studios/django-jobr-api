@@ -15,15 +15,18 @@ import firebase_admin
 from firebase_admin import auth as firebase_auth
 
 from .services import TokenService
-from .models import Employee, Employer, UserGallery, ProfileOption
+from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee
 from .serializers import (
     LoginSerializer,
     UserAuthenticationSerializer,
     ReviewSerializer,
     UserGallerySerializer,
     UserSerializer,
-    ProfileImageUploadSerializer
+    ProfileImageUploadSerializer,
+    LikedEmployeeSerializer,
+    EmployeeSearchSerializer
 )
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -261,3 +264,126 @@ class ProfileImageUploadView(APIView):
             return Response({
                 'error': f'Error deleting {image_type}: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+class LikeEmployeeView(APIView):
+    """
+    View for liking/unliking employees and getting liked employees list.
+    Only accessible by employers.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, employee_id):
+        """Like an employee"""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employers can like employees"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            employee = Employee.objects.get(id=employee_id)
+            employer = request.user.employer_profile
+
+            # Create the like if it doesn't exist
+            like, created = LikedEmployee.objects.get_or_create(
+                employer=employer,
+                employee=employee
+            )
+
+            if not created:
+                return Response(
+                    {"message": "Employee already liked"},
+                    status=status.HTTP_200_OK
+                )
+
+            return Response(
+                {"message": "Employee liked successfully"},
+                status=status.HTTP_201_CREATED
+            )
+
+        except Employee.DoesNotExist:
+            return Response(
+                {"error": "Employee not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def delete(self, request, employee_id):
+        """Unlike an employee"""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employers can unlike employees"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            like = LikedEmployee.objects.get(
+                employer=request.user.employer_profile,
+                employee_id=employee_id
+            )
+            like.delete()
+            return Response(
+                {"message": "Employee unliked successfully"},
+                status=status.HTTP_200_OK
+            )
+        except LikedEmployee.DoesNotExist:
+            return Response(
+                {"error": "Like not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class LikedEmployeesListView(generics.ListAPIView):
+    """
+    View for getting the list of employees liked by the current employer.
+    Only accessible by employers.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = LikedEmployeeSerializer
+
+    def get_queryset(self):
+        if self.request.user.role != ProfileOption.EMPLOYER:
+            return LikedEmployee.objects.none()
+        return LikedEmployee.objects.filter(
+            employer=self.request.user.employer_profile
+        ).select_related('employee')
+
+class EmployeeSearchView(generics.ListAPIView):
+    """
+    View for searching employees based on various criteria.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmployeeSearchSerializer
+
+    def get_queryset(self):
+        queryset = Employee.objects.all()
+        search_term = self.request.query_params.get('search', '')
+        
+        if search_term:
+            # Search in related CustomUser fields
+            queryset = queryset.filter(
+                Q(customuser__username__icontains=search_term) |
+                Q(customuser__email__icontains=search_term) |
+                Q(city_name__icontains=search_term) |
+                Q(biography__icontains=search_term)
+            )
+
+        # Additional filters
+        city = self.request.query_params.get('city', '')
+        if city:
+            queryset = queryset.filter(city_name__icontains=city)
+
+        skill = self.request.query_params.get('skill')
+        if skill:
+            queryset = queryset.filter(skill__id=skill)
+
+        language = self.request.query_params.get('language')
+        if language:
+            queryset = queryset.filter(language__id=language)
+
+        function = self.request.query_params.get('function')
+        if function:
+            queryset = queryset.filter(function__id=function)
+
+        return queryset.distinct()

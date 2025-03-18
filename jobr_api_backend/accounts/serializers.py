@@ -25,16 +25,34 @@ class EmployerSerializer(serializers.ModelSerializer):
             'city', 'postal_code', 'coordinates', 'website', 'biography'
         ]
 
+class UserGallerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserGallery
+        fields = ['id', 'gallery']
+
 class UserSerializer(serializers.ModelSerializer):
-    employee_profile = EmployeeSerializer(required=False)
-    employer_profile = EmployerSerializer(required=False)
+    employee_profile = EmployeeSerializer(required=False, allow_null=True)
+    employer_profile = EmployerSerializer(required=False, allow_null=True)
+    user_gallery = UserGallerySerializer(many=True, read_only=True)
 
     class Meta:
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'role', 'profile_picture',
-            'profile_banner', 'employee_profile', 'employer_profile'
+            'profile_banner', 'employee_profile', 'employer_profile',
+            'user_gallery'
         ]
+
+    def to_representation(self, instance):
+        """
+        Handle profile representation based on role
+        """
+        data = super().to_representation(instance)
+        if instance.role == ProfileOption.EMPLOYEE:
+            data['employer_profile'] = None
+        elif instance.role == ProfileOption.EMPLOYER:
+            data['employee_profile'] = None
+        return data
 
     def update(self, instance, validated_data):
         employee_data = validated_data.pop('employee_profile', None)
@@ -45,18 +63,44 @@ class UserSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        # Update employee profile if it exists and data is provided
-        if employee_data and instance.employee_profile:
-            for attr, value in employee_data.items():
-                setattr(instance.employee_profile, attr, value)
-            instance.employee_profile.save()
+        # Handle profile updates based on role
+        if instance.role == ProfileOption.EMPLOYEE:
+            # Handle employee profile
+            if employee_data is not None:
+                if not hasattr(instance, 'employee_profile') or not instance.employee_profile:
+                    employee = Employee.objects.create(**employee_data)
+                    instance.employee_profile = employee
+                else:
+                    for attr, value in employee_data.items():
+                        setattr(instance.employee_profile, attr, value)
+                    instance.employee_profile.save()
+            
+            # Remove employer profile if it exists
+            if hasattr(instance, 'employer_profile') and instance.employer_profile:
+                employer = instance.employer_profile
+                instance.employer_profile = None
+                instance.save()
+                employer.delete()
 
-        # Update employer profile if it exists and data is provided
-        if employer_data and instance.employer_profile:
-            for attr, value in employer_data.items():
-                setattr(instance.employer_profile, attr, value)
-            instance.employer_profile.save()
+        elif instance.role == ProfileOption.EMPLOYER:
+            # Handle employer profile
+            if employer_data is not None:
+                if not hasattr(instance, 'employer_profile') or not instance.employer_profile:
+                    employer = Employer.objects.create(**employer_data)
+                    instance.employer_profile = employer
+                else:
+                    for attr, value in employer_data.items():
+                        setattr(instance.employer_profile, attr, value)
+                    instance.employer_profile.save()
+            
+            # Remove employee profile if it exists
+            if hasattr(instance, 'employee_profile') and instance.employee_profile:
+                employee = instance.employee_profile
+                instance.employee_profile = None
+                instance.save()
+                employee.delete()
 
+        instance.save()
         return instance
 
 class UserAuthenticationSerializer(serializers.ModelSerializer):
@@ -125,11 +169,6 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
         if user:
             return UserSerializer(user).data
         return None
-
-class UserGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserGallery
-        fields = '__all__'
 
 class ProfileImageUploadSerializer(serializers.Serializer):
     image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])

@@ -13,7 +13,8 @@ from .views import (
     QuestionsView,
     ApplyForJobView,
     ProfileInterestsView,
-    SalaryBenefitsView
+    SalaryBenefitsView,
+    VacancyApplicantsView
 )
 
 router = DefaultRouter()
@@ -21,7 +22,7 @@ router = DefaultRouter()
 urlpatterns = [
     path("", include(router.urls)),
     path(
-        "locations",
+        "locations/",
         LocationsView.as_view(),
         name="locations",
     ),
@@ -34,7 +35,7 @@ urlpatterns = [
     path("profile-interests/", ProfileInterestsView.as_view(), name="profile-interests"),
     path("salary-benefits/", SalaryBenefitsView.as_view(), name="salary-benefits"),
     path("filter/", VacancyFilterView.as_view(), name="vacancy-filter"),
-        path(
+    path(
         "vacancies/<int:pk>/",
         VacancyViewSet.as_view({"get": "retrieve", "put": "update"}),
         name="vacancy-detail",
@@ -43,5 +44,10 @@ urlpatterns = [
         "vacancies/",
         VacancyViewSet.as_view({"get": "list", "post": "create"}),
         name="vacancy-list",
+    ),
+    path(
+        "vacancies/<int:vacancy_id>/applicants/",
+        VacancyApplicantsView.as_view(),
+        name="vacancy-applicants",
     ),
 ]

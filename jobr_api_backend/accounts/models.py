@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from vacancies.models import Language, ContractType, Function, Skill
+from vacancies.models import Language, ContractType, Function, Skill, Sector
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 
@@ -203,6 +203,15 @@ class CustomUser(AbstractUser):
         choices=ProfileOption.choices,
         null=True,
         blank=True
+    )
+
+    sector = models.ForeignKey(
+        Sector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        help_text="The business sector this user belongs to"
     )
 
     is_blocked = models.BooleanField(

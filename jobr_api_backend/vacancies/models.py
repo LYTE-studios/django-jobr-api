@@ -2,6 +2,29 @@ from django.db import models
 from django.conf import settings
 
 
+class Sector(models.Model):
+    """
+    Represents a business sector that groups related functions.
+    
+    Attributes:
+        name (CharField): The name of the sector.
+        weight (IntegerField): An optional field that stores the weight of the sector. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Sector.
+    """
+    name = models.CharField(max_length=255, unique=True)
+    weight = models.IntegerField(null=True)
+
+    def __str__(self):
+        """
+        Returns a string representation of the Sector.
+        
+        Returns:
+            str: A human-readable string representing the Sector instance.
+        """
+        return f"{self.name} at {self.weight}"
+
 class Location(models.Model):
     """
     Represents a location in the system with an associated weight.
@@ -52,19 +75,52 @@ class ContractType(models.Model):
         return f"{self.contract_type} at {self.weight}"
 
 
+class Skill(models.Model):
+    """
+    Represents a skill with an associated category (either 'hard' or 'soft') and a weight.
+    
+    Attributes:
+        skill (CharField): A string field that stores the name of the skill. The maximum length is 255 characters.
+        category (CharField): A string field with two possible choices ('hard' or 'soft') to specify the type of skill.
+        weight (IntegerField): An optional field that stores the weight of the skill. Defaults to None.
+    
+    Methods:
+        __str__(self): Returns a string representation of the Skill in the format: "Skill - Category at weight".
+    """
+    skill = models.CharField(max_length=255)
+    category = models.CharField(
+        max_length=10, choices=[("hard", "Hard"), ("soft", "Soft")], default="hard"
+    )
+    weight = models.IntegerField(null=True)
+
+    def __str__(self):
+        """
+        Returns a string representation of the Skill in the format:
+        "Skill - Category at weight".
+        
+        Returns:
+            str: A human-readable string that represents the Skill instance.
+        """
+        return f"{self.skill} - {self.category} at {self.weight}"
+
+
 class Function(models.Model):
     """
-    Represents a job function with an associated weight.
+    Represents a job function with an associated weight and sector.
     
     Attributes:
         function (CharField): A string field that stores the job function. The maximum length is 255 characters.
         weight (IntegerField): An optional field that stores the weight of the function. Defaults to None.
+        skills (ManyToManyField): A many-to-many relationship with the Skill model.
+        sector (ForeignKey): The business sector this function belongs to.
     
     Methods:
         __str__(self): Returns a string representation of the Function in the format: "Function at weight".
     """
     function = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
+    skills = models.ManyToManyField(Skill, related_name='functions', blank=True)
+    sector = models.ForeignKey(Sector, on_delete=models.CASCADE, related_name='functions')
 
     def __str__(self):
         """
@@ -125,35 +181,6 @@ class Language(models.Model):
             str: A human-readable string that represents the Language instance.
         """
         return f"{self.language} at {self.weight}"
-
-class Skill(models.Model):
-    """
-    Represents a skill with an associated category (either 'hard' or 'soft') and a weight.
-    
-    Attributes:
-        skill (CharField): A string field that stores the name of the skill. The maximum length is 255 characters.
-        category (CharField): A string field with two possible choices ('hard' or 'soft') to specify the type of skill.
-        weight (IntegerField): An optional field that stores the weight of the skill. Defaults to None.
-    
-    Methods:
-        __str__(self): Returns a string representation of the Skill in the format: "Skill - Category at weight".
-    """
-    skill = models.CharField(max_length=255)
-    category = models.CharField(
-        max_length=10, choices=[("hard", "Hard"), ("soft", "Soft")], default="hard"
-    )
-    weight = models.IntegerField(null=True)
-
-    def __str__(self):
-        """
-        Returns a string representation of the Skill in the format:
-        "Skill - Category at weight".
-        
-        Returns:
-            str: A human-readable string that represents the Skill instance.
-        """
-        return f"{self.skill} - {self.category} at {self.weight}"
-
 
 class MasteryOption(models.TextChoices):
     """
@@ -355,6 +382,8 @@ class Vacancy(models.Model):
     questions = models.ManyToManyField(VacancyQuestion)
 
     skill = models.ManyToManyField(Skill)
+
+    salary_benefits = models.ManyToManyField(SalaryBenefit, blank=True)
 
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

@@ -2,8 +2,16 @@ from django.contrib import admin
 from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
-    VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday
+    VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday, Sector
 )
+
+@admin.register(Sector)
+class SectorAdmin(admin.ModelAdmin):
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
+    list_filter = ('weight',)
+    ordering = ('name',)
+    list_per_page = 25
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
@@ -23,11 +31,16 @@ class ContractTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
-    list_display = ('function', 'weight')
-    search_fields = ('function',)
-    list_filter = ('weight',)
+    list_display = ('function', 'weight', 'sector', 'get_skills')
+    search_fields = ('function', 'sector__name')
+    list_filter = ('weight', 'sector', 'skills')
     ordering = ('function',)
     list_per_page = 25
+    filter_horizontal = ('skills',)
+
+    def get_skills(self, obj):
+        return ", ".join([skill.skill for skill in obj.skills.all()])
+    get_skills.short_description = 'Skills'
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):

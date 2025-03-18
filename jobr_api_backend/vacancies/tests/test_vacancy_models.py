@@ -14,7 +14,8 @@ from vacancies.models import (
     VacancyQuestion,
     ApplyVacancy,
     MasteryOption,
-    Weekday
+    Weekday,
+    SalaryBenefit
 )
 from decimal import Decimal
 from django.utils import timezone
@@ -41,6 +42,7 @@ class VacancyModelTests(TestCase):
         self.contract_type = ContractType.objects.create(contract_type='Full-time', weight=2)
         self.weekday = Weekday.objects.create(name='Monday')
         self.skill = Skill.objects.create(skill='Python', category='hard', weight=5)
+        self.salary_benefit = SalaryBenefit.objects.create(name='Health Insurance', weight=3)
         
         # Create vacancy
         self.vacancy = Vacancy.objects.create(
@@ -56,6 +58,7 @@ class VacancyModelTests(TestCase):
         self.vacancy.contract_type.add(self.contract_type)
         self.vacancy.skill.add(self.skill)
         self.vacancy.week_day.add(self.weekday)
+        self.vacancy.salary_benefits.add(self.salary_benefit)
 
     def test_vacancy_creation(self):
         """
@@ -72,15 +75,44 @@ class VacancyModelTests(TestCase):
         self.assertEqual(self.vacancy.contract_type.count(), 1)
         self.assertEqual(self.vacancy.skill.count(), 1)
         self.assertEqual(self.vacancy.week_day.count(), 1)
+        self.assertEqual(self.vacancy.salary_benefits.count(), 1)
         
         self.assertIn(self.contract_type, self.vacancy.contract_type.all())
         self.assertIn(self.skill, self.vacancy.skill.all())
         self.assertIn(self.weekday, self.vacancy.week_day.all())
+        self.assertIn(self.salary_benefit, self.vacancy.salary_benefits.all())
         
         # Test reverse relationships
         self.assertIn(self.vacancy, self.contract_type.vacancy_set.all())
         self.assertIn(self.vacancy, self.skill.vacancy_set.all())
         self.assertIn(self.vacancy, self.weekday.vacancy_set.all())
+        self.assertIn(self.vacancy, self.salary_benefit.vacancy_set.all())
+
+    def test_salary_benefits(self):
+        """
+        Test salary benefits functionality
+        """
+        # Create additional salary benefits
+        benefit2 = SalaryBenefit.objects.create(name='Company Car', weight=4)
+        benefit3 = SalaryBenefit.objects.create(name='Meal Vouchers', weight=2)
+
+        # Add multiple benefits
+        self.vacancy.salary_benefits.add(benefit2, benefit3)
+
+        # Test that all benefits are present
+        self.assertEqual(self.vacancy.salary_benefits.count(), 3)
+        self.assertIn(self.salary_benefit, self.vacancy.salary_benefits.all())
+        self.assertIn(benefit2, self.vacancy.salary_benefits.all())
+        self.assertIn(benefit3, self.vacancy.salary_benefits.all())
+
+        # Test removing a benefit
+        self.vacancy.salary_benefits.remove(benefit2)
+        self.assertEqual(self.vacancy.salary_benefits.count(), 2)
+        self.assertNotIn(benefit2, self.vacancy.salary_benefits.all())
+
+        # Test clearing all benefits
+        self.vacancy.salary_benefits.clear()
+        self.assertEqual(self.vacancy.salary_benefits.count(), 0)
 
     def test_vacancy_optional_fields(self):
         """

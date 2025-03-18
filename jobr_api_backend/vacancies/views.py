@@ -1,5 +1,5 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, generics
+from rest_framework.permissions import IsAuthenticated, BasePermission
 
 from .models import (
     ContractType, Function, Language, Skill, Location, Question,
@@ -22,10 +22,43 @@ from .serializers import (
 from math import radians, cos, sin, asin, sqrt
 from rest_framework import generics
 from rest_framework import status
+from django.contrib.auth import get_user_model
 from accounts.models import Employee
 from rest_framework.exceptions import NotFound
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
+from accounts.serializers import UserSerializer
+
+User = get_user_model()
+
+class IsVacancyEmployer(BasePermission):
+    """
+    Permission to only allow employers of a vacancy to access its details.
+    """
+    def has_permission(self, request, view):
+        vacancy_id = view.kwargs.get('vacancy_id')
+        try:
+            vacancy = Vacancy.objects.get(id=vacancy_id)
+            return request.user == vacancy.employer
+        except Vacancy.DoesNotExist:
+            raise NotFound("Vacancy not found.")
+
+class VacancyApplicantsView(generics.ListAPIView):
+    """
+    View to list all applicants for a specific vacancy.
+    Only accessible by the employer who created the vacancy.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVacancyEmployer]
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        vacancy_id = self.kwargs.get('vacancy_id')
+        return User.objects.filter(
+            id__in=ApplyVacancy.objects.filter(
+                vacancy_id=vacancy_id
+            ).values_list('employee_id', flat=True)
+        )
 
 from chat.models import ChatRoom
 from chat.serializers import ChatRoomSerializer
@@ -47,6 +80,17 @@ class SkillsView(generics.GenericAPIView):
     queryset = Skill.objects.all()
     serializer_class = SkillSerializer
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        function_id = self.request.query_params.get('function_id')
+        if function_id:
+            try:
+                function = Function.objects.get(id=function_id)
+                return function.skills.all()
+            except Function.DoesNotExist:
+                raise NotFound("Function not found.")
+        return queryset
+
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
@@ -57,6 +101,12 @@ class LanguagesView(generics.GenericAPIView):
     authentication_classes = [JWTAuthentication]
     queryset = Language.objects.all()
     serializer_class = LanguageSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.user.sector:
+            return queryset.filter(sector=self.request.user.sector)
+        return queryset
 
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()

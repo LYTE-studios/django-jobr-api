@@ -30,10 +30,17 @@ class ContractTypeSerializer(serializers.ModelSerializer):
         model = ContractType
         fields = ["id", "contract_type"]
 
+class SkillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Skill
+        fields = ["id", "skill", "category"]
+
 class FunctionSerializer(serializers.ModelSerializer):
+    skills = SkillSerializer(many=True, read_only=True)
+
     class Meta:
         model = Function
-        fields = ["id", "function"]
+        fields = ["id", "function", "skills"]
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -44,11 +51,6 @@ class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = ["question"]
-
-class SkillSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Skill
-        fields = ["id", "skill", "category"]
 
 class WeekdaySerializer(serializers.ModelSerializer):
     class Meta:
@@ -74,6 +76,16 @@ class VacancyQuestionSerializer(serializers.ModelSerializer):
         model = VacancyQuestion
         fields = ["question"]
 
+class ProfileInterestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProfileInterest
+        fields = ["id", "name"]
+
+class SalaryBenefitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalaryBenefit
+        fields = ["id", "name"]
+
 class VacancySerializer(serializers.ModelSerializer):
     employer = serializers.SerializerMethodField()
     contract_type = ContractTypeSerializer(many=True, read_only=True)
@@ -84,6 +96,8 @@ class VacancySerializer(serializers.ModelSerializer):
     descriptions = VacancyDescriptionSerializer(many=True, read_only=True)
     questions = VacancyQuestionSerializer(many=True, read_only=True)
     week_day = WeekdaySerializer(many=True, read_only=True)
+    salary_benefits = SalaryBenefitSerializer(many=True, read_only=True)
+    applicant_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Vacancy
@@ -101,7 +115,12 @@ class VacancySerializer(serializers.ModelSerializer):
             "descriptions",
             "questions",
             "skill",
+            "salary_benefits",
+            "applicant_count",
         ]
+
+    def get_applicant_count(self, obj):
+        return ApplyVacancy.objects.filter(vacancy=obj).count()
 
     def get_employer(self, obj):
         from accounts.serializers import UserSerializer
@@ -208,18 +227,15 @@ class VacancySerializer(serializers.ModelSerializer):
             ]
             vacancy.week_day.set(week_days)
 
+        # Handle salary benefits
+        salary_benefits_data = self.initial_data.get("salary_benefits", [])
+        if salary_benefits_data:
+            salary_benefit_ids = [sb.get('id') for sb in salary_benefits_data if 'id' in sb]
+            salary_benefits = SalaryBenefit.objects.filter(id__in=salary_benefit_ids)
+            vacancy.salary_benefits.set(salary_benefits)
+
         vacancy.save()
         return vacancy
-
-class ProfileInterestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProfileInterest
-        fields = ["id", "name"]
-
-class SalaryBenefitSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SalaryBenefit
-        fields = ["id", "name"]
 
 class ApplySerializer(serializers.ModelSerializer):
     employee = serializers.PrimaryKeyRelatedField(

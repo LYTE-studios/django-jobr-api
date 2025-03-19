@@ -103,10 +103,10 @@ class LanguagesView(generics.GenericAPIView):
     serializer_class = LanguageSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = Function.objects.all()
         if self.request.user.sector:
-            return queryset.filter(sector=self.request.user.sector)
-        return queryset
+            queryset = queryset.filter(sector=self.request.user.sector)
+        return queryset.distinct()
 
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -114,15 +114,14 @@ class LanguagesView(generics.GenericAPIView):
         return Response(serializer.data)
 
 
-class FunctionsView(generics.GenericAPIView):
+class FunctionsView(generics.ListAPIView):
     authentication_classes = [JWTAuthentication]
-    queryset = Function.objects.all()
     serializer_class = FunctionSerializer
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        if self.request.user.sector:
+            return Function.objects.filter(sector=self.request.user.sector).distinct()
+        return Function.objects.all().distinct()
 
 
 class QuestionsView(generics.GenericAPIView):

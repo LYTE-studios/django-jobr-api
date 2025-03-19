@@ -44,17 +44,19 @@ class LikedEmployeeSerializerTests(TestCase):
         data = serializer.data
 
         self.assertIn('id', data)
-        self.assertIn('employee', data)
-        self.assertIn('employee_user', data)
+        self.assertIn('user', data)
         self.assertIn('created_at', data)
 
-        # Check employee data
-        self.assertEqual(data['employee']['city_name'], "Test City")
-        self.assertEqual(data['employee']['biography'], "Test Bio")
+        # Check user data
+        self.assertEqual(data['user']['username'], 'employee_test')
+        self.assertEqual(data['user']['email'], 'employee@test.com')
+        self.assertEqual(data['user']['role'], ProfileOption.EMPLOYEE)
 
-        # Check employee user data
-        self.assertEqual(data['employee_user']['username'], 'employee_test')
-        self.assertEqual(data['employee_user']['email'], 'employee@test.com')
+        # Check employee profile data in user
+        employee_profile = data['user']['employee_profile']
+        self.assertIsNotNone(employee_profile)
+        self.assertEqual(employee_profile['city_name'], "Test City")
+        self.assertEqual(employee_profile['biography'], "Test Bio")
 
 class EmployeeSearchSerializerTests(TestCase):
     def setUp(self):
@@ -89,26 +91,24 @@ class EmployeeSearchSerializerTests(TestCase):
         serializer = EmployeeSearchSerializer(self.employee)
         data = serializer.data
 
-        self.assertIn('id', data)
         self.assertIn('user', data)
-        self.assertIn('city_name', data)
-        self.assertIn('biography', data)
-        self.assertIn('language', data)
-        self.assertIn('skill', data)
-        self.assertIn('function', data)
+        user_data = data['user']
 
-        # Check basic fields
-        self.assertEqual(data['city_name'], "Test City")
-        self.assertEqual(data['biography'], "Test Bio")
+        # Check user basic data
+        self.assertEqual(user_data['username'], 'employee_test')
+        self.assertEqual(user_data['email'], 'employee@test.com')
+        self.assertEqual(user_data['role'], ProfileOption.EMPLOYEE)
 
-        # Check user data
-        self.assertEqual(data['user']['username'], 'employee_test')
-        self.assertEqual(data['user']['email'], 'employee@test.com')
+        # Check employee profile data
+        employee_profile = user_data['employee_profile']
+        self.assertIsNotNone(employee_profile)
+        self.assertEqual(employee_profile['city_name'], "Test City")
+        self.assertEqual(employee_profile['biography'], "Test Bio")
 
-        # Check relationships
-        self.assertTrue(len(data['skill']) > 0)
-        self.assertTrue(len(data['language']) > 0)
-        self.assertIsNotNone(data['function'])
+        # Check relationships in employee profile
+        self.assertTrue(len(employee_profile['skill']) > 0)
+        self.assertTrue(len(employee_profile['language']) > 0)
+        self.assertIsNotNone(employee_profile['function'])
 
 class UserSerializerTests(TestCase):
     def setUp(self):

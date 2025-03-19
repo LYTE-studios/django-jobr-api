@@ -140,15 +140,14 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LikedEmployeeSerializer(serializers.ModelSerializer):
-    employee = EmployeeSerializer(read_only=True)
-    employee_user = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField()
     
     class Meta:
         model = LikedEmployee
-        fields = ['id', 'employee', 'employee_user', 'created_at']
+        fields = ['id', 'user', 'created_at']
         read_only_fields = ['created_at']
 
-    def get_employee_user(self, obj):
+    def get_user(self, obj):
         user = CustomUser.objects.filter(employee_profile=obj.employee).first()
         if user:
             return UserSerializer(user).data
@@ -159,10 +158,7 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Employee
-        fields = [
-            'id', 'user', 'city_name', 'biography', 'latitude', 'longitude',
-            'language', 'contract_type', 'function', 'skill'
-        ]
+        fields = ['user']
 
     def get_user(self, obj):
         user = CustomUser.objects.filter(employee_profile=obj).first()

@@ -16,8 +16,19 @@ from django.urls import path
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "jobr_api_backend.settings")
 
+from channels.security.websocket import AllowedHostsOriginValidator
+from chat.routing import websocket_urlpatterns
+from chat.middleware import TokenAuthMiddleware
+
 application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
+        "websocket": AllowedHostsOriginValidator(
+            TokenAuthMiddleware(
+                URLRouter(
+                    websocket_urlpatterns
+                )
+            )
+        ),
     }
 )

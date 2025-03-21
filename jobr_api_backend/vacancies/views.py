@@ -330,14 +330,14 @@ class ApplyForJobView(generics.CreateAPIView):
             )
 
         data = {
-            "employee": request.user.employee_profile.id,
+            "employee": request.user.id,  # Use user ID instead of employee_profile ID
             "vacancy": vacancy.id
         }
         serializer = self.get_serializer(data=data)
         if serializer.is_valid():
             serializer.save()
             chatroom = ChatRoom.objects.create(
-                employee=request.user.employee_profile,
+                employee=request.user,  # Use the user instance instead of employee_profile
                 employer=vacancy.employer,
                 vacancy=vacancy
             )

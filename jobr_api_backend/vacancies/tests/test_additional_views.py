@@ -151,7 +151,8 @@ class VacancyFilterViewTests(TestCase):
         self.user.employee_profile.save()
 
         url = reverse('vacancy-filter')
-        response = self.client.get(f"{url}?employee_id={self.user.employee_profile.id}&distance=50")
+        # Set distance to 25km to only get the Brussels vacancy
+        response = self.client.get(f"{url}?employee_id={self.user.employee_profile.id}&distance=25")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)  # Should only return vacancy1 (Brussels)
 
@@ -215,8 +216,12 @@ class ApplyForJobViewTests(TestCase):
         self.employee.employee_profile.latitude = 50.8503  # Brussels
         self.employee.employee_profile.longitude = 4.3517
         self.employee.employee_profile.save()
-        self.vacancy = Vacancy.objects.create(employer=self.employer)
+        # Ensure employee profile is created and saved first
         self.client.force_authenticate(user=self.employee)
+        self.employee.save()  # This triggers the profile creation
+
+        # Then create the vacancy
+        self.vacancy = Vacancy.objects.create(employer=self.employer)
 
     def test_apply_for_job(self):
         """Test successfully applying for a job"""

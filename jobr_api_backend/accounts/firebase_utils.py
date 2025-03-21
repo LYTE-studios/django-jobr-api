@@ -14,8 +14,7 @@ def initialize_firebase():
         cred = credentials.Certificate("firebase-secrets.json")
         firebase_admin.initialize_app(cred)
     except Exception as e:
-        if not firebase_admin._apps:  # Only log if no app is initialized
-            print(f"Failed to initialize Firebase: {e}")
+        pass
 
 # Only initialize in production environment
 if not __debug__:  # This is True when Python is run with -O flag

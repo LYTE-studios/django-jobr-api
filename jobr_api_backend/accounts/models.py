@@ -73,6 +73,9 @@ class Employee(models.Model):
     )
     skill = models.ManyToManyField(Skill, blank=True)  # Made blank=True
 
+    class Meta:
+        ordering = ['id']  # Order by ID to ensure consistent pagination
+
     def __str__(self):
         try:
             user = CustomUser.objects.get(employee_profile=self)
@@ -267,6 +270,9 @@ class CustomUser(AbstractUser):
 
         super().save(*args, **kwargs)
 
+    class Meta:
+        ordering = ['id']  # Order by ID to ensure consistent pagination
+
     def __str__(self) -> str:
         """
         Returns a string representation of the CustomUser instance.
@@ -300,6 +306,7 @@ class LikedEmployee(models.Model):
 
     class Meta:
         unique_together = ('employer', 'employee')
+        ordering = ['-created_at']  # Order by creation date, newest first
 
     def __str__(self):
         return f"{self.employer} likes {self.employee}"

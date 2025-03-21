@@ -26,7 +26,7 @@ urlpatterns = [
         LocationsView.as_view(),
         name="locations",
     ),
-    path("apply/", ApplyForJobView.as_view(), name="apply"),
+    path("apply/<int:vacancy_id>/", ApplyForJobView.as_view(), name="apply"),
     path("skills/", SkillsView.as_view(), name="skills"),
     path("languages/", LanguagesView.as_view(), name="languages"),
     path("functions/", FunctionsView.as_view(), name="functions"),

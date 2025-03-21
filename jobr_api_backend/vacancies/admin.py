@@ -31,16 +31,11 @@ class ContractTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
-    list_display = ('function', 'weight', 'sector', 'get_skills')
+    list_display = ('function', 'weight', 'sector')
     search_fields = ('function', 'sector__name')
-    list_filter = ('weight', 'sector', 'skills')
+    list_filter = ('weight', 'sector')
     ordering = ('function',)
     list_per_page = 25
-    filter_horizontal = ('skills',)
-
-    def get_skills(self, obj):
-        return ", ".join([skill.skill for skill in obj.skills.all()])
-    get_skills.short_description = 'Skills'
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
@@ -60,9 +55,9 @@ class LanguageAdmin(admin.ModelAdmin):
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ('skill', 'category', 'weight')
-    search_fields = ('skill',)
-    list_filter = ('category', 'weight')
+    list_display = ('skill', 'category', 'weight', 'function')
+    search_fields = ('skill', 'function__function')
+    list_filter = ('category', 'weight', 'function')
     ordering = ('skill',)
     list_per_page = 25
 

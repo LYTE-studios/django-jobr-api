@@ -4,7 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Q, Max, F, Count, Prefetch
 from .models import Message, ChatRoom
-from .serializers import MessageSerializer, ChatRoomSerializer, SendMessageSerializer
+from .serializers import (
+    MessageSerializer, ChatRoomSerializer, SendMessageSerializer,
+    DeleteMessageSerializer
+)
 from accounts.models import CustomUser, ProfileOption
 from django.db.models import Q, Max, F, Count, Prefetch, Case, When, Value, IntegerField
 
@@ -58,8 +61,12 @@ class SendMessageView(generics.CreateAPIView):
                 )
 
         # Create and send message
+        message_data = {
+            'content': content,
+            'reply_to': request.data.get('reply_to')
+        }
         serializer = self.get_serializer(
-            data={'content': content},
+            data=message_data,
             context={'request': request, 'chatroom': chatroom}
         )
         serializer.is_valid(raise_exception=True)
@@ -109,13 +116,28 @@ class GetMessagesView(generics.ListAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         data = serializer.data
-        # Add unread messages count for each chat room
-        for room_data in data:
-            room = ChatRoom.objects.get(id=room_data['id'])
-            room_data['unread_messages_count'] = room.messages.filter(
+        
+        # Get the chatroom from the URL parameters
+        chatroom_id = self.kwargs.get('chatroom_id')
+        user_id = self.kwargs.get('user_id')
+        
+        if chatroom_id:
+            room = ChatRoom.objects.get(id=chatroom_id)
+        else:
+            room = ChatRoom.objects.filter(
+                (Q(employee=request.user, employer_id=user_id) |
+                Q(employee_id=user_id, employer=request.user))
+            ).first()
+            
+        if room:
+            # Add unread messages count
+            unread_count = room.messages.filter(
                 ~Q(sender=request.user),
                 is_read=False
             ).count()
+            for message_data in data:
+                message_data['unread_messages_count'] = unread_count
+                
         return Response(data)
 
 class GetChatRoomListView(generics.ListAPIView):
@@ -127,24 +149,60 @@ class GetChatRoomListView(generics.ListAPIView):
     serializer_class = ChatRoomSerializer
 
     def get_queryset(self):
-        return ChatRoom.objects.filter(
+        # First get all chat rooms for the user
+        queryset = ChatRoom.objects.filter(
             Q(employee=self.request.user) |
             Q(employer=self.request.user)
-        ).prefetch_related(
-            Prefetch(
-                'messages',
-                queryset=Message.objects.order_by('-created_at')
-            )
-        ).annotate(
+        )
+
+        # Annotate with latest message time and counts
+        queryset = queryset.annotate(
             last_message_time=Max('messages__created_at'),
             messages_count=Count('messages'),
             unread_messages_count=Count(
                 'messages',
                 filter=~Q(messages__sender=self.request.user) & Q(messages__is_read=False)
             )
-        ).order_by('-last_message_time')
+        )
+
+        # Order by latest message time, ensuring NULL values come last
+        queryset = queryset.order_by(
+            F('last_message_time').desc(nulls_last=True),
+            '-updated_at'
+        )
+
+        # Prefetch related messages
+        return queryset.prefetch_related(
+            Prefetch(
+                'messages',
+                queryset=Message.objects.order_by('-created_at')
+            )
+        )
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+class DeleteMessageView(generics.UpdateAPIView):
+    """
+    View for soft-deleting a message. Only the sender can delete their own messages.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = DeleteMessageSerializer
+    queryset = Message.objects.all()
+
+    def get_object(self):
+        message = super().get_object()
+        if message.sender != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only delete your own messages.")
+        return message
+
+    def update(self, request, *args, **kwargs):
+        message = self.get_object()
+        serializer = self.get_serializer(message, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(MessageSerializer(message, context={'request': request}).data)

@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 from accounts.models import CustomUser, ProfileOption
 from chat.models import ChatRoom, Message
-from chat.serializers import MessageSerializer, ChatRoomSerializer
+from chat.serializers import MessageSerializer, ChatRoomSerializer, SendMessageSerializer
 from django.utils import timezone
 
 class MessageSerializerTests(TestCase):
@@ -50,7 +50,7 @@ class MessageSerializerTests(TestCase):
         """
         Test message content validation
         """
-        serializer = MessageSerializer(data={'content': ''}, context={'request': self.request})
+        serializer = SendMessageSerializer(data={'content': ''}, context={'request': self.request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('content', serializer.errors)
 

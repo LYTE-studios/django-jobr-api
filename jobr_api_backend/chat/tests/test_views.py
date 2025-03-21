@@ -200,3 +200,143 @@ class GetChatRoomListViewTests(APITestCase):
         response = self.client.get(self.list_url)
         chatroom1_data = next(room for room in response.data if room['id'] == self.chatroom1.id)
         self.assertEqual(chatroom1_data['unread_messages_count'], 2)
+
+class DeleteMessageViewTests(APITestCase):
+    def setUp(self):
+        """
+        Set up test data for delete message view tests
+        """
+        self.employee = CustomUser.objects.create_user(
+            username='employee',
+            email='employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        self.employer = CustomUser.objects.create_user(
+            username='employer',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        self.chatroom = ChatRoom.objects.create(
+            employee=self.employee,
+            employer=self.employer
+        )
+        self.message = Message.objects.create(
+            chatroom=self.chatroom,
+            sender=self.employee,
+            content="Test message"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.employee)
+
+    def test_delete_own_message(self):
+        """
+        Test deleting own message
+        """
+        url = reverse('delete-message', kwargs={'pk': self.message.id})
+        response = self.client.put(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.message.refresh_from_db()
+        self.assertTrue(self.message.is_deleted)
+        self.assertEqual(response.data['content'], "Message deleted")
+
+    def test_delete_others_message(self):
+        """
+        Test attempting to delete someone else's message
+        """
+        self.client.force_authenticate(user=self.employer)
+        url = reverse('delete-message', kwargs={'pk': self.message.id})
+        response = self.client.put(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.message.refresh_from_db()
+        self.assertFalse(self.message.is_deleted)
+
+    def test_delete_nonexistent_message(self):
+        """
+        Test attempting to delete a nonexistent message
+        """
+        url = reverse('delete-message', kwargs={'pk': 99999})
+        response = self.client.put(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+class ReplyMessageTests(APITestCase):
+    def setUp(self):
+        """
+        Set up test data for reply message tests
+        """
+        self.employee = CustomUser.objects.create_user(
+            username='employee',
+            email='employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        self.employer = CustomUser.objects.create_user(
+            username='employer',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        self.chatroom = ChatRoom.objects.create(
+            employee=self.employee,
+            employer=self.employer
+        )
+        self.original_message = Message.objects.create(
+            chatroom=self.chatroom,
+            sender=self.employer,
+            content="Original message"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.employee)
+
+    def test_reply_to_message(self):
+        """
+        Test replying to a message
+        """
+        data = {
+            'recipient_id': self.employer.id,
+            'content': 'Reply message',
+            'reply_to': self.original_message.id
+        }
+        response = self.client.post(reverse('send-message'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['message']['content'], 'Reply message')
+        self.assertEqual(response.data['message']['reply_to_message']['content'], 'Original message')
+
+    def test_reply_to_nonexistent_message(self):
+        """
+        Test replying to a nonexistent message
+        """
+        data = {
+            'recipient_id': self.employer.id,
+            'content': 'Reply message',
+            'reply_to': 99999
+        }
+        response = self.client.post(reverse('send-message'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reply_to_message_in_different_chatroom(self):
+        """
+        Test replying to a message from a different chatroom
+        """
+        other_chatroom = ChatRoom.objects.create(
+            employee=self.employee,
+            employer=CustomUser.objects.create_user(
+                username='other_employer',
+                email='other@test.com',
+                password='testpass123',
+                role=ProfileOption.EMPLOYER
+            )
+        )
+        other_message = Message.objects.create(
+            chatroom=other_chatroom,
+            sender=self.employee,
+            content="Message in other chatroom"
+        )
+        data = {
+            'recipient_id': self.employer.id,
+            'content': 'Reply message',
+            'reply_to': other_message.id
+        }
+        response = self.client.post(reverse('send-message'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

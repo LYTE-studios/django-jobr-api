@@ -28,62 +28,48 @@ class FunctionSkillsTests(TestCase):
         )
 
     def test_function_skills_relationship(self):
-        """Test adding and removing skills from a function"""
-        # Initially no skills
+        """Test assigning skills to a function"""
+        # Initially no skills assigned to function
         self.assertEqual(self.function.skills.count(), 0)
 
-        # Add skills
-        self.function.skills.add(self.skill1, self.skill2)
+        # Assign function to skills
+        self.skill1.function = self.function
+        self.skill1.save()
+        self.skill2.function = self.function
+        self.skill2.save()
+
+        # Check skills are assigned
         self.assertEqual(self.function.skills.count(), 2)
         self.assertIn(self.skill1, self.function.skills.all())
         self.assertIn(self.skill2, self.function.skills.all())
 
-        # Add another skill
-        self.function.skills.add(self.skill3)
-        self.assertEqual(self.function.skills.count(), 3)
-        self.assertIn(self.skill3, self.function.skills.all())
+        # Check reverse relationship
+        self.assertEqual(self.skill1.function, self.function)
+        self.assertEqual(self.skill2.function, self.function)
 
-        # Remove a skill
-        self.function.skills.remove(self.skill2)
-        self.assertEqual(self.function.skills.count(), 2)
-        self.assertNotIn(self.skill2, self.function.skills.all())
-
-        # Test reverse relationship
-        self.assertIn(self.function, self.skill1.functions.all())
-        self.assertIn(self.function, self.skill3.functions.all())
-        self.assertNotIn(self.function, self.skill2.functions.all())
-
-    def test_function_skills_clear(self):
-        """Test clearing all skills from a function"""
-        # Add all skills
-        self.function.skills.add(self.skill1, self.skill2, self.skill3)
-        self.assertEqual(self.function.skills.count(), 3)
-
-        # Clear skills
-        self.function.skills.clear()
-        self.assertEqual(self.function.skills.count(), 0)
-
-    def test_skill_functions_relationship(self):
-        """Test accessing functions from skills"""
+    def test_skill_function_relationship(self):
+        """Test accessing function from skills"""
         # Create another function
         function2 = Function.objects.create(
             function='Frontend Developer',
             weight=4
         )
 
-        # Add skills to both functions
-        self.function.skills.add(self.skill1, self.skill2)
-        function2.skills.add(self.skill2, self.skill3)
+        # Assign functions to skills
+        self.skill1.function = self.function
+        self.skill1.save()
+        self.skill2.function = function2
+        self.skill2.save()
+        self.skill3.function = function2
+        self.skill3.save()
 
-        # Test skill1 is only in first function
-        self.assertEqual(self.skill1.functions.count(), 1)
-        self.assertIn(self.function, self.skill1.functions.all())
+        # Test skill1 is assigned to first function
+        self.assertEqual(self.skill1.function, self.function)
 
-        # Test skill2 is in both functions
-        self.assertEqual(self.skill2.functions.count(), 2)
-        self.assertIn(self.function, self.skill2.functions.all())
-        self.assertIn(function2, self.skill2.functions.all())
+        # Test skill2 and skill3 are assigned to second function
+        self.assertEqual(self.skill2.function, function2)
+        self.assertEqual(self.skill3.function, function2)
 
-        # Test skill3 is only in second function
-        self.assertEqual(self.skill3.functions.count(), 1)
-        self.assertIn(function2, self.skill3.functions.all())
+        # Test function has correct skills
+        self.assertEqual(self.function.skills.count(), 1)
+        self.assertEqual(function2.skills.count(), 2)

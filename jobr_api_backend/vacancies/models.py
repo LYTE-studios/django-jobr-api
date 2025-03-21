@@ -92,6 +92,7 @@ class Skill(models.Model):
         max_length=10, choices=[("hard", "Hard"), ("soft", "Soft")], default="hard"
     )
     weight = models.IntegerField(null=True)
+    function = models.ForeignKey('Function', on_delete=models.CASCADE, related_name='skills', null=True, blank=True)
 
     def __str__(self):
         """
@@ -119,7 +120,6 @@ class Function(models.Model):
     """
     function = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
-    skills = models.ManyToManyField(Skill, related_name='functions', blank=True)
     sector = models.ForeignKey(Sector, on_delete=models.CASCADE, related_name='functions', null=True, blank=True)
 
     def __str__(self):

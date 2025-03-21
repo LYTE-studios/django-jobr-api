@@ -46,8 +46,12 @@ class SkillsViewTests(TestCase):
         )
 
         # Associate skills with functions
-        self.function1.skills.add(self.skill1, self.skill2)
-        self.function2.skills.add(self.skill2, self.skill3)
+        self.skill1.function = self.function1
+        self.skill1.save()
+        self.skill2.function = self.function2  # Changed from function1 to function2
+        self.skill2.save()
+        self.skill3.function = self.function2
+        self.skill3.save()
 
     def test_get_all_skills(self):
         """Test getting all skills without function filter"""
@@ -65,9 +69,9 @@ class SkillsViewTests(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data), 1)
         skills = {skill['skill'] for skill in response.data}
-        self.assertEqual(skills, {'Python', 'JavaScript'})
+        self.assertEqual(skills, {'Python'})
 
     def test_get_skills_by_different_function(self):
         """Test getting skills for a different function"""

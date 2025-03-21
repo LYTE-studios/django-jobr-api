@@ -58,18 +58,26 @@ class Message(models.Model):
         is_read (BooleanField): Whether the message has been read by the recipient.
     """
     chatroom = models.ForeignKey(
-        ChatRoom, 
-        on_delete=models.CASCADE, 
+        ChatRoom,
+        on_delete=models.CASCADE,
         related_name='messages'
     )
     sender = models.ForeignKey(
-        CustomUser, 
-        on_delete=models.CASCADE, 
+        CustomUser,
+        on_delete=models.CASCADE,
         related_name='sent_messages'
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    reply_to = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='replies'
+    )
 
     def clean(self):
         """
@@ -78,15 +86,39 @@ class Message(models.Model):
         Raises:
             ValidationError: If the content is empty or contains only whitespace.
         """
-        if not self.content or not self.content.strip():
+        if not self.is_deleted and (not self.content or not self.content.strip()):
             raise ValidationError("Message content cannot be empty or contain only whitespace.")
+
+    @property
+    def display_content(self):
+        """
+        Returns the content to display, showing 'Message deleted' if the message is deleted.
+        """
+        return "Message deleted" if self.is_deleted else self.content
+
+    def delete_message(self, user):
+        """
+        Soft delete a message if the user is the sender.
+        
+        Args:
+            user: The user attempting to delete the message.
+            
+        Raises:
+            ValidationError: If the user is not the sender of the message.
+        """
+        if self.sender != user:
+            raise ValidationError("You can only delete your own messages.")
+        self.is_deleted = True
+        self.save()
 
     def save(self, *args, **kwargs):
         """
-        Override save to run full validation before saving.
+        Override save to run full validation before saving and update chatroom's updated_at.
         """
         self.full_clean()
         super().save(*args, **kwargs)
+        # Update the chatroom's updated_at timestamp
+        self.chatroom.save(update_fields=['updated_at'])
 
     def __str__(self):
         return f"Message from {self.sender.username} at {self.created_at}"

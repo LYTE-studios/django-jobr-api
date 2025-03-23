@@ -140,31 +140,22 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LikedEmployeeSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
+    user = UserSerializer(source='employee.customuser', read_only=True)
     
     class Meta:
         model = LikedEmployee
         fields = ['id', 'user', 'created_at']
         read_only_fields = ['created_at']
 
-    def get_user(self, obj):
-        user = CustomUser.objects.filter(employee_profile=obj.employee).first()
-        if user:
-            return UserSerializer(user).data
-        return None
-
 class EmployeeSearchSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
+    employee_profile = EmployeeSerializer(read_only=True)
     
     class Meta:
-        model = Employee
-        fields = ['user']
-
-    def get_user(self, obj):
-        user = CustomUser.objects.filter(employee_profile=obj).first()
-        if user:
-            return UserSerializer(user).data
-        return None
+        model = CustomUser
+        fields = [
+            'id', 'username', 'email', 'profile_picture',
+            'profile_banner', 'employee_profile'
+        ]
 
 class ProfileImageUploadSerializer(serializers.Serializer):
     image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])

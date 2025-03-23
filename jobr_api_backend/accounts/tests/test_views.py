@@ -44,7 +44,7 @@ class EmployeeInteractionTests(TestCase):
     def test_like_employee(self):
         """Test liking an employee"""
         self.client.force_authenticate(user=self.employer_user)
-        url = reverse('like-employee', kwargs={'employee_id': self.employee.id})
+        url = reverse('like-employee', kwargs={'employee_id': self.employee_user.id})
         
         # Test liking
         response = self.client.post(url)
@@ -77,7 +77,7 @@ class EmployeeInteractionTests(TestCase):
             employee=self.employee
         )
         
-        url = reverse('like-employee', kwargs={'employee_id': self.employee.id})
+        url = reverse('like-employee', kwargs={'employee_id': self.employee_user.id})
         response = self.client.delete(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -91,7 +91,7 @@ class EmployeeInteractionTests(TestCase):
     def test_like_employee_unauthorized(self):
         """Test that only employers can like employees"""
         self.client.force_authenticate(user=self.employee_user)
-        url = reverse('like-employee', kwargs={'employee_id': self.employee2.id})
+        url = reverse('like-employee', kwargs={'employee_id': self.employee_user2.id})
         
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -114,8 +114,12 @@ class EmployeeInteractionTests(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('results', response.data)
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data), 2)
+        
+        # Verify user data is included
+        self.assertEqual(response.data[0]['user']['username'], self.employee_user.username)
+        self.assertEqual(response.data[0]['user']['email'], self.employee_user.email)
+        self.assertEqual(response.data[0]['user']['role'], ProfileOption.EMPLOYEE)
 
     def test_search_employees(self):
         """Test searching employees"""
@@ -127,6 +131,15 @@ class EmployeeInteractionTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(len(response.data) > 0)
 
+        # Verify user data structure
+        first_result = response.data[0]
+        self.assertIn('id', first_result)
+        self.assertIn('username', first_result)
+        self.assertIn('email', first_result)
+        self.assertIn('profile_picture', first_result)
+        self.assertIn('profile_banner', first_result)
+        self.assertIn('employee_profile', first_result)
+
         # Test search by city
         response = self.client.get(url, {'city': 'Test City'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -135,7 +148,7 @@ class EmployeeInteractionTests(TestCase):
         # Test search with no results
         response = self.client.get(url, {'search': 'NonexistentTerm'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(len(response.data), 0)
 
         # Test search with multiple filters
         skill = Skill.objects.create(skill="Test Skill")
@@ -147,10 +160,4 @@ class EmployeeInteractionTests(TestCase):
             'skill': skill.id
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(len(response.data['results']) > 0)
-        
-        # Verify pagination structure
-        self.assertIn('count', response.data)
-        self.assertIn('next', response.data)
-        self.assertIn('previous', response.data)
-        self.assertIn('results', response.data)
+        self.assertTrue(len(response.data) > 0)

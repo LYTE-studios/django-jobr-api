@@ -60,12 +60,12 @@ class UserRegistrationView(generics.CreateAPIView):
             "access": tokens["access"], 
             "refresh": tokens["refresh"]
         }, status=status.HTTP_201_CREATED)
+
 class UserLoginView(generics.GenericAPIView):
     """
     View for handling user login and generating authentication tokens.
     """
     permission_classes = [AllowAny]
-    serializer_class = LoginSerializer
     serializer_class = LoginSerializer
 
     def post(self, request):
@@ -282,13 +282,16 @@ class LikeEmployeeView(APIView):
             )
 
         try:
-            employee = Employee.objects.get(id=employee_id)
+            employee_user = User.objects.get(
+                id=employee_id,
+                role=ProfileOption.EMPLOYEE
+            )
             employer = request.user.employer_profile
 
             # Create the like if it doesn't exist
             like, created = LikedEmployee.objects.get_or_create(
                 employer=employer,
-                employee=employee
+                employee=employee_user.employee_profile
             )
 
             if not created:
@@ -302,7 +305,7 @@ class LikeEmployeeView(APIView):
                 status=status.HTTP_201_CREATED
             )
 
-        except Employee.DoesNotExist:
+        except User.DoesNotExist:
             return Response(
                 {"error": "Employee not found"},
                 status=status.HTTP_404_NOT_FOUND
@@ -317,16 +320,20 @@ class LikeEmployeeView(APIView):
             )
 
         try:
+            employee_user = User.objects.get(
+                id=employee_id,
+                role=ProfileOption.EMPLOYEE
+            )
             like = LikedEmployee.objects.get(
                 employer=request.user.employer_profile,
-                employee_id=employee_id
+                employee=employee_user.employee_profile
             )
             like.delete()
             return Response(
                 {"message": "Employee unliked successfully"},
                 status=status.HTTP_200_OK
             )
-        except LikedEmployee.DoesNotExist:
+        except (User.DoesNotExist, LikedEmployee.DoesNotExist):
             return Response(
                 {"error": "Like not found"},
                 status=status.HTTP_404_NOT_FOUND
@@ -357,33 +364,32 @@ class EmployeeSearchView(generics.ListAPIView):
     serializer_class = EmployeeSearchSerializer
 
     def get_queryset(self):
-        queryset = Employee.objects.all()
+        queryset = User.objects.filter(role=ProfileOption.EMPLOYEE)
         search_term = self.request.query_params.get('search', '')
         
         if search_term:
-            # Search in related CustomUser fields
             queryset = queryset.filter(
-                Q(customuser__username__icontains=search_term) |
-                Q(customuser__email__icontains=search_term) |
-                Q(city_name__icontains=search_term) |
-                Q(biography__icontains=search_term)
+                Q(username__icontains=search_term) |
+                Q(email__icontains=search_term) |
+                Q(employee_profile__city_name__icontains=search_term) |
+                Q(employee_profile__biography__icontains=search_term)
             )
 
         # Additional filters
         city = self.request.query_params.get('city', '')
         if city:
-            queryset = queryset.filter(city_name__icontains=city)
+            queryset = queryset.filter(employee_profile__city_name__icontains=city)
 
         skill = self.request.query_params.get('skill')
         if skill:
-            queryset = queryset.filter(skill__id=skill)
+            queryset = queryset.filter(employee_profile__skill__id=skill)
 
         language = self.request.query_params.get('language')
         if language:
-            queryset = queryset.filter(language__id=language)
+            queryset = queryset.filter(employee_profile__language__id=language)
 
         function = self.request.query_params.get('function')
         if function:
-            queryset = queryset.filter(function__id=function)
+            queryset = queryset.filter(employee_profile__function__id=function)
 
         return queryset.distinct()

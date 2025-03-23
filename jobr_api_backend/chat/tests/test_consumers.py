@@ -1,4 +1,5 @@
 import json
+import asyncio
 from channels.testing import WebsocketCommunicator
 from channels.routing import URLRouter
 from django.test import TestCase
@@ -183,6 +184,29 @@ class TestChatConsumer:
         await communicator.disconnect()
 
     @pytest.mark.asyncio
+    async def test_general_exception_handling(self):
+        """Test handling of general exceptions in receive method"""
+        communicator = WebsocketCommunicator(
+            self.application,
+            f'/ws/chat/{self.chatroom.id}/?token={self.token}'
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is True
+
+        # Send a message that will raise a KeyError
+        await communicator.send_json_to({
+            'type': 'chat.message',
+            'data': None  # This will raise a KeyError when trying to access data.get('content')
+        })
+
+        # Receive error response with longer timeout
+        response = await communicator.receive_json_from(timeout=5)
+        assert 'error' in response
+        assert "'NoneType' object has no attribute 'get'" in response['error']
+
+        await communicator.disconnect()
+
+    @pytest.mark.asyncio
     async def test_read_status_marks_messages(self):
         # Create multiple test messages
         message1 = await db_sync(Message.objects.create)(
@@ -258,3 +282,73 @@ class TestChatConsumer:
         )
         connected, subprotocol = await communicator.connect()
         assert connected is False
+
+    @pytest.mark.asyncio
+    async def test_empty_message_content(self):
+        """Test sending message with empty content"""
+        communicator = WebsocketCommunicator(
+            self.application,
+            f'/ws/chat/{self.chatroom.id}/?token={self.token}'
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is True
+
+        # Send empty message
+        message_data = {
+            'type': 'chat.message',
+            'data': {
+                'content': ''
+            }
+        }
+        await communicator.send_json_to(message_data)
+
+        # Should not receive a response for empty content
+        with pytest.raises(asyncio.TimeoutError):
+            await communicator.receive_json_from()
+
+        await communicator.disconnect()
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_chatroom(self):
+        """Test connecting to non-existent chatroom"""
+        communicator = WebsocketCommunicator(
+            self.application,
+            f'/ws/chat/99999/?token={self.token}'
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is False
+
+    @pytest.mark.asyncio
+    async def test_missing_message_type(self):
+        """Test sending message without type"""
+        communicator = WebsocketCommunicator(
+            self.application,
+            f'/ws/chat/{self.chatroom.id}/?token={self.token}'
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is True
+
+        # Send message without type
+        message_data = {
+            'data': {
+                'content': 'Hello'
+            }
+        }
+        await communicator.send_json_to(message_data)
+
+        # Should not receive a response
+        with pytest.raises(asyncio.TimeoutError):
+            await communicator.receive_json_from()
+
+        await communicator.disconnect()
+
+    @pytest.mark.asyncio
+    async def test_disconnect_without_room_group(self):
+        """Test disconnect when room_group_name is not set"""
+        communicator = WebsocketCommunicator(
+            self.application,
+            f'/ws/chat/{self.chatroom.id}/?token={self.token}'
+        )
+        # Don't connect, just disconnect
+        await communicator.disconnect()
+        # No exception should be raised

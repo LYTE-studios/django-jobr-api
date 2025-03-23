@@ -61,8 +61,8 @@ class CustomUserModelTests(TestCase):
         """
         # Test Employee Profile Creation
         employee_user = CustomUser.objects.create_user(
-            username='employee', 
-            email='employee@example.com', 
+            username='employee',
+            email='employee@example.com',
             password='employeepass',
             role=ProfileOption.EMPLOYEE
         )
@@ -72,14 +72,91 @@ class CustomUserModelTests(TestCase):
 
         # Test Employer Profile Creation
         employer_user = CustomUser.objects.create_user(
-            username='employer', 
-            email='employer@example.com', 
+            username='employer',
+            email='employer@example.com',
             password='employerpass',
             role=ProfileOption.EMPLOYER
         )
         
         self.assertIsNotNone(employer_user.employer_profile)
         self.assertIsInstance(employer_user.employer_profile, Employer)
+
+    def test_user_role_change(self):
+        """
+        Test changing user role properly handles profiles
+        """
+        # Create an employee user
+        user = CustomUser.objects.create_user(
+            username='rolechange',
+            email='rolechange@example.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        
+        # Save the employee profile ID
+        employee_profile_id = user.employee_profile.id
+        
+        # Change role to employer
+        user.role = ProfileOption.EMPLOYER
+        user.save()
+        
+        # Verify employee profile was deleted and employer profile was created
+        self.assertFalse(Employee.objects.filter(id=employee_profile_id).exists())
+        self.assertIsNone(user.employee_profile)
+        self.assertIsNotNone(user.employer_profile)
+        self.assertIsInstance(user.employer_profile, Employer)
+        
+        # Save the employer profile ID
+        employer_profile_id = user.employer_profile.id
+        
+        # Change role to admin
+        user.role = ProfileOption.ADMIN
+        user.save()
+        
+        # Verify employer profile was deleted and admin profile was created
+        self.assertFalse(Employer.objects.filter(id=employer_profile_id).exists())
+        self.assertIsNone(user.employer_profile)
+        self.assertIsNotNone(user.admin_profile)
+        self.assertIsInstance(user.admin_profile, Admin)
+
+    def test_user_role_change_with_data(self):
+        """
+        Test changing user role properly handles profile data
+        """
+        # Create an employee user with profile data
+        user = CustomUser.objects.create_user(
+            username='datachange',
+            email='datachange@example.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        
+        # Add data to employee profile
+        user.employee_profile.phone_number = '1234567890'
+        user.employee_profile.city_name = 'Test City'
+        user.employee_profile.save()
+        
+        # Change role to employer
+        user.role = ProfileOption.EMPLOYER
+        user.save()
+        
+        # Verify employee data is gone and new employer profile is clean
+        self.assertIsNone(user.employee_profile)
+        self.assertIsNotNone(user.employer_profile)
+        self.assertIsNone(user.employer_profile.company_name)
+        
+        # Add employer data
+        user.employer_profile.company_name = 'Test Company'
+        user.employer_profile.save()
+        
+        # Change back to employee
+        user.role = ProfileOption.EMPLOYEE
+        user.save()
+        
+        # Verify employer data is gone and new employee profile is clean
+        self.assertIsNone(user.employer_profile)
+        self.assertIsNotNone(user.employee_profile)
+        self.assertIsNone(user.employee_profile.phone_number)
 
     def test_profile_picture_upload(self):
         """

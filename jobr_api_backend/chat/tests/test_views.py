@@ -70,6 +70,42 @@ class SendMessageViewTests(APITestCase):
         response = self.client.post(self.send_message_url, {})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_send_message_to_nonexistent_recipient(self):
+        """
+        Test sending a message to a non-existent recipient
+        """
+        data = {
+            'recipient_id': 99999,
+            'content': 'Test message'
+        }
+        response = self.client.post(self.send_message_url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['error'], 'Recipient not found')
+
+    def test_send_message_as_employer(self):
+        """
+        Test sending a message as an employer
+        """
+        # Switch to employer user
+        self.client.force_authenticate(user=self.employer)
+        new_employee = CustomUser.objects.create_user(
+            username='new_employee',
+            email='new_employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        data = {
+            'recipient_id': new_employee.id,
+            'content': 'Test message'
+        }
+        response = self.client.post(self.send_message_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify chatroom was created with correct roles
+        chatroom = ChatRoom.objects.get(id=response.data['chatroom']['id'])
+        self.assertEqual(chatroom.employer, self.employer)
+        self.assertEqual(chatroom.employee, new_employee)
+
 class GetMessagesViewTests(APITestCase):
     def setUp(self):
         """
@@ -118,6 +154,22 @@ class GetMessagesViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['content'], 'Test message')
+
+    def test_get_messages_nonexistent_chatroom(self):
+        """
+        Test getting messages when no chatroom exists
+        """
+        # Create a new user that has no chatroom with the employee
+        other_user = CustomUser.objects.create_user(
+            username='other_user',
+            email='other@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        url = reverse('get-messages', kwargs={'user_id': other_user.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)  # Empty list when no chatroom exists
 
     def test_get_messages_marks_as_read(self):
         """

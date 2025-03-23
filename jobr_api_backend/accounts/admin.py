@@ -2,12 +2,47 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-from .models import Review, CustomUser, Employee, Employer, UserGallery
+from .models import Review, CustomUser, Employee, Employer, UserGallery, Admin, ProfileOption
 
 # Unregister unwanted models from admin
 admin.site.unregister(Group)
 admin.site.unregister(BlacklistedToken)
 admin.site.unregister(OutstandingToken)
+
+class OneToOneInline(admin.StackedInline):
+    template = 'admin/edit_inline/stacked.html'
+    can_delete = False
+    max_num = 1
+    min_num = 1
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+class EmployeeInline(OneToOneInline):
+    model = Employee
+    verbose_name_plural = 'Employee Profile'
+    fk_name = 'user'
+
+class EmployerInline(OneToOneInline):
+    model = Employer
+    verbose_name_plural = 'Employer Profile'
+    fk_name = 'user'
+
+class AdminInline(OneToOneInline):
+    model = Admin
+    verbose_name_plural = 'Admin Profile'
+    fk_name = 'user'
+
+class UserGalleryInline(admin.TabularInline):
+    model = UserGallery
+    extra = 1
+    verbose_name = "Gallery Image"
+    verbose_name_plural = "Gallery Images"
+    
+    def has_add_permission(self, request, obj=None):
+        if obj is None:  # Don't show when creating new user
+            return False
+        return True
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -20,11 +55,37 @@ class CustomUserAdmin(UserAdmin):
     actions = ['block_users', 'unblock_users']
 
     def get_fieldsets(self, request, obj=None):
-        fieldsets = super().get_fieldsets(request, obj)
-        # Add is_blocked to the permissions fieldset
-        if obj:  # Only show when editing existing user
-            fieldsets[2][1]['fields'] = fieldsets[2][1]['fields'] + ('is_blocked',)
-        return fieldsets
+        if not obj:
+            # For creating a new user
+            return (
+                (None, {'fields': ('username', 'password1', 'password2')}),
+                ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector')}),
+                ('Profile Pictures', {'fields': ('profile_picture', 'profile_banner')}),
+                ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_blocked')}),
+            )
+        # For editing an existing user
+        return (
+            (None, {'fields': ('username', 'password')}),
+            ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector')}),
+            ('Profile Pictures', {'fields': ('profile_picture', 'profile_banner')}),
+            ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_blocked')}),
+            ('Important dates', {'fields': ('last_login', 'date_joined')}),
+        )
+
+    def get_inline_instances(self, request, obj=None):
+        if not obj:  # No inlines when creating a new user
+            return []
+        inlines = []
+        # Show profile fields based on role
+        if obj.role == ProfileOption.EMPLOYEE:
+            inlines.append(EmployeeInline(self.model, self.admin_site))
+        elif obj.role == ProfileOption.EMPLOYER:
+            inlines.append(EmployerInline(self.model, self.admin_site))
+        elif obj.role == ProfileOption.ADMIN:
+            inlines.append(AdminInline(self.model, self.admin_site))
+        # Always show gallery
+        inlines.append(UserGalleryInline(self.model, self.admin_site))
+        return inlines
 
     def block_users(self, request, queryset):
         queryset.update(is_blocked=True, is_active=False)
@@ -37,35 +98,48 @@ class CustomUserAdmin(UserAdmin):
     unblock_users.short_description = "Unblock selected users"
 
     def save_model(self, request, obj, form, change):
-        # If user is being blocked, also set is_active to False
-        if 'is_blocked' in form.changed_data:
-            if obj.is_blocked:
-                obj.is_active = False
-            else:
-                obj.is_active = True
+        # Let UserAdmin handle the basic user save
         super().save_model(request, obj, form, change)
 
-@admin.register(Employee)
-class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('get_username', 'gender', 'city_name', 'phone_number', 'date_of_birth')
-    list_filter = ('gender', 'city_name', 'language', 'contract_type', 'function')
-    search_fields = ('city_name', 'biography')
-    list_per_page = 25
+    def response_add(self, request, obj, post_url_continue=None):
+        # Create profile after user is saved
+        if obj.role == ProfileOption.EMPLOYEE:
+            Employee.objects.create(user=obj)
+        elif obj.role == ProfileOption.EMPLOYER:
+            Employer.objects.create(user=obj)
+        elif obj.role == ProfileOption.ADMIN:
+            Admin.objects.create(user=obj)
+        
+        return super().response_add(request, obj, post_url_continue)
 
-    def get_username(self, obj):
-        return str(obj)
-    get_username.short_description = 'Username'
+    def response_change(self, request, obj):
+        form = self.get_form(request, obj)(request.POST, instance=obj)
+        if form.is_valid():
+            # Handle role changes for existing users
+            if 'role' in form.changed_data:
+                # Delete existing profiles
+                if hasattr(obj, 'employee_profile') and obj.employee_profile:
+                    obj.employee_profile.delete()
+                if hasattr(obj, 'employer_profile') and obj.employer_profile:
+                    obj.employer_profile.delete()
+                if hasattr(obj, 'admin_profile') and obj.admin_profile:
+                    obj.admin_profile.delete()
+                
+                # Create new profile
+                if obj.role == ProfileOption.EMPLOYEE:
+                    Employee.objects.create(user=obj)
+                elif obj.role == ProfileOption.EMPLOYER:
+                    Employer.objects.create(user=obj)
+                elif obj.role == ProfileOption.ADMIN:
+                    Admin.objects.create(user=obj)
 
-@admin.register(Employer)
-class EmployerAdmin(admin.ModelAdmin):
-    list_display = ('get_username', 'company_name', 'city', 'postal_code', 'website')
-    list_filter = ('city', 'postal_code')
-    search_fields = ('company_name', 'vat_number', 'city', 'biography')
-    list_per_page = 25
+            # Handle blocked status
+            if 'is_blocked' in form.changed_data:
+                obj.is_active = not obj.is_blocked
+                obj.save(update_fields=['is_active'])
+        
+        return super().response_change(request, obj)
 
-    def get_username(self, obj):
-        return str(obj)
-    get_username.short_description = 'Username'
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
@@ -83,9 +157,3 @@ class ReviewAdmin(admin.ModelAdmin):
         return f"Anonymous: {obj.anonymous_name or 'Unknown'}"
     get_reviewer.short_description = 'Reviewer'
 
-@admin.register(UserGallery)
-class UserGalleryAdmin(admin.ModelAdmin):
-    list_display = ('user', 'gallery')
-    list_filter = ('user',)
-    search_fields = ('user__username', 'user__email')
-    list_per_page = 25

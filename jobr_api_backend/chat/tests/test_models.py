@@ -168,3 +168,32 @@ class MessageModelTests(TestCase):
         self.employee.delete()
         with self.assertRaises(Message.DoesNotExist):
             message.refresh_from_db()
+
+    def test_message_deletion(self):
+        """
+        Test message deletion functionality
+        """
+        # Create a message
+        message = Message.objects.create(
+            chatroom=self.chatroom,
+            sender=self.employee,
+            content="Test message"
+        )
+
+        # Test successful deletion by sender
+        message.delete_message(self.employee)
+        message.refresh_from_db()
+        self.assertTrue(message.is_deleted)
+        self.assertEqual(message.display_content, "Message deleted")
+
+        # Test unauthorized deletion attempt
+        message2 = Message.objects.create(
+            chatroom=self.chatroom,
+            sender=self.employee,
+            content="Another test message"
+        )
+        with self.assertRaises(ValidationError) as context:
+            message2.delete_message(self.employer)
+        self.assertIn("You can only delete your own messages", str(context.exception))
+        message2.refresh_from_db()
+        self.assertFalse(message2.is_deleted)

@@ -44,6 +44,12 @@ class Employee(models.Model):
         __str__(self): Returns the string representation of the employee's associated user if exists.
 
     """
+    user = models.OneToOneField(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='employee_profile_reverse',
+        null=True
+    )
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(
         max_length=10,
@@ -52,9 +58,6 @@ class Employee(models.Model):
         blank=True
     )
     phone_number = models.CharField(max_length=15, null=True, blank=True, default=None)  # Made nullable, blank, and default None
-    profile_picture = models.ImageField(
-        upload_to="profile_pictures/", blank=True, null=True
-    )
     city_name = models.CharField(max_length=100, blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
     latitude = models.DecimalField(
@@ -77,11 +80,7 @@ class Employee(models.Model):
         ordering = ['id']  # Order by ID to ensure consistent pagination
 
     def __str__(self):
-        try:
-            user = CustomUser.objects.get(employee_profile=self)
-            return user.username
-        except CustomUser.DoesNotExist:
-            return "Not Found"
+        return self.user.username if self.user else "Not Found"
 
 
 class Employer(models.Model):
@@ -91,6 +90,12 @@ class Employer(models.Model):
         __str__(self): Returns the string representation of the employer's associated user if exists.
 
     """
+    user = models.OneToOneField(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='employer_profile_reverse',
+        null=True
+    )
 
     vat_number = models.CharField(max_length=30, null=True, blank=True)
     company_name = models.CharField(max_length=100, null=True, blank=True)
@@ -103,11 +108,7 @@ class Employer(models.Model):
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        try:
-            user = CustomUser.objects.get(employer_profile=self)
-            return user.username
-        except CustomUser.DoesNotExist:
-            return "Not Found"
+        return self.user.username if self.user else "Not Found"
 
 
 class Admin(models.Model):
@@ -120,15 +121,17 @@ class Admin(models.Model):
         __str__(self): Returns the string representation of the admin's associated user if exists.
 
     """
+    user = models.OneToOneField(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='admin_profile_reverse',
+        null=True
+    )
 
     full_name = models.CharField(max_length=100)
 
     def __str__(self):
-        try:
-            user = CustomUser.objects.get(admin_profile=self)
-            return user.username
-        except CustomUser.DoesNotExist:
-            return "Not Found"
+        return self.user.username if self.user else "Not Found"
 
 
 class Review(models.Model):
@@ -256,22 +259,14 @@ class CustomUser(AbstractUser):
 
     def save(self, *args, **kwargs):
         """
-        Overridden save method to automatically create related profiles 
-        based on the user's role.
-
-        Creates an employee, employer, or admin profile if it does not already exist.
+        Overridden save method that lets the admin handle profile creation/deletion
         """
-        if self.role == ProfileOption.EMPLOYEE and not self.employee_profile:
-            self.employee_profile = Employee.objects.create(phone_number=None)  # Explicitly set phone_number to None
-        elif self.role == ProfileOption.EMPLOYER and not self.employer_profile:
-            self.employer_profile = Employer.objects.create()
-        elif self.role == ProfileOption.ADMIN and not self.admin_profile:
-            self.admin_profile = Admin.objects.create()
-
         super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['id']  # Order by ID to ensure consistent pagination
+        verbose_name = 'User'
+        verbose_name_plural = 'Users'
 
     def __str__(self) -> str:
         """

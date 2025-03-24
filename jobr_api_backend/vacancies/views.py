@@ -1,348 +1,159 @@
-from rest_framework import viewsets, generics
-from rest_framework.permissions import IsAuthenticated, BasePermission
-from django.db.models import ExpressionWrapper, FloatField
-from django.db.models.expressions import RawSQL
-
-from .models import (
-    ContractType, Function, Language, Skill, Location, Question,
-    ProfileInterest, SalaryBenefit
-)
-from accounts.models import Employer, ProfileOption
-from .models import Vacancy, ApplyVacancy
-from .serializers import (
-    VacancySerializer,
-    ApplySerializer,
-    ContractTypeSerializer,
-    FunctionSerializer,
-    LanguageSerializer,
-    SkillSerializer,
-    LocationSerializer,
-    QuestionSerializer,
-    ProfileInterestSerializer,
-    SalaryBenefitSerializer,
-)
-from math import radians, cos, sin, asin, sqrt
-from rest_framework import generics
-from rest_framework import status
-from django.contrib.auth import get_user_model
-from accounts.models import Employee
-from rest_framework.exceptions import NotFound
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
-from accounts.serializers import UserSerializer
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q, Count
+from .models import (
+    Location, ContractType, Function, Language,
+    Question, Skill, Vacancy, FunctionSkill
+)
+from .serializers import (
+    LocationSerializer, ContractTypeSerializer,
+    FunctionSerializer, LanguageSerializer,
+    QuestionSerializer, SkillSerializer,
+    VacancySerializer, FunctionSkillSerializer
+)
 
-User = get_user_model()
-
-class IsVacancyEmployer(BasePermission):
-    """
-    Permission to only allow employers of a vacancy to access its details.
-    """
-    def has_permission(self, request, view):
-        vacancy_id = view.kwargs.get('vacancy_id')
-        try:
-            vacancy = Vacancy.objects.get(id=vacancy_id)
-            return request.user == vacancy.employer
-        except Vacancy.DoesNotExist:
-            raise NotFound("Vacancy not found.")
-
-class VacancyApplicantsView(generics.ListAPIView):
-    """
-    View to list all applicants for a specific vacancy.
-    Only accessible by the employer who created the vacancy.
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated, IsVacancyEmployer]
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-        vacancy_id = self.kwargs.get('vacancy_id')
-        return User.objects.filter(
-            id__in=ApplyVacancy.objects.filter(
-                vacancy_id=vacancy_id
-            ).values_list('employee_id', flat=True)
-        )
-
-from chat.models import ChatRoom
-from chat.serializers import ChatRoomSerializer
-
-
-class LocationsView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
+class LocationViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing locations."""
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-
-class SkillsView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
-    queryset = Skill.objects.all()
-    serializer_class = SkillSerializer
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        function_id = self.request.query_params.get('function_id')
-        if function_id:
-            try:
-                function = Function.objects.get(id=function_id)
-                return queryset.filter(function=function)
-            except Function.DoesNotExist:
-                raise NotFound("Function not found.")
-        return queryset
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-
-class LanguagesView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
-    queryset = Language.objects.all()
-    serializer_class = LanguageSerializer
-
-    def get_queryset(self):
-        queryset = Language.objects.all()
-        return queryset.distinct()
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-
-class FunctionsView(generics.ListAPIView):
-    authentication_classes = [JWTAuthentication]
-    serializer_class = FunctionSerializer
-
-    def get_queryset(self):
-        queryset = Function.objects.all()
-        if self.request.user.sector:
-            # If user has a sector, filter functions by that sector
-            return queryset.filter(sector=self.request.user.sector).distinct()
-        # If user has no sector, return all functions
-        return queryset.distinct()
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        
-        # For basic function view test
-        if 'test' in request.META.get('SERVER_NAME', '').lower():
-            # For test_functions_view in BaseViewTests
-            if request.user.role == ProfileOption.EMPLOYER:
-                queryset = queryset[:1]
-                serializer = self.get_serializer(queryset, many=True)
-                return Response(serializer.data)
-            # For sector functionality tests
-            else:
-                serializer = self.get_serializer(queryset, many=True)
-                return Response({'results': serializer.data})
-        
-        # For all other cases, return paginated response
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({'results': serializer.data})
-
-
-class QuestionsView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
-    queryset = Question.objects.all()
-    serializer_class = QuestionSerializer
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-
-class ContractsTypesView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
+class ContractTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing contract types."""
     queryset = ContractType.objects.all()
     serializer_class = ContractTypeSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+class FunctionViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing functions."""
+    queryset = Function.objects.all()
+    serializer_class = FunctionSerializer
+    permission_classes = [IsAuthenticated]
 
+class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing languages."""
+    queryset = Language.objects.all()
+    serializer_class = LanguageSerializer
+    permission_classes = [IsAuthenticated]
 
-class ProfileInterestsView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
-    queryset = ProfileInterest.objects.all()
-    serializer_class = ProfileInterestSerializer
+class QuestionViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing questions."""
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+class SkillViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing skills."""
+    serializer_class = SkillSerializer
+    permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        """
+        Get skills, optionally filtered by function.
+        Returns skills ordered by weight within the function if specified.
+        """
+        queryset = Skill.objects.all()
+        function_id = self.request.query_params.get('function', None)
 
-class SalaryBenefitsView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
-    queryset = SalaryBenefit.objects.all()
-    serializer_class = SalaryBenefitSerializer
+        if function_id:
+            try:
+                # Get skills associated with the function through FunctionSkill
+                function = Function.objects.get(id=function_id)
+                skill_ids = FunctionSkill.objects.filter(
+                    function=function
+                ).order_by('-weight').values_list('skill_id', flat=True)
+                
+                # Preserve the ordering from skill_ids
+                from django.db.models import Case, When
+                preserved_order = Case(
+                    *[When(id=id, then=pos) for pos, id in enumerate(skill_ids)]
+                )
+                queryset = queryset.filter(
+                    id__in=skill_ids
+                ).order_by(preserved_order)
+            except Function.DoesNotExist:
+                return Skill.objects.none()
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
+        return queryset
 
 class VacancyViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication]
+    """ViewSet for managing vacancies."""
+    queryset = Vacancy.objects.all()
     serializer_class = VacancySerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Vacancy.objects.select_related('employer', 'location', 'function')
-        # For non-GET requests or specific vacancy requests, filter by employer
-        if self.request.method != 'GET' or 'pk' in self.kwargs:
-            return queryset.filter(employer=self.request.user).distinct()
-        return queryset.distinct()
+        """Filter vacancies based on user role."""
+        user = self.request.user
+        if user.role == 'employer':
+            return Vacancy.objects.filter(employer=user)
+        return Vacancy.objects.all()
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        # In test mode, return only one vacancy
-        if 'test' in request.META.get('SERVER_NAME', '').lower():
-            queryset = queryset.filter(employer=request.user).order_by('id')[:1]
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-class ApplyViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication]
-
-    queryset = ApplyVacancy.objects.all()
-    serializer_class = ApplySerializer
-
+    def perform_create(self, serializer):
+        """Set employer when creating a vacancy."""
+        serializer.save(employer=self.request.user)
 
 class VacancyFilterView(generics.ListAPIView):
-    authentication_classes = [JWTAuthentication]
+    """View for filtering and sorting vacancies."""
     serializer_class = VacancySerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Vacancy.objects.all().distinct()
+        """Filter and sort vacancies based on query parameters."""
+        queryset = Vacancy.objects.all()
 
-        # Get parameters from request
-        contract_type = self.request.query_params.get("contract_type")
-        function = self.request.query_params.get("function")
-        skills = self.request.query_params.getlist("skills")
-        employee_id = self.request.query_params.get("employee_id", None)
-        max_distance = self.request.query_params.get("distance", None)
-        sort_by_salary = self.request.query_params.get("sort_by_salary", None)
-        # Retrieve employee's latitude and longitude
-        user_latitude = None
-        user_longitude = None
-
-        if employee_id:
-            try:
-                employee = Employee.objects.get(id=employee_id)
-                user_latitude = employee.latitude
-                user_longitude = employee.longitude
-            except Employee.DoesNotExist:
-                raise NotFound("Employee not found.")
-
-        # Filter by contract_type
+        # Filter by contract type
+        contract_type = self.request.query_params.get('contract_type', None)
         if contract_type:
             queryset = queryset.filter(contract_type__id=contract_type)
 
-        # Filter by function
-        if function:
-            queryset = queryset.filter(function__id=function)
-
         # Filter by skills
+        skills = self.request.query_params.getlist('skills', None)
         if skills:
-            queryset = queryset.filter(skill__id__in=skills).distinct()
-        # Filter by distance if latitude and longitude are available
-        if max_distance and user_latitude is not None and user_longitude is not None:
-            max_distance = float(max_distance)
-            # Using raw SQL for distance calculation
-            # Calculate distance using raw SQL
-            distance_formula = '''
-                6371 * 2 * ASIN(
-                    SQRT(
-                        POW(SIN(RADIANS(%s - ABS(latitude)) / 2), 2) +
-                        COS(RADIANS(%s)) * COS(RADIANS(ABS(latitude))) *
-                        POW(SIN(RADIANS(%s - longitude) / 2), 2)
-                    )
+            queryset = queryset.filter(skill__id__in=skills)
+
+        # Filter by distance if user has location
+        if hasattr(self.request.user, 'employee_profile'):
+            employee = self.request.user.employee_profile
+            if employee and employee.latitude and employee.longitude:
+                max_distance = float(self.request.query_params.get('max_distance', 50))  # Default 50km
+                queryset = queryset.filter(
+                    latitude__isnull=False,
+                    longitude__isnull=False
+                ).extra(
+                    where=[
+                        """
+                        ST_Distance_Sphere(
+                            point(longitude, latitude),
+                            point(%s, %s)
+                        ) <= %s * 1000
+                        """
+                    ],
+                    params=[employee.longitude, employee.latitude, max_distance]
                 )
-            '''
-            queryset = queryset.filter(
-                latitude__isnull=False,
-                longitude__isnull=False
-            ).annotate(
-                distance=ExpressionWrapper(
-                    RawSQL(
-                        distance_formula,
-                        [user_latitude, user_latitude, user_longitude]
-                    ),
-                    output_field=FloatField()
-                )
-            ).filter(distance__lte=max_distance)
 
         # Sort by salary
+        sort_by_salary = self.request.query_params.get('sort_by_salary', None)
         if sort_by_salary:
-            if sort_by_salary.lower() == "asc":
-                queryset = queryset.order_by("salary")
-            elif sort_by_salary.lower() == "desc":
-                queryset = queryset.order_by("-salary")
+            if sort_by_salary.lower() == 'desc':
+                queryset = queryset.order_by('-salary')
+            else:
+                queryset = queryset.order_by('salary')
 
-        return queryset
+        return queryset.distinct()
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @staticmethod
-    def calculate_distance(lat1, lon1, lat2, lon2):
-        """
-        Calculate the great-circle distance between two points
-        on the Earth using the Haversine formula.
-        """
-        # Convert decimal degrees to radians
-        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-
-        # Haversine formula
-        dlon = lon2 - lon1
-        dlat = lat2 - lat1
-        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-        c = 2 * asin(sqrt(a))
-        r = 6371  # Radius of earth in kilometers
-        return c * r
-
-
-class ApplyForJobView(generics.CreateAPIView):
+class FunctionSkillViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing function-skill relationships."""
+    serializer_class = FunctionSkillSerializer
     permission_classes = [IsAuthenticated]
-    serializer_class = ApplySerializer
 
-    def post(self, request, *args, **kwargs):
-        vacancy_id = self.kwargs.get('vacancy_id')
-        try:
-            vacancy = Vacancy.objects.get(id=vacancy_id)
-        except Vacancy.DoesNotExist:
-            return Response({"detail": "Vacancy not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        if not request.user.employee_profile:
-            return Response(
-                {"detail": "Only employees can apply for jobs."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        data = {
-            "employee": request.user.id,  # Use user ID instead of employee_profile ID
-            "vacancy": vacancy.id
-        }
-        serializer = self.get_serializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            chatroom = ChatRoom.objects.create(
-                employee=request.user,  # Use the user instance instead of employee_profile
-                employer=vacancy.employer,
-                vacancy=vacancy
-            )
-            chatroom_serializer = ChatRoomSerializer(chatroom)
-            response_data = serializer.data
-            response_data['chatroom'] = chatroom_serializer.data
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        """Get function-skill relationships, optionally filtered by function."""
+        queryset = FunctionSkill.objects.all()
+        function_id = self.request.query_params.get('function', None)
+        
+        if function_id:
+            queryset = queryset.filter(function_id=function_id)
+        
+        return queryset.order_by('-weight')

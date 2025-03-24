@@ -12,7 +12,8 @@ from vacancies.models import (
     Skill,
     Vacancy,
     ApplyVacancy,
-    MasteryOption
+    MasteryOption,
+    FunctionSkill
 )
 from decimal import Decimal
 from django.utils import timezone
@@ -20,9 +21,7 @@ from math import radians
 
 class BaseViewTests(APITestCase):
     def setUp(self):
-        """
-        Set up test data for base view tests
-        """
+        """Set up test data for base view tests"""
         # Create test user
         self.user = CustomUser.objects.create_user(
             username='testuser',
@@ -37,16 +36,21 @@ class BaseViewTests(APITestCase):
         self.function = Function.objects.create(function='Developer', weight=4)
         self.language = Language.objects.create(language='English', weight=5)
         self.question = Question.objects.create(question='Experience?', weight=1)
-        self.skill = Skill.objects.create(skill='Python', category='hard', weight=5)
+        self.skill = Skill.objects.create(skill='Python', category='hard')
+        
+        # Create function-skill relationship
+        self.function_skill = FunctionSkill.objects.create(
+            function=self.function,
+            skill=self.skill,
+            weight=5
+        )
         
         # Set up client
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
     def test_locations_view(self):
-        """
-        Test LocationsView
-        """
+        """Test LocationsView"""
         url = reverse('locations')
         response = self.client.get(url)
         
@@ -55,9 +59,7 @@ class BaseViewTests(APITestCase):
         self.assertEqual(response.data[0]['location'], 'Brussels')
 
     def test_skills_view(self):
-        """
-        Test SkillsView
-        """
+        """Test SkillsView"""
         url = reverse('skills')
         response = self.client.get(url)
         
@@ -66,9 +68,7 @@ class BaseViewTests(APITestCase):
         self.assertEqual(response.data[0]['skill'], 'Python')
 
     def test_languages_view(self):
-        """
-        Test LanguagesView
-        """
+        """Test LanguagesView"""
         url = reverse('languages')
         response = self.client.get(url)
         
@@ -77,9 +77,7 @@ class BaseViewTests(APITestCase):
         self.assertEqual(response.data[0]['language'], 'English')
 
     def test_functions_view(self):
-        """
-        Test FunctionsView
-        """
+        """Test FunctionsView"""
         url = reverse('functions')
         response = self.client.get(url)
         
@@ -88,9 +86,7 @@ class BaseViewTests(APITestCase):
         self.assertEqual(response.data[0]['function'], 'Developer')
 
     def test_questions_view(self):
-        """
-        Test QuestionsView
-        """
+        """Test QuestionsView"""
         url = reverse('questions')
         response = self.client.get(url)
         
@@ -99,9 +95,7 @@ class BaseViewTests(APITestCase):
         self.assertEqual(response.data[0]['question'], 'Experience?')
 
     def test_contract_types_view(self):
-        """
-        Test ContractsTypesView
-        """
+        """Test ContractsTypesView"""
         url = reverse('contracts')
         response = self.client.get(url)
         
@@ -111,9 +105,7 @@ class BaseViewTests(APITestCase):
 
 class VacancyViewSetTests(APITestCase):
     def setUp(self):
-        """
-        Set up test data for VacancyViewSet tests
-        """
+        """Set up test data for VacancyViewSet tests"""
         # Create employer
         self.employer = CustomUser.objects.create_user(
             username='employer',
@@ -142,9 +134,7 @@ class VacancyViewSetTests(APITestCase):
         self.client.force_authenticate(user=self.employer)
 
     def test_list_vacancies(self):
-        """
-        Test listing vacancies
-        """
+        """Test listing vacancies"""
         # Delete any existing vacancies
         Vacancy.objects.all().delete()
         
@@ -166,9 +156,7 @@ class VacancyViewSetTests(APITestCase):
         self.assertEqual(response.data[0]['employer']['username'], 'employer')
 
     def test_create_vacancy(self):
-        """
-        Test creating a vacancy
-        """
+        """Test creating a vacancy"""
         url = reverse('vacancy-list')
         data = {
             'expected_mastery': MasteryOption.ADVANCED,
@@ -183,9 +171,7 @@ class VacancyViewSetTests(APITestCase):
         self.assertEqual(Vacancy.objects.count(), 2)
 
     def test_retrieve_vacancy(self):
-        """
-        Test retrieving a specific vacancy
-        """
+        """Test retrieving a specific vacancy"""
         url = reverse('vacancy-detail', kwargs={'pk': self.vacancy.pk})
         response = self.client.get(url)
         
@@ -194,9 +180,7 @@ class VacancyViewSetTests(APITestCase):
 
 class VacancyFilterViewTests(APITestCase):
     def setUp(self):
-        """
-        Set up test data for VacancyFilterView tests
-        """
+        """Set up test data for VacancyFilterView tests"""
         # Create employer and employee
         self.employer = CustomUser.objects.create_user(
             username='employer',
@@ -204,7 +188,7 @@ class VacancyFilterViewTests(APITestCase):
             password='testpass',
             role=ProfileOption.EMPLOYER
         )
-        self.employer.save()  # Save first to get an ID
+        self.employer.save()
         
         self.employee = CustomUser.objects.create_user(
             username='employee',
@@ -212,20 +196,29 @@ class VacancyFilterViewTests(APITestCase):
             password='testpass',
             role=ProfileOption.EMPLOYEE
         )
+        self.employee.save()
         
-        # Employee profile is automatically created by CustomUser model
-        self.employee_profile = self.employee.employee_profile
-        self.employee_profile.date_of_birth = '1990-01-01'
-        self.employee_profile.gender = 'male'
-        self.employee_profile.phone_number = '1234567890'
-        self.employee_profile.latitude = 50.8503  # Brussels latitude
-        self.employee_profile.longitude = 4.3517  # Brussels longitude
-        self.employee_profile.save()
+        # Create employee profile
+        self.employee_profile = Employee.objects.create(
+            user=self.employee,
+            date_of_birth='1990-01-01',
+            gender='male',
+            phone_number='1234567890',
+            latitude=50.8503,  # Brussels latitude
+            longitude=4.3517   # Brussels longitude
+        )
         
         # Create base models
         self.contract_type = ContractType.objects.create(contract_type='Full-time')
         self.function = Function.objects.create(function='Developer')
         self.skill = Skill.objects.create(skill='Python', category='hard')
+        
+        # Create function-skill relationship
+        self.function_skill = FunctionSkill.objects.create(
+            function=self.function,
+            skill=self.skill,
+            weight=5
+        )
         
         # Create vacancies
         self.vacancy1 = Vacancy.objects.create(
@@ -250,9 +243,7 @@ class VacancyFilterViewTests(APITestCase):
         self.client.force_authenticate(user=self.employee)
 
     def test_filter_by_contract_type(self):
-        """
-        Test filtering vacancies by contract type
-        """
+        """Test filtering vacancies by contract type"""
         url = reverse('vacancy-filter')
         response = self.client.get(f"{url}?contract_type={self.contract_type.id}")
         
@@ -261,9 +252,7 @@ class VacancyFilterViewTests(APITestCase):
         self.assertEqual(response.data[0]['id'], self.vacancy1.id)
 
     def test_filter_by_skills(self):
-        """
-        Test filtering vacancies by skills
-        """
+        """Test filtering vacancies by skills"""
         url = reverse('vacancy-filter')
         response = self.client.get(f"{url}?skills={self.skill.id}")
         
@@ -272,9 +261,7 @@ class VacancyFilterViewTests(APITestCase):
         self.assertEqual(response.data[0]['id'], self.vacancy1.id)
 
     def test_sort_by_salary(self):
-        """
-        Test sorting vacancies by salary
-        """
+        """Test sorting vacancies by salary"""
         url = reverse('vacancy-filter')
         
         # Test ascending order

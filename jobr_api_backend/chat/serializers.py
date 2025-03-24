@@ -1,135 +1,153 @@
 from rest_framework import serializers
 from .models import Message, ChatRoom
 from accounts.serializers import UserSerializer
-from django.db.models import Q
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
+    reply_to = serializers.PrimaryKeyRelatedField(
+        queryset=Message.objects.all(),
+        required=False,
+        allow_null=True
+    )
     is_sent_by_me = serializers.SerializerMethodField()
-
-    content = serializers.SerializerMethodField()
     reply_to_message = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'content', 'created_at', 'is_read', 'is_sent_by_me', 'is_deleted', 'reply_to', 'reply_to_message']
-        read_only_fields = ['sender', 'created_at', 'is_read', 'is_deleted']
+        fields = [
+            'id', 'sender', 'content', 'created_at', 'is_deleted',
+            'reply_to', 'is_read', 'is_sent_by_me', 'reply_to_message'
+        ]
+        read_only_fields = ['created_at', 'is_deleted', 'is_read']
 
-    def get_content(self, obj):
-        return obj.display_content
+    def get_is_sent_by_me(self, obj):
+        """Check if the current user is the sender of the message."""
+        request = self.context.get('request')
+        if request and request.user:
+            return obj.sender == request.user
+        return False
 
     def get_reply_to_message(self, obj):
+        """Get the replied to message details if any."""
         if obj.reply_to:
             return {
                 'id': obj.reply_to.id,
-                'content': obj.reply_to.display_content,
+                'content': obj.reply_to.content,
                 'sender': UserSerializer(obj.reply_to.sender).data
             }
         return None
 
-    def get_is_sent_by_me(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user'):
-            return obj.sender == request.user
-        return False
-
     def validate_content(self, value):
-        """
-        Validate that the message content is not empty or whitespace.
-        """
+        """Validate that the message content is not empty."""
         if not value or not value.strip():
-            raise serializers.ValidationError("Message content cannot be empty or contain only whitespace.")
-        return value
-
-class ChatRoomSerializer(serializers.ModelSerializer):
-    employee = UserSerializer(read_only=True)
-    employer = UserSerializer(read_only=True)
-    messages = MessageSerializer(many=True, read_only=True)
-    unread_messages_count = serializers.SerializerMethodField()
-    last_message = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ChatRoom
-        fields = ['id', 'employee', 'employer', 'vacancy', 'created_at', 'updated_at', 'messages', 'unread_messages_count', 'last_message']
-        read_only_fields = ['created_at', 'updated_at']
-
-    def get_unread_messages_count(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user'):
-            return obj.messages.filter(
-                ~Q(sender=request.user),
-                is_read=False
-            ).count()
-        return 0
-
-    def get_last_message(self, obj):
-        last_message = obj.messages.first()  # Using first() since messages are ordered by -created_at
-        if last_message:
-            return MessageSerializer(last_message, context=self.context).data
-        return None
+            raise serializers.ValidationError('This field may not be blank.')
+        return value.strip()
 
 class SendMessageSerializer(serializers.ModelSerializer):
-    reply_to = serializers.IntegerField(required=False, allow_null=True)
+    """Serializer for sending new messages."""
+    reply_to = serializers.PrimaryKeyRelatedField(
+        queryset=Message.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Message
         fields = ['content', 'reply_to']
 
-    def validate_content(self, value):
-        """
-        Validate that the message content is not empty or whitespace.
-        """
-        if not value or not value.strip():
-            raise serializers.ValidationError("Message content cannot be empty or contain only whitespace.")
-        return value
+    def validate(self, data):
+        """Validate the message data."""
+        if not self.context.get('request') or not self.context.get('chatroom'):
+            raise serializers.ValidationError('Missing request or chatroom context')
 
-    def validate_reply_to(self, value):
-        """
-        Validate that the replied-to message exists and is in the same chatroom.
-        """
-        if value:
-            chatroom = self.context.get('chatroom')
-            try:
-                replied_message = Message.objects.get(id=value, chatroom=chatroom)
-                return replied_message
-            except Message.DoesNotExist:
-                raise serializers.ValidationError("Reply message not found in this chat.")
-        return None
+        # Validate reply_to belongs to same chatroom
+        reply_to = data.get('reply_to')
+        if reply_to and reply_to.chatroom != self.context['chatroom']:
+            raise serializers.ValidationError('Cannot reply to a message from a different chat room')
+
+        # Validate content
+        content = data.get('content')
+        if not content or not content.strip():
+            raise serializers.ValidationError('Message content cannot be empty')
+
+        return data
 
     def create(self, validated_data):
+        """Create a new message."""
         request = self.context.get('request')
         chatroom = self.context.get('chatroom')
-        
-        if not request or not chatroom:
-            raise serializers.ValidationError("Missing request or chatroom context")
-        
-        reply_to = validated_data.pop('reply_to', None)
-        
+
         message = Message.objects.create(
-            chatroom=chatroom,
             sender=request.user,
+            chatroom=chatroom,
             content=validated_data['content'],
-            reply_to=reply_to
+            reply_to=validated_data.get('reply_to')
         )
-        
-        # Update chatroom's updated_at timestamp
-        chatroom.save()  # This will trigger the auto_now field
-        
         return message
 
-class DeleteMessageSerializer(serializers.Serializer):
-    def validate(self, attrs):
-        message = self.instance
+class DeleteMessageSerializer(serializers.ModelSerializer):
+    """Serializer for soft-deleting messages."""
+    class Meta:
+        model = Message
+        fields = ['is_deleted']
+
+    def validate(self, data):
+        """Validate the message can be deleted."""
         request = self.context.get('request')
-        
-        if not message:
-            raise serializers.ValidationError("Message not found.")
-        
-        if message.sender != request.user:
-            raise serializers.ValidationError("You can only delete your own messages.")
-            
-        return attrs
+        if not request:
+            raise serializers.ValidationError('Request context is required')
+
+        if self.instance.sender != request.user:
+            raise serializers.ValidationError('You can only delete your own messages')
+
+        return data
 
     def update(self, instance, validated_data):
-        instance.delete_message(self.context['request'].user)
+        """Soft delete the message."""
+        instance.is_deleted = True
+        instance.content = "Message deleted"  # Replace content for deleted messages
+        instance.save()
         return instance
+
+class ChatRoomSerializer(serializers.ModelSerializer):
+    """Serializer for chat rooms."""
+    messages = MessageSerializer(many=True, read_only=True)
+    employee = UserSerializer(read_only=True)
+    employer = UserSerializer(read_only=True)
+    last_message = serializers.SerializerMethodField()
+    unread_messages_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatRoom
+        fields = [
+            'id', 'employee', 'employer', 'messages',
+            'created_at', 'updated_at', 'last_message',
+            'unread_messages_count', 'vacancy'
+        ]
+
+    def get_last_message(self, obj):
+        """Get the last message in the chat room."""
+        last_message = obj.messages.filter(is_deleted=False).order_by('-created_at').first()
+        if last_message:
+            return MessageSerializer(last_message, context=self.context).data
+        return None
+
+    def get_unread_messages_count(self, obj):
+        """Get the number of unread messages for the current user."""
+        request = self.context.get('request')
+        if not request:
+            return 0
+        return obj.messages.filter(
+            is_deleted=False,
+            is_read=False
+        ).exclude(sender=request.user).count()
+
+    def validate(self, data):
+        """Validate that the chat room has exactly two participants."""
+        if self.instance:  # Skip validation for existing chat rooms
+            return data
+
+        if not self.context.get('request'):
+            raise serializers.ValidationError("Request context is required")
+
+        return data

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-from .models import Review, CustomUser, Employee, Employer, UserGallery, Admin, ProfileOption
+from .models import CustomUser, Employee, Employer, UserGallery, Admin, ProfileOption
 
 # Unregister unwanted models from admin
 admin.site.unregister(Group)
@@ -139,21 +139,3 @@ class CustomUserAdmin(UserAdmin):
                 obj.save(update_fields=['is_active'])
         
         return super().response_change(request, obj)
-
-
-@admin.register(Review)
-class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('get_reviewer', 'rating', 'reviewer_type', 'created_at')
-    list_filter = ('rating', 'reviewer_type', 'created_at')
-    search_fields = ('comment', 'anonymous_name')
-    date_hierarchy = 'created_at'
-    list_per_page = 25
-
-    def get_reviewer(self, obj):
-        if obj.reviewer_type == 'employee' and obj.employee:
-            return f"Employee: {obj.employee}"
-        elif obj.reviewer_type == 'employer' and obj.employer:
-            return f"Employer: {obj.employer}"
-        return f"Anonymous: {obj.anonymous_name or 'Unknown'}"
-    get_reviewer.short_description = 'Reviewer'
-

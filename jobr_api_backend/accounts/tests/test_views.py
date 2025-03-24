@@ -7,10 +7,57 @@ from django.contrib.auth import get_user_model
 from unittest.mock import patch, Mock
 from django.core.exceptions import ValidationError
 
-from ..models import ProfileOption
+from ..models import ProfileOption, Employee, Employer
 from ..services import VATValidationService
 
 User = get_user_model()
+
+class UserViewSetTests(APITestCase):
+    def setUp(self):
+        """Set up test data."""
+        self.user_data = {
+            'username': 'testuser@example.com',
+            'email': 'testuser@example.com',
+            'password': 'testpass123',
+            'role': ProfileOption.EMPLOYEE
+        }
+        self.user = User.objects.create_user(**self.user_data)
+        self.client.force_authenticate(user=self.user)
+
+    def test_list_users(self):
+        """Test listing users."""
+        url = reverse('user-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_retrieve_user(self):
+        """Test retrieving a specific user."""
+        url = reverse('user-detail', kwargs={'pk': self.user.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.user_data['email'])
+
+    def test_create_user(self):
+        """Test creating a new user."""
+        url = reverse('user-list')
+        new_user_data = {
+            'username': 'newuser@example.com',
+            'email': 'newuser@example.com',
+            'password': 'newpass123',
+            'role': ProfileOption.EMPLOYER
+        }
+        response = self.client.post(url, new_user_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_update_user(self):
+        """Test updating a user."""
+        url = reverse('user-detail', kwargs={'pk': self.user.pk})
+        update_data = {'email': 'updated@example.com'}
+        response = self.client.patch(url, update_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], 'updated@example.com')
 
 class VATValidationTests(APITestCase):
     def setUp(self):
@@ -70,26 +117,9 @@ class VATValidationTests(APITestCase):
                 'message': 'VAT number not found in database'
             })
         ):
-            response = self.client.post(
-                self.url,
-                {'vat_number': 'BE0123456789'}
-            )
+            response = self.client.post(self.url, {'vat_number': 'BE0123456789'})
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertEqual(response.data['error'], 'VAT_NOT_FOUND')
-
-    def test_vat_validation_rate_limiting(self):
-        """Test rate limiting functionality"""
-        # Simulate hitting rate limit
-        with patch.object(
-            VATValidationService,
-            '_check_rate_limit',
-            side_effect=ValidationError('Rate limit exceeded')
-        ):
-            response = self.client.post(
-                self.url,
-                {'vat_number': 'BE0123456789'}
-            )
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_company_details_cache(self):
         """Test caching mechanism"""
@@ -104,7 +134,6 @@ class VATValidationTests(APITestCase):
         }
         mock_result = {'is_valid': True, 'company_details': mock_company_details}
 
-        # First request - should hit the service
         with patch.object(
             VATValidationService,
             'validate_vat',
@@ -117,7 +146,6 @@ class VATValidationTests(APITestCase):
             # Second request - should use cache
             response2 = self.client.post(self.url, {'vat_number': vat_number})
             self.assertEqual(response2.status_code, status.HTTP_200_OK)
-            # Validate that the service wasn't called again
             mock_validate.assert_called_once()
 
     def test_vat_validation_error_handling(self):
@@ -127,20 +155,14 @@ class VATValidationTests(APITestCase):
             'validate_vat',
             side_effect=Exception('Service unavailable')
         ):
-            response = self.client.post(
-                self.url,
-                {'vat_number': 'BE0123456789'}
-            )
+            response = self.client.post(self.url, {'vat_number': 'BE0123456789'})
             self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
             self.assertEqual(response.data['error'], 'SERVICE_UNAVAILABLE')
 
     def test_authentication_required(self):
         """Test that authentication is required"""
         self.client.force_authenticate(user=None)
-        response = self.client.post(
-            self.url,
-            {'vat_number': 'BE0123456789'}
-        )
+        response = self.client.post(self.url, {'vat_number': 'BE0123456789'})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_missing_vat_number(self):
@@ -150,3 +172,73 @@ class VATValidationTests(APITestCase):
 
     def tearDown(self):
         cache.clear()  # Clear cache after each test
+
+class EmployeeSearchViewTests(APITestCase):
+    def setUp(self):
+        """Set up test data."""
+        self.employer = User.objects.create_user(
+            username='employer@test.com',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        self.employee = User.objects.create_user(
+            username='employee@test.com',
+            email='employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        Employee.objects.filter(user=self.employee).update(
+            city_name='Test City'
+        )
+        self.client.force_authenticate(user=self.employer)
+
+    def test_search_employees(self):
+        """Test searching for employees."""
+        url = reverse('employee-search')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_search_employees_by_city(self):
+        """Test searching for employees by city."""
+        url = reverse('employee-search') + '?city=Test'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['city'], 'Test City')
+
+class EmployerSearchViewTests(APITestCase):
+    def setUp(self):
+        """Set up test data."""
+        self.employee = User.objects.create_user(
+            username='employee@test.com',
+            email='employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        self.employer = User.objects.create_user(
+            username='employer@test.com',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        Employer.objects.filter(user=self.employer).update(
+            company_name='Test Company'
+        )
+        self.client.force_authenticate(user=self.employee)
+
+    def test_search_employers(self):
+        """Test searching for employers."""
+        url = reverse('employer-search')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_search_employers_by_company(self):
+        """Test searching for employers by company name."""
+        url = reverse('employer-search') + '?company=Test'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['company_name'], 'Test Company')

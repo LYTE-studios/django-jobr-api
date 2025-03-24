@@ -1,16 +1,8 @@
 from rest_framework import serializers
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee
 
 User = get_user_model()
-
-class VATValidationSerializer(serializers.Serializer):
-    vat_number = serializers.CharField(max_length=12)
-
-    def validate_vat_number(self, value):
-        if not value:
-            raise serializers.ValidationError("VAT number is required")
-        return value.upper().strip()
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -46,21 +38,73 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         )
         return user
 
-class ReviewSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email")
+        fields = ('id', 'username', 'email', 'role', 'profile_picture', 'profile_banner', 'sector')
+        read_only_fields = ('id', 'profile_picture', 'profile_banner')
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Employee
+        fields = '__all__'
+
+class EmployerSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Employer
+        fields = '__all__'
+
+class LikedEmployeeSerializer(serializers.ModelSerializer):
+    employee = serializers.SerializerMethodField()
+    user = UserSerializer(source='employee.user', read_only=True)
+
+    class Meta:
+        model = LikedEmployee
+        fields = ('id', 'employee', 'user', 'created_at')
+
+    def get_employee(self, obj):
+        employee_user = obj.employee.user
+        return {
+            'id': employee_user.id,
+            'username': employee_user.username,
+            'email': employee_user.email,
+            'profile_picture': employee_user.profile_picture.url if employee_user.profile_picture else None,
+        }
+
+class EmployeeSearchSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    city = serializers.CharField(source='employee_profile.city_name', read_only=True)
+    biography = serializers.CharField(source='employee_profile.biography', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'profile_picture', 'city', 'biography')
+
+    def get_profile_picture(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
+
+class EmployerSearchSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    company_name = serializers.CharField(source='employer_profile.company_name', read_only=True)
+    city = serializers.CharField(source='employer_profile.city', read_only=True)
+    biography = serializers.CharField(source='employer_profile.biography', read_only=True)
+    website = serializers.URLField(source='employer_profile.website', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'profile_picture', 'company_name', 'city', 'biography', 'website')
+
+    def get_profile_picture(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
 
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = UserGallery
-        fields = "__all__"
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("id", "username", "email", "role", "profile_picture", "profile_banner", "sector")
-        read_only_fields = ("id", "profile_picture", "profile_banner")
+        fields = '__all__'
 
 class ProfileImageUploadSerializer(serializers.ModelSerializer):
     image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])
@@ -86,30 +130,10 @@ class ProfileImageUploadSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class LikedEmployeeSerializer(serializers.ModelSerializer):
-    employee = serializers.SerializerMethodField()
+class VATValidationSerializer(serializers.Serializer):
+    vat_number = serializers.CharField(max_length=12)
 
-    class Meta:
-        model = LikedEmployee
-        fields = ('id', 'employee', 'created_at')
-
-    def get_employee(self, obj):
-        employee_user = obj.employee.customuser
-        return {
-            'id': employee_user.id,
-            'username': employee_user.username,
-            'email': employee_user.email,
-            'profile_picture': employee_user.profile_picture.url if employee_user.profile_picture else None,
-        }
-
-class EmployeeSearchSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.SerializerMethodField()
-    city = serializers.CharField(source='employee_profile.city_name', read_only=True)
-    biography = serializers.CharField(source='employee_profile.biography', read_only=True)
-
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'profile_picture', 'city', 'biography')
-
-    def get_profile_picture(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else None
+    def validate_vat_number(self, value):
+        if not value:
+            raise serializers.ValidationError("VAT number is required")
+        return value.upper().strip()

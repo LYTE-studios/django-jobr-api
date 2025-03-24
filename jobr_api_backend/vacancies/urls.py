@@ -3,51 +3,31 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     VacancyViewSet,
-    ApplyViewSet,
     VacancyFilterView,
-    ContractsTypesView,
-    FunctionsView,
-    LanguagesView,
-    SkillsView,
-    LocationsView,
-    QuestionsView,
-    ApplyForJobView,
-    ProfileInterestsView,
-    SalaryBenefitsView,
-    VacancyApplicantsView
+    LocationViewSet,
+    ContractTypeViewSet,
+    FunctionViewSet,
+    LanguageViewSet,
+    QuestionViewSet,
+    SkillViewSet,
+    FunctionSkillViewSet
 )
 
+# Create a router and register our viewsets with it
 router = DefaultRouter()
+router.register(r'locations', LocationViewSet, basename='locations')
+router.register(r'contracts', ContractTypeViewSet, basename='contracts')
+router.register(r'functions', FunctionViewSet, basename='functions')
+router.register(r'languages', LanguageViewSet, basename='languages')
+router.register(r'questions', QuestionViewSet, basename='questions')
+router.register(r'skills', SkillViewSet, basename='skills')
+router.register(r'function-skills', FunctionSkillViewSet, basename='function-skills')
+router.register(r'', VacancyViewSet, basename='vacancy')
 
 urlpatterns = [
-    path("", include(router.urls)),
-    path(
-        "locations/",
-        LocationsView.as_view(),
-        name="locations",
-    ),
-    path("apply/<int:vacancy_id>/", ApplyForJobView.as_view(), name="apply"),
-    path("skills/", SkillsView.as_view(), name="skills"),
-    path("languages/", LanguagesView.as_view(), name="languages"),
-    path("functions/", FunctionsView.as_view(), name="functions"),
-    path("contracts/", ContractsTypesView.as_view(), name="contracts"),
-    path("questions/", QuestionsView.as_view(), name="questions"),
-    path("profile-interests/", ProfileInterestsView.as_view(), name="profile-interests"),
-    path("salary-benefits/", SalaryBenefitsView.as_view(), name="salary-benefits"),
-    path("filter/", VacancyFilterView.as_view(), name="vacancy-filter"),
-    path(
-        "vacancies/<int:pk>/",
-        VacancyViewSet.as_view({"get": "retrieve", "put": "update"}),
-        name="vacancy-detail",
-    ),
-    path(
-        "vacancies/",
-        VacancyViewSet.as_view({"get": "list", "post": "create"}),
-        name="vacancy-list",
-    ),
-    path(
-        "vacancies/<int:vacancy_id>/applicants/",
-        VacancyApplicantsView.as_view(),
-        name="vacancy-applicants",
-    ),
+    # Include router URLs
+    path('', include(router.urls)),
+    
+    # Additional endpoints
+    path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),
 ]

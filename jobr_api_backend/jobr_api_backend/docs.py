@@ -17,7 +17,54 @@ schema_view = get_schema_view(
         `Authorization: Bearer <your_token>`
 
         # Modules
-        - Accounts: User management and authentication
+        - Accounts: User management, authentication, and business validation services
+          * VAT Number Validation:
+            - Endpoint: POST /api/accounts/validate-vat/
+            - Rate limit: 100 requests per hour
+            - Caching: Results cached for 24 hours
+            - Authentication required
+            - Request format:
+              ```json
+              {
+                  "vat_number": "BE0123456789"
+              }
+              ```
+            - Success response:
+              ```json
+              {
+                  "is_valid": true,
+                  "company_details": {
+                      "name": "Company Name",
+                      "street_name": "Street Name",
+                      "house_number": "123",
+                      "city": "City Name",
+                      "postal_code": "1000",
+                      "country": "Belgium"
+                  }
+              }
+              ```
+            - Error responses:
+              * Invalid format:
+                ```json
+                {
+                    "error": "INVALID_FORMAT",
+                    "message": "Invalid VAT number format. Must start with BE followed by 10 digits"
+                }
+                ```
+              * VAT not found:
+                ```json
+                {
+                    "error": "VAT_NOT_FOUND",
+                    "message": "VAT number not found in database"
+                }
+                ```
+              * Service unavailable:
+                ```json
+                {
+                    "error": "SERVICE_UNAVAILABLE",
+                    "message": "Unable to validate VAT number at this time"
+                }
+                ```
         - Profiles: Employee profiles, education, work experience, and portfolio
         - Vacancies: Job listings and applications
         - Chat: Real-time messaging between employers and employees

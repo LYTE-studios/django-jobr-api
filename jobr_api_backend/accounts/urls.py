@@ -11,7 +11,8 @@ from .views import (
     UserDetailView,
     LikeEmployeeView,
     LikedEmployeesListView,
-    EmployeeSearchView
+    EmployeeSearchView,
+    VATValidationView
 )
 
 urlpatterns = [
@@ -29,6 +30,7 @@ urlpatterns = [
     
     # Utility endpoints
     path('test-connection/', ConnectionTestView.as_view(), name='test-connection'),
+    path('validate-vat/', VATValidationView.as_view(), name='validate-vat'),
 
     # Employee interaction endpoints
     path('employees/search/', EmployeeSearchView.as_view(), name='employee-search'),

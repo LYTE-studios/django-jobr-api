@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings
 from django.http import Http404
+from django.db.models import Prefetch
 
 from rest_framework import generics, status, viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -8,13 +9,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.pagination import PageNumberPagination
 
 import google.auth.transport.requests
 import google.oauth2.id_token
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 
-from .services import TokenService
+from .services import TokenService, VATValidationService
 from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee
 from .serializers import (
     LoginSerializer,
@@ -24,11 +26,17 @@ from .serializers import (
     UserSerializer,
     ProfileImageUploadSerializer,
     LikedEmployeeSerializer,
-    EmployeeSearchSerializer
+    EmployeeSearchSerializer,
+    VATValidationSerializer
 )
 from django.db.models import Q
 
 User = get_user_model()
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class ConnectionTestView(APIView):
     """
@@ -347,13 +355,14 @@ class LikedEmployeesListView(generics.ListAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = LikedEmployeeSerializer
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         if self.request.user.role != ProfileOption.EMPLOYER:
             return LikedEmployee.objects.none()
         return LikedEmployee.objects.filter(
             employer=self.request.user.employer_profile
-        ).select_related('employee')
+        ).select_related('employee__customuser')
 
 class EmployeeSearchView(generics.ListAPIView):
     """
@@ -362,9 +371,10 @@ class EmployeeSearchView(generics.ListAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeSearchSerializer
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        queryset = User.objects.filter(role=ProfileOption.EMPLOYEE)
+        queryset = User.objects.filter(role=ProfileOption.EMPLOYEE).select_related('employee_profile')
         search_term = self.request.query_params.get('search', '')
         
         if search_term:
@@ -393,3 +403,34 @@ class EmployeeSearchView(generics.ListAPIView):
             queryset = queryset.filter(employee_profile__function__id=function)
 
         return queryset.distinct()
+
+class VATValidationView(APIView):
+    """
+    View for validating VAT numbers and retrieving company details.
+    """
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        serializer = VATValidationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = VATValidationService.validate_vat(
+                serializer.validated_data['vat_number'],
+                request.META.get('REMOTE_ADDR', '')
+            )
+            return Response(result, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            return Response(
+                {
+                    "error": "SERVICE_UNAVAILABLE",
+                    "message": "Unable to validate VAT number at this time"
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )

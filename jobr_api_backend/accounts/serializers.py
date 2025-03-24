@@ -1,204 +1,115 @@
 from rest_framework import serializers
-from django.contrib.auth import authenticate
-from .models import (
-    CustomUser, Employee, Employer, Review, UserGallery,
-    ProfileOption, LikedEmployee
-)
-from django.core.validators import FileExtensionValidator
-from django.core.exceptions import ValidationError
+from django.contrib.auth import authenticate, get_user_model
+from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee
 
-class EmployeeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Employee
-        fields = [
-            'date_of_birth', 'gender', 'phone_number',
-            'city_name', 'biography', 'latitude', 'longitude',
-            'phone_session_counts', 'language', 'contract_type',
-            'function', 'skill'
-        ]
+User = get_user_model()
 
-class EmployerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Employer
-        fields = [
-            'vat_number', 'company_name', 'street_name', 'house_number',
-            'city', 'postal_code', 'coordinates', 'website', 'biography'
-        ]
+class VATValidationSerializer(serializers.Serializer):
+    vat_number = serializers.CharField(max_length=12)
 
-class UserGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserGallery
-        fields = ['id', 'gallery']
+    def validate_vat_number(self, value):
+        if not value:
+            raise serializers.ValidationError("VAT number is required")
+        return value.upper().strip()
 
-class UserSerializer(serializers.ModelSerializer):
-    employee_profile = EmployeeSerializer(required=False, allow_null=True)
-    employer_profile = EmployerSerializer(required=False, allow_null=True)
-    user_gallery = UserGallerySerializer(many=True, read_only=True)
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
 
-    class Meta:
-        model = CustomUser
-        fields = [
-            'id', 'username', 'email', 'role', 'profile_picture',
-            'profile_banner', 'employee_profile', 'employer_profile',
-            'user_gallery'
-        ]
+    def validate(self, data):
+        email = data.get("email")
+        password = data.get("password")
 
-    def to_representation(self, instance):
-        """
-        Handle profile representation based on role
-        """
-        data = super().to_representation(instance)
-        if instance.role == ProfileOption.EMPLOYEE:
-            data['employer_profile'] = None
-        elif instance.role == ProfileOption.EMPLOYER:
-            data['employee_profile'] = None
-        return data
-
-    def update(self, instance, validated_data):
-        employee_data = validated_data.pop('employee_profile', None)
-        employer_data = validated_data.pop('employer_profile', None)
-
-        # Update the user instance
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        # Handle profile updates based on role
-        if instance.role == ProfileOption.EMPLOYEE:
-            # Handle employee profile
-            if employee_data is not None:
-                if not hasattr(instance, 'employee_profile') or not instance.employee_profile:
-                    employee = Employee.objects.create(**employee_data)
-                    instance.employee_profile = employee
-                else:
-                    for attr, value in employee_data.items():
-                        setattr(instance.employee_profile, attr, value)
-                    instance.employee_profile.save()
-            
-            # Remove employer profile if it exists
-            if hasattr(instance, 'employer_profile') and instance.employer_profile:
-                employer = instance.employer_profile
-                instance.employer_profile = None
-                instance.save()
-                employer.delete()
-
-        elif instance.role == ProfileOption.EMPLOYER:
-            # Handle employer profile
-            if employer_data is not None:
-                if not hasattr(instance, 'employer_profile') or not instance.employer_profile:
-                    employer = Employer.objects.create(**employer_data)
-                    instance.employer_profile = employer
-                else:
-                    for attr, value in employer_data.items():
-                        setattr(instance.employer_profile, attr, value)
-                    instance.employer_profile.save()
-            
-            # Remove employee profile if it exists
-            if hasattr(instance, 'employee_profile') and instance.employee_profile:
-                employee = instance.employee_profile
-                instance.employee_profile = None
-                instance.save()
-                employee.delete()
-
-        instance.save()
-        return instance
+        if email and password:
+            user = authenticate(username=email, password=password)
+            if user:
+                if not user.is_active:
+                    raise serializers.ValidationError("User account is disabled.")
+                data["user"] = user
+                return data
+            raise serializers.ValidationError("Unable to log in with provided credentials.")
+        raise serializers.ValidationError("Must include 'email' and 'password'.")
 
 class UserAuthenticationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = CustomUser
-        fields = ['username', 'email', 'password', 'role']
+        model = User
+        fields = ("email", "password", "role")
 
     def create(self, validated_data):
-        """
-        Create and return a new user instance, given the validated data.
-        """
-        password = validated_data.pop('password')
-        user = CustomUser(**validated_data)
-        user.set_password(password)  # Properly hash the password
-        user.save()
+        user = User.objects.create_user(
+            username=validated_data["email"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            role=validated_data["role"],
+        )
         return user
-
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField()
-
-    def validate(self, data):
-        """
-        Validate user credentials.
-        """
-        user = authenticate(username=data['username'], password=data['password'])
-        if user and user.is_active:
-            data['user'] = user
-            return data
-        raise serializers.ValidationError("Invalid credentials.")
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Review
-        fields = '__all__'
+        model = User
+        fields = ("id", "username", "email")
 
-class LikedEmployeeSerializer(serializers.ModelSerializer):
-    user = UserSerializer(source='employee.customuser', read_only=True)
-    
+class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
-        model = LikedEmployee
-        fields = ['id', 'user', 'created_at']
-        read_only_fields = ['created_at']
+        model = UserGallery
+        fields = "__all__"
 
-class EmployeeSearchSerializer(serializers.ModelSerializer):
-    employee_profile = EmployeeSerializer(read_only=True)
-    
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
-        fields = [
-            'id', 'username', 'email', 'profile_picture',
-            'profile_banner', 'employee_profile'
-        ]
+        model = User
+        fields = ("id", "username", "email", "role", "profile_picture", "profile_banner", "sector")
+        read_only_fields = ("id", "profile_picture", "profile_banner")
 
-class ProfileImageUploadSerializer(serializers.Serializer):
+class ProfileImageUploadSerializer(serializers.ModelSerializer):
     image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])
-    image = serializers.ImageField(
-        validators=[
-            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
-        ]
-    )
+    image = serializers.ImageField()
 
-    def validate_image(self, value):
-        """
-        Validate image size.
-        """
-        if value.size > 5 * 1024 * 1024:  # 5MB
-            raise ValidationError("The maximum file size that can be uploaded is 5MB")
-        return value
+    class Meta:
+        model = User
+        fields = ('image_type', 'image')
 
     def update(self, instance, validated_data):
-        """
-        Update user's profile picture or banner.
-        """
-        image_type = validated_data['image_type']
-        image = validated_data['image']
+        image_type = validated_data.pop('image_type')
+        image = validated_data.pop('image')
 
         if image_type == 'profile_picture':
             if instance.profile_picture:
-                instance.profile_picture.delete(save=False)
+                instance.profile_picture.delete()
             instance.profile_picture = image
-        else:
+        else:  # profile_banner
             if instance.profile_banner:
-                instance.profile_banner.delete(save=False)
+                instance.profile_banner.delete()
             instance.profile_banner = image
 
         instance.save()
         return instance
 
-    def to_representation(self, instance):
-        """
-        Return a representation of the instance.
-        """
-        image_type = self.validated_data['image_type']
-        image_url = instance.profile_picture.url if image_type == 'profile_picture' else instance.profile_banner.url
+class LikedEmployeeSerializer(serializers.ModelSerializer):
+    employee = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LikedEmployee
+        fields = ('id', 'employee', 'created_at')
+
+    def get_employee(self, obj):
+        employee_user = obj.employee.customuser
         return {
-            'message': f'{image_type.replace("_", " ").title()} uploaded successfully',
-            'image_url': image_url
+            'id': employee_user.id,
+            'username': employee_user.username,
+            'email': employee_user.email,
+            'profile_picture': employee_user.profile_picture.url if employee_user.profile_picture else None,
         }
+
+class EmployeeSearchSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    city = serializers.CharField(source='employee_profile.city_name', read_only=True)
+    biography = serializers.CharField(source='employee_profile.biography', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'profile_picture', 'city', 'biography')
+
+    def get_profile_picture(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None

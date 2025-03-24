@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings
+from django.forms import ValidationError
 from django.http import Http404
 from django.db.models import Prefetch
 
@@ -425,12 +426,3 @@ class VATValidationView(APIView):
 
         except ValidationError as e:
             return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
-        
-        except Exception as e:
-            return Response(
-                {
-                    "error": "SERVICE_UNAVAILABLE",
-                    "message": "Unable to validate VAT number at this time"
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )

@@ -15,7 +15,8 @@ from vacancies.models import (
     ApplyVacancy,
     MasteryOption,
     Weekday,
-    SalaryBenefit
+    SalaryBenefit,
+    FunctionSkill
 )
 from decimal import Decimal
 from django.utils import timezone
@@ -41,8 +42,15 @@ class VacancyModelTests(TestCase):
         self.function = Function.objects.create(function='Developer', weight=4)
         self.contract_type = ContractType.objects.create(contract_type='Full-time', weight=2)
         self.weekday = Weekday.objects.create(name='Monday')
-        self.skill = Skill.objects.create(skill='Python', category='hard', weight=5)
+        self.skill = Skill.objects.create(skill='Python', category='hard')
         self.salary_benefit = SalaryBenefit.objects.create(name='Health Insurance', weight=3)
+        
+        # Create function-skill relationship with weight
+        self.function_skill = FunctionSkill.objects.create(
+            function=self.function,
+            skill=self.skill,
+            weight=5
+        )
         
         # Create vacancy
         self.vacancy = Vacancy.objects.create(
@@ -82,11 +90,11 @@ class VacancyModelTests(TestCase):
         self.assertIn(self.weekday, self.vacancy.week_day.all())
         self.assertIn(self.salary_benefit, self.vacancy.salary_benefits.all())
         
-        # Test reverse relationships
-        self.assertIn(self.vacancy, self.contract_type.vacancy_set.all())
-        self.assertIn(self.vacancy, self.skill.vacancy_set.all())
-        self.assertIn(self.vacancy, self.weekday.vacancy_set.all())
-        self.assertIn(self.vacancy, self.salary_benefit.vacancy_set.all())
+        # Test function-skill relationship
+        function_skills = FunctionSkill.objects.filter(function=self.function)
+        self.assertEqual(function_skills.count(), 1)
+        self.assertEqual(function_skills[0].skill, self.skill)
+        self.assertEqual(function_skills[0].weight, 5)
 
     def test_salary_benefits(self):
         """

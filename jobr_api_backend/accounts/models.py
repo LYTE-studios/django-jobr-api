@@ -320,3 +320,37 @@ class UserGallery(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="user_gallery"
     )
     gallery = models.ImageField(upload_to="galleries/", blank=False)
+
+
+class VATValidationResult(models.Model):
+    """
+    Stores the results of VAT number validations to avoid repeated API calls.
+
+    Attributes:
+        vat_number (str): The VAT number that was validated
+        is_valid (bool): Whether the VAT number is valid
+        company_name (str): Name of the company from validation
+        company_address (str): Address of the company from validation
+        validation_date (datetime): When the validation was performed
+        employer (ForeignKey): Optional link to an employer if this VAT belongs to one
+    """
+    vat_number = models.CharField(max_length=20, unique=True)
+    is_valid = models.BooleanField()
+    company_name = models.CharField(max_length=255, blank=True)
+    company_address = models.TextField(blank=True)
+    validation_date = models.DateTimeField(auto_now_add=True)
+    employer = models.ForeignKey(
+        Employer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vat_validations'
+    )
+
+    class Meta:
+        ordering = ['-validation_date']
+        verbose_name = 'VAT Validation Result'
+        verbose_name_plural = 'VAT Validation Results'
+
+    def __str__(self):
+        return f"{self.vat_number} - {'Valid' if self.is_valid else 'Invalid'}"

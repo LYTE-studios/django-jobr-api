@@ -14,7 +14,8 @@ from .models import (
     Language,
     Location,
     ProfileInterest,
-    SalaryBenefit
+    SalaryBenefit,
+    FunctionSkill
 )
 from accounts.models import ProfileOption
 
@@ -35,12 +36,20 @@ class SkillSerializer(serializers.ModelSerializer):
         model = Skill
         fields = ["id", "skill", "category"]
 
+class FunctionSkillSerializer(serializers.ModelSerializer):
+    skill = SkillSerializer()
+    
+    class Meta:
+        model = FunctionSkill
+        fields = ["skill", "weight"]
+
 class FunctionSerializer(serializers.ModelSerializer):
+    function_skills = FunctionSkillSerializer(source='functionskill_set', many=True, read_only=True)
     skills = SkillSerializer(many=True, read_only=True)
 
     class Meta:
         model = Function
-        fields = ["id", "function", "skills"]
+        fields = ["id", "function", "skills", "function_skills"]
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:

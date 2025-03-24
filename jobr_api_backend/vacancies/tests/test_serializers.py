@@ -14,7 +14,8 @@ from vacancies.models import (
     VacancyDescription,
     VacancyQuestion,
     ApplyVacancy,
-    MasteryOption
+    MasteryOption,
+    FunctionSkill
 )
 from vacancies.serializers import (
     LocationSerializer,
@@ -27,7 +28,8 @@ from vacancies.serializers import (
     VacancyDescriptionSerializer,
     VacancyQuestionSerializer,
     VacancySerializer,
-    ApplySerializer
+    ApplySerializer,
+    FunctionSkillSerializer
 )
 from decimal import Decimal
 from django.utils import timezone
@@ -44,61 +46,73 @@ class BaseSerializerTests(TestCase):
         self.function = Function.objects.create(function='Developer', weight=4)
         self.language = Language.objects.create(language='English', weight=5)
         self.question = Question.objects.create(question='Experience?', weight=1)
-        self.skill = Skill.objects.create(skill='Python', category='hard', weight=5)
+        self.skill = Skill.objects.create(skill='Python', category='hard')
+        
+        # Create function-skill relationship
+        self.function_skill = FunctionSkill.objects.create(
+            function=self.function,
+            skill=self.skill,
+            weight=5
+        )
 
     def test_location_serializer(self):
-        """
-        Test LocationSerializer
-        """
+        """Test LocationSerializer"""
         serializer = LocationSerializer(self.location)
         self.assertEqual(serializer.data['location'], 'Brussels')
         self.assertIn('id', serializer.data)
 
     def test_contract_type_serializer(self):
-        """
-        Test ContractTypeSerializer
-        """
+        """Test ContractTypeSerializer"""
         serializer = ContractTypeSerializer(self.contract_type)
         self.assertEqual(serializer.data['contract_type'], 'Full-time')
         self.assertIn('id', serializer.data)
 
     def test_function_serializer(self):
-        """
-        Test FunctionSerializer
-        """
+        """Test FunctionSerializer with function-skill relationships"""
         serializer = FunctionSerializer(self.function)
-        self.assertEqual(serializer.data['function'], 'Developer')
-        self.assertIn('id', serializer.data)
+        data = serializer.data
+        
+        # Test basic function data
+        self.assertEqual(data['function'], 'Developer')
+        self.assertIn('id', data)
+        
+        # Test function_skills data
+        self.assertIn('function_skills', data)
+        self.assertEqual(len(data['function_skills']), 1)
+        function_skill = data['function_skills'][0]
+        self.assertEqual(function_skill['skill']['skill'], 'Python')
+        self.assertEqual(function_skill['weight'], 5)
 
     def test_language_serializer(self):
-        """
-        Test LanguageSerializer
-        """
+        """Test LanguageSerializer"""
         serializer = LanguageSerializer(self.language)
         self.assertEqual(serializer.data['language'], 'English')
         self.assertIn('id', serializer.data)
 
     def test_question_serializer(self):
-        """
-        Test QuestionSerializer
-        """
+        """Test QuestionSerializer"""
         serializer = QuestionSerializer(self.question)
         self.assertEqual(serializer.data['question'], 'Experience?')
 
     def test_skill_serializer(self):
-        """
-        Test SkillSerializer
-        """
+        """Test SkillSerializer"""
         serializer = SkillSerializer(self.skill)
         self.assertEqual(serializer.data['skill'], 'Python')
         self.assertEqual(serializer.data['category'], 'hard')
         self.assertIn('id', serializer.data)
 
+    def test_function_skill_serializer(self):
+        """Test FunctionSkillSerializer"""
+        serializer = FunctionSkillSerializer(self.function_skill)
+        data = serializer.data
+        
+        self.assertEqual(data['skill']['skill'], 'Python')
+        self.assertEqual(data['skill']['category'], 'hard')
+        self.assertEqual(data['weight'], 5)
+
 class VacancySerializerTests(TestCase):
     def setUp(self):
-        """
-        Set up test data for VacancySerializer tests
-        """
+        """Set up test data for VacancySerializer tests"""
         # Create employer
         self.employer = CustomUser.objects.create_user(
             username='employer',
@@ -106,13 +120,20 @@ class VacancySerializerTests(TestCase):
             password='testpass',
             role=ProfileOption.EMPLOYER
         )
-        self.employer.save()  # Save to ensure employer_profile is created
+        self.employer.save()
         
         # Create base models
         self.location = Location.objects.create(location='Brussels', weight=3)
         self.function = Function.objects.create(function='Developer', weight=4)
         self.contract_type = ContractType.objects.create(contract_type='Full-time', weight=2)
-        self.skill = Skill.objects.create(skill='Python', category='hard', weight=5)
+        self.skill = Skill.objects.create(skill='Python', category='hard')
+        
+        # Create function-skill relationship
+        self.function_skill = FunctionSkill.objects.create(
+            function=self.function,
+            skill=self.skill,
+            weight=5
+        )
         
         # Create vacancy
         self.vacancy = Vacancy.objects.create(
@@ -132,16 +153,21 @@ class VacancySerializerTests(TestCase):
         self.factory = APIRequestFactory()
 
     def test_vacancy_serialization(self):
-        """
-        Test serializing a Vacancy instance
-        """
+        """Test serializing a Vacancy instance"""
         serializer = VacancySerializer(self.vacancy)
         data = serializer.data
         
         self.assertEqual(data['employer']['username'], 'employer')
         self.assertEqual(data['expected_mastery'], MasteryOption.ADVANCED)
         self.assertEqual(data['location']['location'], 'Brussels')
+        
+        # Test function data including skills
         self.assertEqual(data['function']['function'], 'Developer')
+        self.assertEqual(len(data['function']['function_skills']), 1)
+        function_skill = data['function']['function_skills'][0]
+        self.assertEqual(function_skill['skill']['skill'], 'Python')
+        self.assertEqual(function_skill['weight'], 5)
+        
         self.assertEqual(data['salary'], '50000.00')
         
         # Test related fields
@@ -151,9 +177,7 @@ class VacancySerializerTests(TestCase):
         self.assertEqual(data['skill'][0]['skill'], 'Python')
 
     def test_vacancy_creation(self):
-        """
-        Test creating a Vacancy through serializer
-        """
+        """Test creating a Vacancy through serializer"""
         request = self.factory.post('/vacancies/')
         request.user = self.employer
         
@@ -187,9 +211,7 @@ class VacancySerializerTests(TestCase):
         self.assertIn(self.skill, vacancy.skill.all())
 
     def test_vacancy_creation_missing_required_fields(self):
-        """
-        Test vacancy creation fails with missing required fields
-        """
+        """Test vacancy creation fails with missing required fields"""
         request = self.factory.post('/vacancies/')
         request.user = self.employer
         
@@ -206,9 +228,7 @@ class VacancySerializerTests(TestCase):
 
 class ApplySerializerTests(TestCase):
     def setUp(self):
-        """
-        Set up test data for ApplySerializer tests
-        """
+        """Set up test data for ApplySerializer tests"""
         # Create employer and employee
         self.employer = CustomUser.objects.create_user(
             username='employer',
@@ -216,7 +236,7 @@ class ApplySerializerTests(TestCase):
             password='testpass',
             role=ProfileOption.EMPLOYER
         )
-        self.employer.save()  # Save to ensure employer_profile is created
+        self.employer.save()
         
         self.employee = CustomUser.objects.create_user(
             username='employee',
@@ -224,7 +244,7 @@ class ApplySerializerTests(TestCase):
             password='testpass',
             role=ProfileOption.EMPLOYEE
         )
-        self.employee.save()  # Save to ensure employee_profile is created
+        self.employee.save()
         
         # Create vacancy
         self.vacancy = Vacancy.objects.create(
@@ -233,9 +253,7 @@ class ApplySerializerTests(TestCase):
         )
 
     def test_apply_serialization(self):
-        """
-        Test serializing an ApplyVacancy instance
-        """
+        """Test serializing an ApplyVacancy instance"""
         application = ApplyVacancy.objects.create(
             employee=self.employee,
             vacancy=self.vacancy
@@ -246,9 +264,7 @@ class ApplySerializerTests(TestCase):
         self.assertEqual(serializer.data['vacancy'], self.vacancy.id)
 
     def test_apply_creation(self):
-        """
-        Test creating an ApplyVacancy through serializer
-        """
+        """Test creating an ApplyVacancy through serializer"""
         data = {
             'employee': self.employee.id,
             'vacancy': self.vacancy.id

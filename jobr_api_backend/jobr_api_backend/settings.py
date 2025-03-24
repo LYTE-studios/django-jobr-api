@@ -130,7 +130,9 @@ TEMPLATES = [
 
 ASGI_APPLICATION = "jobr_api_backend.asgi.application"
 
-from .my_secrets import database
+from .my_secrets import database, vatcheckapi
+
+VATCHECKAPI_KEY = vatcheckapi
 
 # Database configuration
 DATABASES = {

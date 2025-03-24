@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
-    VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday, Sector
+    VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday, Sector,
+    FunctionSkill
 )
 
 @admin.register(Sector)
@@ -29,13 +30,24 @@ class ContractTypeAdmin(admin.ModelAdmin):
     ordering = ('contract_type',)
     list_per_page = 25
 
+class FunctionSkillInline(admin.TabularInline):
+    model = FunctionSkill
+    extra = 1
+    autocomplete_fields = ['skill']
+    ordering = ['-weight']
+
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
-    list_display = ('function', 'weight', 'sector')
+    list_display = ('function', 'weight', 'sector', 'get_skills_count')
     search_fields = ('function', 'sector__name')
     list_filter = ('weight', 'sector')
     ordering = ('function',)
     list_per_page = 25
+    inlines = [FunctionSkillInline]
+
+    def get_skills_count(self, obj):
+        return obj.skills.count()
+    get_skills_count.short_description = 'Skills'
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
@@ -55,11 +67,15 @@ class LanguageAdmin(admin.ModelAdmin):
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ('skill', 'category', 'weight', 'function')
-    search_fields = ('skill', 'function__function')
-    list_filter = ('category', 'weight', 'function')
+    list_display = ('skill', 'category', 'get_functions_count')
+    search_fields = ('skill',)
+    list_filter = ('category',)
     ordering = ('skill',)
     list_per_page = 25
+
+    def get_functions_count(self, obj):
+        return obj.functions.count()
+    get_functions_count.short_description = 'Used in Functions'
 
 @admin.register(Weekday)
 class WeekdayAdmin(admin.ModelAdmin):

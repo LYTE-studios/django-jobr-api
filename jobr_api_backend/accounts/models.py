@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from vacancies.models import Language, ContractType, Function, Skill, Sector
@@ -24,7 +25,7 @@ class Employee(models.Model):
     user = models.OneToOneField(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='employee_profile_user',
+        related_name='employee_profile',
         null=True
     )
     date_of_birth = models.DateField(null=True, blank=True)
@@ -56,7 +57,7 @@ class Employer(models.Model):
     user = models.OneToOneField(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='employer_profile_user',
+        related_name='employer_profile',
         null=True
     )
     vat_number = models.CharField(max_length=30, null=True, blank=True)
@@ -77,7 +78,7 @@ class Admin(models.Model):
     user = models.OneToOneField(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='admin_profile_user',
+        related_name='admin_profile',
         null=True
     )
     full_name = models.CharField(max_length=100)
@@ -106,9 +107,6 @@ class CustomUser(AbstractUser):
         default=False,
         help_text="Designates whether this user is blocked from accessing the platform."
     )
-    employer_profile = models.OneToOneField(Employer, null=True, on_delete=models.CASCADE)
-    employee_profile = models.OneToOneField(Employee, null=True, on_delete=models.CASCADE)
-    admin_profile = models.OneToOneField(Admin, null=True, on_delete=models.CASCADE)
     profile_picture = models.ImageField(
         upload_to="profile_pictures/",
         blank=True,
@@ -133,11 +131,30 @@ class CustomUser(AbstractUser):
     @transaction.atomic
     def save(self, *args, **kwargs):
         """Handle profile creation/updates on save."""
-        if self.pk is None:
-            # For new users, first save the user without any profile
-            super().save(*args, **kwargs)
-            
-            # Then create the appropriate profile
+        is_new = self.pk is None
+        old_role = None if is_new else CustomUser.objects.get(pk=self.pk).role
+
+        # Save the user first
+        super().save(*args, **kwargs)
+
+        # Handle profile creation/updates
+        if is_new or old_role != self.role:
+            # Delete old profile if role changed
+            if not is_new:
+                if old_role == ProfileOption.EMPLOYEE:
+                    if hasattr(self, 'employee_profile') and self.employee_profile:
+                        self.employee_profile.delete()
+                        self.employee_profile = None
+                elif old_role == ProfileOption.EMPLOYER:
+                    if hasattr(self, 'employer_profile') and self.employer_profile:
+                        self.employer_profile.delete()
+                        self.employer_profile = None
+                elif old_role == ProfileOption.ADMIN:
+                    if hasattr(self, 'admin_profile') and self.admin_profile:
+                        self.admin_profile.delete()
+                        self.admin_profile = None
+
+            # Create new profile based on role
             if self.role == ProfileOption.EMPLOYEE:
                 Employee.objects.create(user=self)
             elif self.role == ProfileOption.EMPLOYER:
@@ -185,6 +202,41 @@ class LikedEmployee(models.Model):
 
     def __str__(self):
         return f"{self.employer} likes {self.employee}"
+
+class Review(models.Model):
+    """
+    Represents a review given by an employer to an employee or vice versa.
+    """
+    reviewer = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='reviews_given'
+    )
+    reviewed = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='reviews_received'
+    )
+    rating = models.IntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        help_text="Rating from 1 to 5 stars"
+    )
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('reviewer', 'reviewed')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review by {self.reviewer} for {self.reviewed}"
+
+    def clean(self):
+        if self.reviewer == self.reviewed:
+            raise ValidationError("Users cannot review themselves")
+        if self.reviewer.role == self.reviewed.role:
+            raise ValidationError("Users can only review users of different roles")
 
 class VATValidationResult(models.Model):
     """Stores VAT validation results."""

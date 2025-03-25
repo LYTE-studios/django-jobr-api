@@ -8,7 +8,8 @@ from accounts.models import (
     Admin,
     UserGallery,
     ProfileOption,
-    LikedEmployee
+    LikedEmployee,
+    Review
 )
 from datetime import date
 import tempfile
@@ -100,10 +101,14 @@ class CustomUserModelTests(TestCase):
         user.role = ProfileOption.EMPLOYER
         user.save()
         
+        # Refresh from db to clear cached relationships
+        user.refresh_from_db()
+        
         # Verify employee profile was deleted and employer profile was created
         self.assertFalse(Employee.objects.filter(id=employee_profile_id).exists())
-        self.assertIsNone(user.employee_profile)
-        self.assertIsNotNone(user.employer_profile)
+        with self.assertRaises(CustomUser.employee_profile.RelatedObjectDoesNotExist):
+            user.employee_profile
+        self.assertTrue(hasattr(user, 'employer_profile'))
         self.assertIsInstance(user.employer_profile, Employer)
         
         # Save the employer profile ID
@@ -113,10 +118,14 @@ class CustomUserModelTests(TestCase):
         user.role = ProfileOption.ADMIN
         user.save()
         
+        # Refresh from db to clear cached relationships
+        user.refresh_from_db()
+        
         # Verify employer profile was deleted and admin profile was created
         self.assertFalse(Employer.objects.filter(id=employer_profile_id).exists())
-        self.assertIsNone(user.employer_profile)
-        self.assertIsNotNone(user.admin_profile)
+        with self.assertRaises(CustomUser.employer_profile.RelatedObjectDoesNotExist):
+            user.employer_profile
+        self.assertTrue(hasattr(user, 'admin_profile'))
         self.assertIsInstance(user.admin_profile, Admin)
 
     def test_user_role_change_with_data(self):
@@ -140,9 +149,13 @@ class CustomUserModelTests(TestCase):
         user.role = ProfileOption.EMPLOYER
         user.save()
         
+        # Refresh from db to clear cached relationships
+        user.refresh_from_db()
+        
         # Verify employee data is gone and new employer profile is clean
-        self.assertIsNone(user.employee_profile)
-        self.assertIsNotNone(user.employer_profile)
+        with self.assertRaises(CustomUser.employee_profile.RelatedObjectDoesNotExist):
+            user.employee_profile
+        self.assertTrue(hasattr(user, 'employer_profile'))
         self.assertIsNone(user.employer_profile.company_name)
         
         # Add employer data
@@ -153,9 +166,13 @@ class CustomUserModelTests(TestCase):
         user.role = ProfileOption.EMPLOYEE
         user.save()
         
+        # Refresh from db to clear cached relationships
+        user.refresh_from_db()
+        
         # Verify employer data is gone and new employee profile is clean
-        self.assertIsNone(user.employer_profile)
-        self.assertIsNotNone(user.employee_profile)
+        with self.assertRaises(CustomUser.employer_profile.RelatedObjectDoesNotExist):
+            user.employer_profile
+        self.assertTrue(hasattr(user, 'employee_profile'))
         self.assertIsNone(user.employee_profile.phone_number)
 
     def test_profile_picture_upload(self):
@@ -352,4 +369,81 @@ class LikedEmployeeModelTests(TestCase):
             LikedEmployee.objects.create(
                 employer=self.employer,
                 employee=self.employee
+            )
+
+class ReviewModelTests(TestCase):
+    def setUp(self):
+        """Set up test data for Review model tests"""
+        self.employer = CustomUser.objects.create_user(
+            username='employer@test.com',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        self.employee = CustomUser.objects.create_user(
+            username='employee@test.com',
+            email='employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+
+    def test_create_review(self):
+        """Test creating a review"""
+        review = Review.objects.create(
+            reviewer=self.employer,
+            reviewed=self.employee,
+            rating=5,
+            comment="Great work!"
+        )
+        
+        self.assertEqual(review.rating, 5)
+        self.assertEqual(review.comment, "Great work!")
+        self.assertEqual(review.reviewer, self.employer)
+        self.assertEqual(review.reviewed, self.employee)
+        self.assertIsNotNone(review.created_at)
+        self.assertIsNotNone(review.updated_at)
+
+    def test_review_validation(self):
+        """Test review validation rules"""
+        # Test self-review prevention
+        with self.assertRaises(ValidationError):
+            review = Review(
+                reviewer=self.employer,
+                reviewed=self.employer,
+                rating=5,
+                comment="Invalid self review"
+            )
+            review.clean()
+
+        # Test same role review prevention
+        employee2 = CustomUser.objects.create_user(
+            username='employee2@test.com',
+            email='employee2@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+        with self.assertRaises(ValidationError):
+            review = Review(
+                reviewer=self.employee,
+                reviewed=employee2,
+                rating=5,
+                comment="Invalid same role review"
+            )
+            review.clean()
+
+    def test_unique_constraint(self):
+        """Test that a user can't review the same user twice"""
+        Review.objects.create(
+            reviewer=self.employer,
+            reviewed=self.employee,
+            rating=4,
+            comment="First review"
+        )
+        
+        with self.assertRaises(Exception):
+            Review.objects.create(
+                reviewer=self.employer,
+                reviewed=self.employee,
+                rating=5,
+                comment="Duplicate review"
             )

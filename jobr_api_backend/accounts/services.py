@@ -49,44 +49,51 @@ class VATValidationService:
         if not address:
             return result
 
-        # Split into street part and postal/city part
-        parts = address.split(',', 1)
+        # Split into street part and postal/city part (handle both comma and newline)
+        parts = address.replace('\n', ',').split(',', 1)
         street_part = parts[0].strip()
         postal_city_part = parts[1].strip() if len(parts) > 1 else ""
 
-        # Parse street and house number
-        # Match patterns like:
-        # - "Streetname 123"
-        # - "Streetname 123A"
-        # - "Streetname 12-14"
-        # - "Streetname 12 bus 3"
-        street_match = re.match(r'^(.*?)\s+(\d+(?:[-/]?\d*)?(?:[A-Za-z])?(?:\s+bus\s+\d+)?)\s*$', street_part)
-        
-        if street_match:
-            result["street_name"] = street_match.group(1).strip()
-            result["house_number"] = street_match.group(2).strip()
-        else:
-            # No house number found
-            result["street_name"] = street_part.strip()
-
-        # Parse postal code and city
+        # First try to match the postal code and city from the second part
         if postal_city_part:
-            # Match four-digit postal code followed by city name
             postal_city_match = re.match(r'^(\d{4})\s+(.+)$', postal_city_part)
             if postal_city_match:
                 result["postal_code"] = postal_city_match.group(1).strip()
                 result["city"] = postal_city_match.group(2).strip()
-            else:
-                # No postal code found
-                result["city"] = postal_city_part.strip()
+
+        # Now handle the street part with various patterns
+        # Try to match house number at the end of street_part
+        patterns = [
+            # Match "Street 123 bus 4"
+            r'^(.*?)\s+(\d+(?:[A-Za-z])?(?:\s+bus\s+\d+)?)\s*$',
+            # Match "Street 123-125"
+            r'^(.*?)\s+(\d+(?:[-/]\d+)?)\s*$',
+            # Match "Street 123A"
+            r'^(.*?)\s+(\d+[A-Za-z]?)\s*$',
+            # Match just "Street 123"
+            r'^(.*?)\s+(\d+)\s*$'
+        ]
+
+        for pattern in patterns:
+            street_match = re.match(pattern, street_part)
+            if street_match:
+                result["street_name"] = street_match.group(1).strip()
+                result["house_number"] = street_match.group(2).strip()
+                break
+        else:
+            # If no pattern matches, assume it's all street name
+            result["street_name"] = street_part.strip()
 
         return result
 
     @classmethod
     def _check_rate_limit(cls, ip_address: str) -> None:
         """Check if request is within rate limits."""
+        if not ip_address:
+            return  # Skip rate limiting if no IP address provided
+            
         key = f"{cls.RATE_LIMIT_KEY_PREFIX}{ip_address}"
-        requests = cache.get(key, 0)
+        requests = cache.get(key) or 0  # Ensure we get an integer, not None
         
         if requests >= cls.MAX_REQUESTS:
             raise Throttled(
@@ -95,7 +102,7 @@ class VATValidationService:
             )
         
         # Increment request count
-        cache.set(key, requests + 1, cls.RATE_LIMIT_PERIOD)
+        cache.set(key, requests + 1, timeout=cls.RATE_LIMIT_PERIOD)
 
     @classmethod
     def _get_cached_result(cls, vat_number: str) -> Optional[Dict]:
@@ -105,11 +112,7 @@ class VATValidationService:
     @classmethod
     def _cache_result(cls, vat_number: str, result: Dict) -> None:
         """Cache validation result."""
-        cache.set(
-            f"{cls.VAT_CACHE_PREFIX}{vat_number}",
-            result,
-            cls.VAT_CACHE_TIMEOUT
-        )
+        cache.set(f"{cls.VAT_CACHE_PREFIX}{vat_number}", result, timeout=cls.VAT_CACHE_TIMEOUT)
 
     @classmethod
     def validate_vat(cls, vat_number: str, ip_address: str, employer: Optional[Employer] = None) -> Dict:

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
-from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee
+from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee, Review
 
 User = get_user_model()
 
@@ -42,27 +42,135 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         exclude = ('user',)
+        extra_kwargs = {
+            field: {'allow_null': True, 'required': False}
+            for field in Employee._meta.get_fields() if field.name != 'user'
+        }
 
 class EmployerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employer
         exclude = ('user',)
+        extra_kwargs = {
+            field: {'allow_null': True, 'required': False}
+            for field in Employer._meta.get_fields() if field.name != 'user'
+        }
 
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = UserGallery
         fields = '__all__'
 
+class ReviewSerializer(serializers.ModelSerializer):
+    reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
+    reviewed_username = serializers.CharField(source='reviewed.username', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ('id', 'reviewer', 'reviewed', 'reviewer_username', 'reviewed_username',
+                 'rating', 'comment', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
+
+    def validate(self, data):
+        reviewer = data.get('reviewer')
+        reviewed = data.get('reviewed')
+
+        if reviewer == reviewed:
+            raise serializers.ValidationError("Users cannot review themselves")
+        
+        if reviewer.role == reviewed.role:
+            raise serializers.ValidationError("Users can only review users of different roles")
+
+        # Check if review already exists
+        if Review.objects.filter(reviewer=reviewer, reviewed=reviewed).exists():
+            raise serializers.ValidationError("You have already reviewed this user")
+
+        return data
+
 class UserSerializer(serializers.ModelSerializer):
-    employee_profile = EmployeeProfileSerializer(read_only=True)
-    employer_profile = EmployerProfileSerializer(read_only=True)
+    employee_profile = EmployeeProfileSerializer(required=False, allow_null=True)
+    employer_profile = EmployerProfileSerializer(required=False, allow_null=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make fields optional for updates
+        if self.instance is not None:
+            self.fields['username'].required = False
+            self.fields['email'].required = False
+            self.fields['role'].required = False
+            
+            # Profile fields are not required by default, validation will handle requirements
+            self.fields['employee_profile'].required = False
+            self.fields['employer_profile'].required = False
     user_gallery = UserGallerySerializer(many=True, read_only=True)
+    reviews_given = serializers.SerializerMethodField()
+    reviews_received = serializers.SerializerMethodField()
+
+    def get_reviews_given(self, obj):
+        reviews = obj.reviews_given.all()
+        return ReviewSerializer(reviews, many=True).data
+
+    def get_reviews_received(self, obj):
+        reviews = obj.reviews_received.all()
+        return ReviewSerializer(reviews, many=True).data
+
+    def validate(self, data):
+        # Validate that profile data matches user role
+        employee_profile_data = data.get('employee_profile')
+        employer_profile_data = data.get('employer_profile')
+        role = self.instance.role if self.instance else data.get('role')
+
+        # For PUT requests, require the correct profile type if no profile exists yet
+        if self.context['request'].method == 'PUT':
+            if role == ProfileOption.EMPLOYEE:
+                if not hasattr(self.instance, 'employee_profile') and not employee_profile_data:
+                    raise serializers.ValidationError("Employee profile is required for employee users")
+            elif role == ProfileOption.EMPLOYER:
+                if not hasattr(self.instance, 'employer_profile') and not employer_profile_data:
+                    raise serializers.ValidationError("Employer profile is required for employer users")
+
+        # Remove wrong profile type data silently
+        if role == ProfileOption.EMPLOYEE and employer_profile_data:
+            data.pop('employer_profile', None)
+        elif role == ProfileOption.EMPLOYER and employee_profile_data:
+            data.pop('employee_profile', None)
+
+        return data
+
+    def update(self, instance, validated_data):
+        # Handle profile updates
+        employee_profile_data = validated_data.pop('employee_profile', None)
+        employer_profile_data = validated_data.pop('employer_profile', None)
+
+        # Update user fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update employee profile
+        if employee_profile_data and instance.role == ProfileOption.EMPLOYEE:
+            if not hasattr(instance, 'employee_profile'):
+                instance.employee_profile = Employee.objects.create(user=instance)
+            for attr, value in employee_profile_data.items():
+                setattr(instance.employee_profile, attr, value)
+            instance.employee_profile.save()
+
+        # Update employer profile
+        if employer_profile_data and instance.role == ProfileOption.EMPLOYER:
+            if not hasattr(instance, 'employer_profile'):
+                instance.employer_profile = Employer.objects.create(user=instance)
+            for attr, value in employer_profile_data.items():
+                setattr(instance.employer_profile, attr, value)
+            instance.employer_profile.save()
+
+        return instance
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'role', 'profile_picture',
                  'profile_banner', 'sector', 'employee_profile',
-                 'employer_profile', 'user_gallery')
+                 'employer_profile', 'user_gallery', 'reviews_given',
+                 'reviews_received')
         read_only_fields = ('id', 'profile_picture', 'profile_banner')
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -166,6 +274,32 @@ class ProfileImageUploadSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+class ReviewSerializer(serializers.ModelSerializer):
+    reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
+    reviewed_username = serializers.CharField(source='reviewed.username', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ('id', 'reviewer', 'reviewed', 'reviewer_username', 'reviewed_username',
+                 'rating', 'comment', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
+
+    def validate(self, data):
+        reviewer = data.get('reviewer')
+        reviewed = data.get('reviewed')
+
+        if reviewer == reviewed:
+            raise serializers.ValidationError("Users cannot review themselves")
+        
+        if reviewer.role == reviewed.role:
+            raise serializers.ValidationError("Users can only review users of different roles")
+
+        # Check if review already exists
+        if Review.objects.filter(reviewer=reviewer, reviewed=reviewed).exists():
+            raise serializers.ValidationError("You have already reviewed this user")
+
+        return data
 
 class VATValidationSerializer(serializers.Serializer):
     vat_number = serializers.CharField(max_length=12)

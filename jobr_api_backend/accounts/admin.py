@@ -2,7 +2,10 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-from .models import CustomUser, Employee, Employer, UserGallery, Admin, ProfileOption
+from .models import (
+    CustomUser, Employee, Employer, UserGallery, Admin, ProfileOption,
+    Review
+)
 
 # Unregister unwanted models from admin
 admin.site.unregister(Group)
@@ -139,3 +142,22 @@ class CustomUserAdmin(UserAdmin):
                 obj.save(update_fields=['is_active'])
         
         return super().response_change(request, obj)
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ('reviewer', 'reviewed', 'rating', 'created_at', 'updated_at')
+    list_filter = ('rating', 'created_at', 'reviewer__role', 'reviewed__role')
+    search_fields = (
+        'reviewer__username', 'reviewer__email',
+        'reviewed__username', 'reviewed__email',
+        'comment'
+    )
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
+    list_per_page = 25
+    date_hierarchy = 'created_at'
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only validate on creation
+            obj.clean()  # Run model validation
+        super().save_model(request, obj, form, change)

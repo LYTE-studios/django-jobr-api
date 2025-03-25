@@ -6,16 +6,24 @@ from .views import (
     VATValidationView,
     EmployeeSearchView,
     EmployerSearchView,
-    LikedEmployeeView
+    LikedEmployeeView,
+    ReviewViewSet
 )
 
-# Create a router and register our viewsets with it
+# Create router
 router = DefaultRouter()
-router.register(r'users', UserViewSet)
+router.register(r'reviews', ReviewViewSet)
 
 urlpatterns = [
     # Router URLs
     path('', include(router.urls)),
+    
+    # Profile endpoint
+    path('profile/', UserViewSet.as_view({
+        'get': 'profile',
+        'put': 'profile',
+        'patch': 'profile'
+    }), name='profile-profile'),
 
     # Authentication endpoints
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
@@ -34,4 +42,8 @@ urlpatterns = [
     # Employee interaction endpoints
     path('employees/liked/', LikedEmployeeView.as_view(), name='liked-employees-list'),
     path('employees/<int:employee_id>/like/', LikedEmployeeView.as_view(), name='like-employee'),
+
+    # Review endpoints
+    path('users/<int:user_id>/reviews/given/', ReviewViewSet.as_view({'get': 'list'}), {'type': 'given'}, name='user-reviews-given'),
+    path('users/<int:user_id>/reviews/received/', ReviewViewSet.as_view({'get': 'list'}), {'type': 'received'}, name='user-reviews-received'),
 ]

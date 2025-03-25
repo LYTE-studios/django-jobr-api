@@ -4,7 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import CustomUser, Employee, Employer, LikedEmployee
+from .models import (
+    CustomUser, Employee, Employer, LikedEmployee,
+    ProfileOption, Review, UserGallery
+)
 from .serializers import (
     UserSerializer,
     UserAuthenticationSerializer,
@@ -13,7 +16,8 @@ from .serializers import (
     EmployeeSearchSerializer,
     EmployerSearchSerializer,
     LikedEmployeeSerializer,
-    VATValidationSerializer
+    VATValidationSerializer,
+    ReviewSerializer
 )
 from .services import VATValidationService
 from django.core.cache import cache
@@ -88,7 +92,12 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Filter queryset based on user role."""
+        """Filter queryset based on action and role."""
+        if self.action == 'profile':
+            # For profile endpoint, return only the current user
+            return CustomUser.objects.filter(id=self.request.user.id)
+        
+        # For other endpoints, filter by role if specified
         queryset = CustomUser.objects.all()
         role = self.request.query_params.get('role', None)
         if role:
@@ -101,6 +110,95 @@ class UserViewSet(viewsets.ModelViewSet):
         if 'password' in self.request.data:
             user.set_password(self.request.data['password'])
             user.save()
+
+    @action(detail=False, methods=['get', 'put', 'patch'], url_path='profile', url_name='profile')
+    def profile(self, request):
+        """Get or update current user's profile."""
+        if request.method == 'GET':
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
+        
+        # PUT or PATCH
+        serializer = self.get_serializer(request.user, data=request.data, partial=request.method == 'PATCH')
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def update_profile(self, request):
+        """Update current user's profile."""
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='profile-picture')
+    def update_profile_picture(self, request):
+        """Update user's profile picture."""
+        serializer = ProfileImageUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        if user.profile_picture:
+            user.profile_picture.delete()
+        user.profile_picture = serializer.validated_data['image']
+        user.save()
+        
+        return Response(UserSerializer(user).data)
+
+    @action(detail=False, methods=['delete'], url_path='profile-picture')
+    def delete_profile_picture(self, request):
+        """Delete user's profile picture."""
+        user = request.user
+        if user.profile_picture:
+            user.profile_picture.delete()
+            user.profile_picture = None
+            user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='profile-banner')
+    def update_profile_banner(self, request):
+        """Update user's profile banner."""
+        serializer = ProfileImageUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        if user.profile_banner:
+            user.profile_banner.delete()
+        user.profile_banner = serializer.validated_data['image']
+        user.save()
+        
+        return Response(UserSerializer(user).data)
+
+    @action(detail=False, methods=['delete'], url_path='profile-banner')
+    def delete_profile_banner(self, request):
+        """Delete user's profile banner."""
+        user = request.user
+        if user.profile_banner:
+            user.profile_banner.delete()
+            user.profile_banner = None
+            user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='gallery')
+    def add_gallery_image(self, request):
+        """Add an image to user's gallery."""
+        serializer = ProfileImageUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        gallery = UserGallery.objects.create(
+            user=request.user,
+            gallery=serializer.validated_data['image']
+        )
+        
+        return Response(UserSerializer(request.user).data)
+
+    @action(detail=True, methods=['delete'], url_path='gallery')
+    def delete_gallery_image(self, request, pk=None):
+        """Delete an image from user's gallery."""
+        gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
+        gallery.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_update(self, serializer):
         """Handle password updates and profile data."""
@@ -180,3 +278,49 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         )
         liked.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """Handle review operations."""
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter reviews based on user and query parameters."""
+        queryset = Review.objects.all()
+        user_id = self.request.query_params.get('user_id', None)
+        review_type = self.request.query_params.get('type', None)  # 'given' or 'received'
+
+        if user_id:
+            if review_type == 'given':
+                queryset = queryset.filter(reviewer_id=user_id)
+            elif review_type == 'received':
+                queryset = queryset.filter(reviewed_id=user_id)
+            else:
+                queryset = queryset.filter(reviewer_id=user_id) | queryset.filter(reviewed_id=user_id)
+
+        return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        """Set reviewer to current user when creating a review."""
+        serializer.save(reviewer=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        """Only allow updating own reviews."""
+        instance = self.get_object()
+        if instance.reviewer != request.user:
+            return Response(
+                {"detail": "You can only update your own reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Only allow deleting own reviews."""
+        instance = self.get_object()
+        if instance.reviewer != request.user:
+            return Response(
+                {"detail": "You can only delete your own reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)

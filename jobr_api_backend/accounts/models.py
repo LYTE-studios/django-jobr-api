@@ -133,8 +133,7 @@ class CustomUser(AbstractUser):
     @transaction.atomic
     def save(self, *args, **kwargs):
         """Handle profile creation/updates on save."""
-        is_new = self.pk is None
-        if is_new:
+        if self.pk is None:
             # For new users, first save the user without any profile
             super().save(*args, **kwargs)
             
@@ -145,36 +144,6 @@ class CustomUser(AbstractUser):
                 Employer.objects.create(user=self)
             elif self.role == ProfileOption.ADMIN:
                 Admin.objects.create(user=self)
-        else:
-            # Get the old instance to check if role changed
-            old_instance = CustomUser.objects.get(pk=self.pk)
-            old_role = old_instance.role
-
-            if old_role != self.role:
-                # Delete old profile
-                if old_role == ProfileOption.EMPLOYEE and old_instance.employee_profile:
-                    old_instance.employee_profile.delete()
-                    self.employee_profile = None
-                elif old_role == ProfileOption.EMPLOYER and old_instance.employer_profile:
-                    old_instance.employer_profile.delete()
-                    self.employer_profile = None
-                elif old_role == ProfileOption.ADMIN and old_instance.admin_profile:
-                    old_instance.admin_profile.delete()
-                    self.admin_profile = None
-
-                # Save user first
-                super().save(*args, **kwargs)
-
-                # Create new profile
-                if self.role == ProfileOption.EMPLOYEE:
-                    Employee.objects.create(user=self)
-                elif self.role == ProfileOption.EMPLOYER:
-                    Employer.objects.create(user=self)
-                elif self.role == ProfileOption.ADMIN:
-                    Admin.objects.create(user=self)
-            else:
-                # No role change, just save normally
-                super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['id']

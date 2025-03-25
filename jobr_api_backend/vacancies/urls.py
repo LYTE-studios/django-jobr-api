@@ -10,7 +10,8 @@ from .views import (
     LanguageViewSet,
     QuestionViewSet,
     SkillViewSet,
-    FunctionSkillViewSet
+    FunctionSkillViewSet,
+    SalaryBenefitViewSet
 )
 
 # Create a router and register our viewsets with it
@@ -22,7 +23,8 @@ router.register(r'languages', LanguageViewSet, basename='language')
 router.register(r'questions', QuestionViewSet, basename='question')
 router.register(r'skills', SkillViewSet, basename='skill')
 router.register(r'function-skills', FunctionSkillViewSet, basename='function-skill')
-router.register(r'', VacancyViewSet, basename='vacancy')
+router.register(r'vacancies', VacancyViewSet, basename='vacancy')
+router.register(r'salary-benefits', SalaryBenefitViewSet, basename='salary-benefit')
 
 # The router will generate URLs like:
 # /locations/ -> location-list

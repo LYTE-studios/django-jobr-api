@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
 from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee, Review
 
@@ -243,10 +244,11 @@ class EmployerSearchSerializer(serializers.ModelSerializer):
     city = serializers.CharField(source='employer_profile.city', read_only=True)
     biography = serializers.CharField(source='employer_profile.biography', read_only=True)
     website = serializers.URLField(source='employer_profile.website', read_only=True)
+    vat_number = serializers.CharField(source='employer_profile.vat_number', read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'profile_picture', 'company_name', 'city', 'biography', 'website')
+        fields = ('id', 'username', 'email', 'profile_picture', 'company_name', 'city', 'biography', 'website', 'vat_number')
 
     def get_profile_picture(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None

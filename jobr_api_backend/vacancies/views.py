@@ -6,13 +6,15 @@ from django.db.models import Q, Count
 from accounts.models import ProfileOption, Employer
 from .models import (
     Location, ContractType, Function, Language,
-    Question, Skill, Vacancy, FunctionSkill
+    Question, Skill, Vacancy, FunctionSkill,
+    SalaryBenefit
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
     FunctionSerializer, LanguageSerializer,
     QuestionSerializer, SkillSerializer,
-    VacancySerializer, FunctionSkillSerializer
+    VacancySerializer, FunctionSkillSerializer,
+    SalaryBenefitSerializer
 )
 
 class LocationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -86,6 +88,13 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
                 return Skill.objects.none()
 
         return queryset.distinct()
+
+class SalaryBenefitViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing salary benefits."""
+    queryset = SalaryBenefit.objects.all().order_by('id')
+    serializer_class = SalaryBenefitSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
 
 class VacancyViewSet(viewsets.ModelViewSet):
     """ViewSet for managing vacancies."""

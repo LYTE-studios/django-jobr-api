@@ -21,6 +21,11 @@ from accounts.models import ProfileOption
 
 User = get_user_model()
 
+class SalaryBenefitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalaryBenefit
+        fields = ('id', 'name', 'weight')
+
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
@@ -90,7 +95,7 @@ class ProfileInterestSerializer(serializers.ModelSerializer):
         model = ProfileInterest
         fields = ["id", "name"]
 
-class SalaryBenefitSerializer(serializers.ModelSerializer):
+class VacancySalaryBenefitSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalaryBenefit
         fields = ["id", "name"]
@@ -105,7 +110,7 @@ class VacancySerializer(serializers.ModelSerializer):
     descriptions = VacancyDescriptionSerializer(many=True, read_only=True)
     questions = VacancyQuestionSerializer(many=True, read_only=True)
     week_day = WeekdaySerializer(many=True, read_only=True)
-    salary_benefits = SalaryBenefitSerializer(many=True, read_only=True)
+    salary_benefits = VacancySalaryBenefitSerializer(many=True, read_only=True)
     applicant_count = serializers.SerializerMethodField()
 
     class Meta:

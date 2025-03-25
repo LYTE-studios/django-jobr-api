@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from .models import (
     CustomUser, Employee, Employer, LikedEmployee,
     ProfileOption, Review, UserGallery
@@ -22,6 +23,52 @@ from .serializers import (
 from .services import VATValidationService
 from django.core.cache import cache
 from rest_framework.exceptions import ValidationError, Throttled
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class LoginView(generics.GenericAPIView):
+    """Handle user login."""
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user).data
+        })
+
+class RegisterView(generics.CreateAPIView):
+    """Handle user registration."""
+    permission_classes = [AllowAny]
+    serializer_class = UserAuthenticationSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+
+class TestConnectionView(generics.GenericAPIView):
+    """Test if the user's token is valid."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        return Response({
+            'message': 'Connection successful',
+            'user': self.get_serializer(request.user).data
+        })
 
 class VATValidationView(generics.GenericAPIView):
     """Validate VAT numbers and retrieve company details."""
@@ -183,12 +230,15 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='gallery')
     def add_gallery_image(self, request):
         """Add an image to user's gallery."""
-        serializer = ProfileImageUploadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if 'image' not in request.FILES:
+            return Response(
+                {"error": "No image provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         gallery = UserGallery.objects.create(
             user=request.user,
-            gallery=serializer.validated_data['image']
+            gallery=request.FILES['image']
         )
         
         return Response(UserSerializer(request.user).data)
@@ -197,6 +247,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def delete_gallery_image(self, request, pk=None):
         """Delete an image from user's gallery."""
         gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
+        # Delete the file first
+        if gallery.gallery:
+            gallery.gallery.delete()
+        # Then delete the model instance
         gallery.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -229,29 +283,55 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""
-    serializer_class = EmployeeSearchSerializer
+    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
-        """Filter employees based on search criteria."""
+        """Filter employees based on search term."""
         queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYEE)
-        city = self.request.query_params.get('city', None)
-        if city:
-            queryset = queryset.filter(employee_profile__city_name__icontains=city)
-        return queryset.distinct()
+        print(f"Initial queryset count: {queryset.count()}")
+        search = self.request.GET.get('search', None)
+        print(f"Search query: {search}")
+        print(f"Query params: {self.request.GET}")
+        if search:
+            queryset = queryset.filter(
+                Q(username__icontains=search) |
+                Q(employee_profile__biography__icontains=search) |
+                Q(employee_profile__city_name__icontains=search) |
+                Q(employee_profile__function__name__icontains=search) |
+                Q(employee_profile__skill__name__icontains=search) |
+                Q(employee_profile__language__name__icontains=search)
+            ).distinct()
+            print(f"Filtered queryset count: {queryset.count()}")
+            print(f"SQL query: {queryset.query}")
+        return queryset
 
 class EmployerSearchView(generics.ListAPIView):
     """Search for employers."""
-    serializer_class = EmployerSearchSerializer
+    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
-        """Filter employers based on search criteria."""
+        """Filter employers based on search term."""
         queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYER)
-        company = self.request.query_params.get('company', None)
-        if company:
-            queryset = queryset.filter(employer_profile__company_name__icontains=company)
-        return queryset.distinct()
+        print(f"Initial queryset count: {queryset.count()}")
+        search = self.request.GET.get('search', None)
+        print(f"Search query: {search}")
+        print(f"Query params: {self.request.GET}")
+        if search:
+            queryset = queryset.filter(
+                Q(username__icontains=search) |
+                Q(employer_profile__company_name__icontains=search) |
+                Q(employer_profile__biography__icontains=search) |
+                Q(employer_profile__city__icontains=search) |
+                Q(employer_profile__website__icontains=search) |
+                Q(employer_profile__vat_number__icontains=search)
+            ).distinct()
+            print(f"Filtered queryset count: {queryset.count()}")
+            print(f"SQL query: {queryset.query}")
+        return queryset
 
 class LikedEmployeeView(generics.ListCreateAPIView):
     """Handle liked employee operations."""

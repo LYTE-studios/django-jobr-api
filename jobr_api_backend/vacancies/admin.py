@@ -30,12 +30,6 @@ class ContractTypeAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-class FunctionSkillInline(admin.TabularInline):
-    model = FunctionSkill
-    extra = 1
-    autocomplete_fields = ['skill']
-    ordering = ['-weight']
-
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight', 'sector', 'get_skills_count')
@@ -43,11 +37,83 @@ class FunctionAdmin(admin.ModelAdmin):
     list_filter = ('weight', 'sector')
     ordering = ('name',)
     list_per_page = 25
-    inlines = [FunctionSkillInline]
+    filter_horizontal = ('skills',)
+    actions = ['edit_skill_weights']
 
     def get_skills_count(self, obj):
         return obj.skills.count()
     get_skills_count.short_description = 'Skills'
+
+    def edit_skill_weights(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Please select exactly one function to edit skill weights.", level='ERROR')
+            return
+        
+        function = queryset.first()
+        return HttpResponseRedirect(
+            reverse('admin:edit-function-skill-weights', args=[function.pk])
+        )
+    edit_skill_weights.short_description = "Edit skill weights for selected function"
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:function_id>/edit-weights/',
+                self.admin_site.admin_view(self.edit_weights_view),
+                name='edit-function-skill-weights',
+            ),
+        ]
+        return custom_urls + urls
+
+    def edit_weights_view(self, request, function_id):
+        from django import forms
+        function = self.get_object(request, function_id)
+        
+        if not function:
+            raise Http404("Function does not exist")
+
+        class SkillWeightForm(forms.Form):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                for skill in function.skills.all():
+                    weight = FunctionSkill.objects.get(function=function, skill=skill).weight
+                    self.fields[f'weight_{skill.id}'] = forms.IntegerField(
+                        label=skill.name,
+                        initial=weight,
+                        min_value=1,
+                        required=True
+                    )
+
+        if request.method == 'POST':
+            form = SkillWeightForm(request.POST)
+            if form.is_valid():
+                for skill in function.skills.all():
+                    weight = form.cleaned_data[f'weight_{skill.id}']
+                    FunctionSkill.objects.filter(
+                        function=function,
+                        skill=skill
+                    ).update(weight=weight)
+                self.message_user(request, "Skill weights updated successfully.")
+                return HttpResponseRedirect(
+                    reverse('admin:vacancies_function_changelist')
+                )
+        else:
+            form = SkillWeightForm()
+
+        context = {
+            'title': f'Edit Skill Weights for {function}',
+            'form': form,
+            'opts': self.model._meta,
+            'original': function,
+            'media': self.media + form.media,
+        }
+        return TemplateResponse(
+            request,
+            'admin/vacancies/function/edit_weights.html',
+            context,
+        )
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):

@@ -152,19 +152,34 @@ class VATValidationService:
         # Check database first
         try:
             validation_result = VATValidationResult.objects.get(vat_number=vat_number)
-            # Parse the stored address
-            address_parts = cls._parse_address(validation_result.company_address)
-            return {
-                "is_valid": validation_result.is_valid,
-                "company_details": {
-                    "name": validation_result.company_name,
-                    "street_name": address_parts["street_name"],
-                    "house_number": address_parts["house_number"],
-                    "city": address_parts["city"],
-                    "postal_code": address_parts["postal_code"],
-                    "country": "Belgium"
+            # If employer exists and is linked to this validation, use their details
+            if validation_result.employer:
+                employer = validation_result.employer
+                return {
+                    "is_valid": validation_result.is_valid,
+                    "company_details": {
+                        "name": employer.company_name,
+                        "street_name": employer.street_name,
+                        "house_number": employer.house_number,
+                        "city": employer.city,
+                        "postal_code": employer.postal_code,
+                        "country": "Belgium"
+                    }
                 }
-            }
+            else:
+                # Fall back to parsing stored address if no employer is linked
+                address_parts = cls._parse_address(validation_result.company_address)
+                return {
+                    "is_valid": validation_result.is_valid,
+                    "company_details": {
+                        "name": validation_result.company_name,
+                        "street_name": address_parts["street_name"],
+                        "house_number": address_parts["house_number"],
+                        "city": address_parts["city"],
+                        "postal_code": address_parts["postal_code"],
+                        "country": "Belgium"
+                    }
+                }
         except VATValidationResult.DoesNotExist:
             pass
 
@@ -217,14 +232,23 @@ class VATValidationService:
             # Parse the address from the API response
             address_parts = cls._parse_address(data.get("address", ""))
 
-            # Store valid result in database
-            VATValidationResult.objects.create(
+            # Store valid result in database and update employer details
+            validation_result = VATValidationResult.objects.create(
                 vat_number=vat_number,
                 is_valid=True,
                 company_name=data.get("name", ""),
                 company_address=data.get("address", ""),
                 employer=employer
             )
+
+            # Update employer details if provided
+            if employer:
+                employer.company_name = data.get("name", "")
+                employer.street_name = address_parts["street_name"]
+                employer.house_number = address_parts["house_number"]
+                employer.city = address_parts["city"]
+                employer.postal_code = address_parts["postal_code"]
+                employer.save()
 
             # Format the response according to requirements
             result = {

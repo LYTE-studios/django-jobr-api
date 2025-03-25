@@ -78,6 +78,18 @@ class FunctionAdminForm(forms.ModelForm):
                 except Skill.DoesNotExist:
                     pass
 
+    def clean(self):
+        cleaned_data = super().clean()
+        all_skills = cleaned_data.get('all_skills', [])
+        
+        # Validate that weights are provided for all selected skills
+        for skill in all_skills:
+            weight_field = f'weight_{skill.id}'
+            if weight_field not in cleaned_data:
+                cleaned_data[weight_field] = 1  # Default weight if not provided
+        
+        return cleaned_data
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         if commit:
@@ -85,13 +97,14 @@ class FunctionAdminForm(forms.ModelForm):
             # Clear existing skills to prepare for new ones
             FunctionSkill.objects.filter(function=instance).delete()
             # Add new skills with specified weights
-            for skill in self.cleaned_data['all_skills']:
-                weight = self.cleaned_data.get(f'weight_{skill.id}', 1)
-                FunctionSkill.objects.create(
-                    function=instance,
-                    skill=skill,
-                    weight=weight
-                )
+            if 'all_skills' in self.cleaned_data:
+                for skill in self.cleaned_data['all_skills']:
+                    weight = self.cleaned_data.get(f'weight_{skill.id}', 1)
+                    FunctionSkill.objects.create(
+                        function=instance,
+                        skill=skill,
+                        weight=weight
+                    )
         return instance
 
 @admin.register(Function)

@@ -14,29 +14,29 @@ class Sector(models.Model):
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.name} at {self.weight}"
+        return self.name
 
 
 class Location(models.Model):
     """
     Represents a location in the system with an associated weight.
     """
-    location = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.location} at {self.weight}"
+        return self.name
 
 
 class ContractType(models.Model):
     """
     Represents the type of contract with an associated weight.
     """
-    contract_type = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.contract_type} at {self.weight}"
+        return self.name
 
 
 class Skill(models.Model):
@@ -44,13 +44,13 @@ class Skill(models.Model):
     Represents a skill with an associated category (either 'hard' or 'soft').
     Skills can be associated with multiple Functions with different weights.
     """
-    skill = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     category = models.CharField(
         max_length=10, choices=[("hard", "Hard"), ("soft", "Soft")], default="hard"
     )
 
     def __str__(self):
-        return f"{self.skill} - {self.category}"
+        return f"{self.name} - {self.category}"
 
 
 class FunctionSkill(models.Model):
@@ -80,35 +80,35 @@ class Function(models.Model):
     Represents a job function with an associated weight and sector.
     Functions can have multiple skills with different weights for each skill.
     """
-    function = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
     sector = models.ForeignKey(Sector, on_delete=models.CASCADE, related_name='functions', null=True, blank=True)
     skills = models.ManyToManyField(Skill, through=FunctionSkill, related_name='functions')
 
     def __str__(self):
-        return f"{self.function} at {self.weight}"
+        return self.name
 
 
 class Question(models.Model):
     """
     Represents a question with an associated weight.
     """
-    question = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null=True, blank=True)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.question} at {self.weight}"
+        return self.name if self.name else "Untitled Question"
 
 
 class Language(models.Model):
     """
     Represents a language with an associated weight.
     """
-    language = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.language} at {self.weight}"
+        return self.name
 
 
 class MasteryOption(models.TextChoices):
@@ -140,7 +140,7 @@ class SalaryBenefit(models.Model):
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.name} at {self.weight}"
+        return self.name
 
 
 class ProfileInterest(models.Model):
@@ -151,7 +151,7 @@ class ProfileInterest(models.Model):
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.name} at {self.weight}"
+        return self.name
 
 
 class JobListingPrompt(models.Model):
@@ -162,7 +162,7 @@ class JobListingPrompt(models.Model):
     weight = models.IntegerField(null=True)
 
     def __str__(self):
-        return f"{self.name} at {self.weight}"
+        return self.name
 
 
 class VacancyLanguage(models.Model):
@@ -172,6 +172,9 @@ class VacancyLanguage(models.Model):
     language = models.ForeignKey(Language, on_delete=models.CASCADE)
     mastery = models.CharField(max_length=255, choices=MasteryOption.choices)
 
+    def __str__(self):
+        return f"{self.language} - {self.mastery}"
+
 
 class VacancyDescription(models.Model):
     """
@@ -180,6 +183,9 @@ class VacancyDescription(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True)
     description = models.TextField()
 
+    def __str__(self):
+        return self.description[:50]
+
 
 class VacancyQuestion(models.Model):
     """
@@ -187,12 +193,17 @@ class VacancyQuestion(models.Model):
     """
     question = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.question
+
 
 class Vacancy(models.Model):
     """
     Represents a job vacancy posted by an employer.
     """
-    employer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    employer = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
     expected_mastery = models.CharField(
         max_length=255, choices=MasteryOption.choices, null=True
     )
@@ -216,10 +227,16 @@ class Vacancy(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
+    def __str__(self):
+        return self.title if self.title else "Untitled Vacancy"
+
 
 class ApplyVacancy(models.Model):
     """
     Represents an application for a job vacancy by an employee.
     """
-    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
     vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.employee} applied to {self.vacancy}"

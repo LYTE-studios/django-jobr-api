@@ -1,7 +1,9 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db.models import Q, Count
+from accounts.models import ProfileOption, Employer
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill
@@ -52,17 +54,25 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Get skills, optionally filtered by function.
         Returns skills ordered by weight within the function if specified.
+        Returns empty queryset for nonexistent functions.
         """
         queryset = Skill.objects.all()
         function_id = self.request.query_params.get('function', None)
 
         if function_id:
             try:
-                # Get skills associated with the function through FunctionSkill
+                function_id = int(function_id)
+            except (TypeError, ValueError):
+                return Skill.objects.none()
+
+            try:
                 function = Function.objects.get(id=function_id)
                 skill_ids = FunctionSkill.objects.filter(
                     function=function
                 ).order_by('-weight').values_list('skill_id', flat=True)
+                
+                if not skill_ids:
+                    return Skill.objects.none()
                 
                 # Preserve the ordering from skill_ids
                 from django.db.models import Case, When
@@ -75,7 +85,7 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
             except Function.DoesNotExist:
                 return Skill.objects.none()
 
-        return queryset
+        return queryset.distinct()
 
 class VacancyViewSet(viewsets.ModelViewSet):
     """ViewSet for managing vacancies."""
@@ -86,12 +96,14 @@ class VacancyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter vacancies based on user role."""
         user = self.request.user
-        if user.role == 'employer':
+        if user.role == ProfileOption.EMPLOYER:
             return Vacancy.objects.filter(employer=user)
         return Vacancy.objects.all()
 
     def perform_create(self, serializer):
         """Set employer when creating a vacancy."""
+        if self.request.user.role != ProfileOption.EMPLOYER:
+            raise PermissionDenied("Only employers can create vacancies")
         serializer.save(employer=self.request.user)
 
 class VacancyFilterView(generics.ListAPIView):

@@ -24,17 +24,17 @@ User = get_user_model()
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
-        fields = ["id", "location"]
+        fields = ["id", "name"]
 
 class ContractTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractType
-        fields = ["id", "contract_type"]
+        fields = ["id", "name"]
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
-        fields = ["id", "skill", "category"]
+        fields = ["id", "name", "category"]
 
 class FunctionSkillSerializer(serializers.ModelSerializer):
     skill = SkillSerializer()
@@ -49,17 +49,17 @@ class FunctionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Function
-        fields = ["id", "function", "skills", "function_skills"]
+        fields = ["id", "name", "skills", "function_skills"]
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
-        fields = ["id", "language"]
+        fields = ["id", "name"]
 
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = ["question"]
+        fields = ["id", "name"]
 
 class WeekdaySerializer(serializers.ModelSerializer):
     class Meta:

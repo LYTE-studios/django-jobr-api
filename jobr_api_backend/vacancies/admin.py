@@ -16,18 +16,18 @@ class SectorAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ('location', 'weight')
-    search_fields = ('location',)
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
     list_filter = ('weight',)
-    ordering = ('location',)
+    ordering = ('name',)
     list_per_page = 25
 
 @admin.register(ContractType)
 class ContractTypeAdmin(admin.ModelAdmin):
-    list_display = ('contract_type', 'weight')
-    search_fields = ('contract_type',)
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
     list_filter = ('weight',)
-    ordering = ('contract_type',)
+    ordering = ('name',)
     list_per_page = 25
 
 class FunctionSkillInline(admin.TabularInline):
@@ -38,10 +38,10 @@ class FunctionSkillInline(admin.TabularInline):
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
-    list_display = ('function', 'weight', 'sector', 'get_skills_count')
-    search_fields = ('function', 'sector__name')
+    list_display = ('name', 'weight', 'sector', 'get_skills_count')
+    search_fields = ('name', 'sector__name')
     list_filter = ('weight', 'sector')
-    ordering = ('function',)
+    ordering = ('name',)
     list_per_page = 25
     inlines = [FunctionSkillInline]
 
@@ -51,26 +51,26 @@ class FunctionAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('question', 'weight')
-    search_fields = ('question',)
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
     list_filter = ('weight',)
-    ordering = ('question',)
+    ordering = ('name',)
     list_per_page = 25
 
 @admin.register(Language)
 class LanguageAdmin(admin.ModelAdmin):
-    list_display = ('language', 'weight')
-    search_fields = ('language',)
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
     list_filter = ('weight',)
-    ordering = ('language',)
+    ordering = ('name',)
     list_per_page = 25
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ('skill', 'category', 'get_functions_count')
-    search_fields = ('skill',)
+    list_display = ('name', 'category', 'get_functions_count')
+    search_fields = ('name',)
     list_filter = ('category',)
-    ordering = ('skill',)
+    ordering = ('name',)
     list_per_page = 25
 
     def get_functions_count(self, obj):
@@ -112,7 +112,7 @@ class JobListingPromptAdmin(admin.ModelAdmin):
 class VacancyLanguageAdmin(admin.ModelAdmin):
     list_display = ('language', 'mastery')
     list_filter = ('mastery', 'language')
-    search_fields = ('language__language',)
+    search_fields = ('language__name',)
     list_per_page = 25
 
 @admin.register(VacancyDescription)
@@ -134,7 +134,7 @@ class VacancyQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(Vacancy)
 class VacancyAdmin(admin.ModelAdmin):
-    list_display = ('get_employer', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
+    list_display = ('title', 'employer', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
     list_filter = (
         'expected_mastery',
         'contract_type',
@@ -144,24 +144,22 @@ class VacancyAdmin(admin.ModelAdmin):
         'job_date',
     )
     search_fields = (
-        'employer__username',
-        'employer__email',
-        'function__function',
-        'location__location',
+        'title',
+        'description',
+        'employer__user__username',
+        'employer__user__email',
+        'function__name',
+        'location__name',
     )
     filter_horizontal = ('contract_type', 'week_day', 'languages', 'descriptions', 'questions', 'skill')
     raw_id_fields = ('employer',)
     date_hierarchy = 'job_date'
     list_per_page = 25
 
-    def get_employer(self, obj):
-        return obj.employer.username
-    get_employer.short_description = 'Employer'
-
 @admin.register(ApplyVacancy)
 class ApplyVacancyAdmin(admin.ModelAdmin):
     list_display = ('employee', 'vacancy')
     list_filter = ('employee', 'vacancy')
-    search_fields = ('employee__username', 'vacancy__employer__username')
+    search_fields = ('employee__user__username', 'vacancy__title')
     raw_id_fields = ('employee', 'vacancy')
     list_per_page = 25

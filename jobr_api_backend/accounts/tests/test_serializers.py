@@ -76,9 +76,9 @@ class EmployeeSearchSerializerTests(TestCase):
         self.employee.save()
 
         # Create some related objects
-        self.skill = Skill.objects.create(skill="Test Skill")
-        self.language = Language.objects.create(language="Test Language")
-        self.function = Function.objects.create(function="Test Function")
+        self.skill = Skill.objects.create(name="Test Skill")
+        self.language = Language.objects.create(name="Test Language")
+        self.function = Function.objects.create(name="Test Function")
 
         # Add relationships
         self.employee.skill.add(self.skill)

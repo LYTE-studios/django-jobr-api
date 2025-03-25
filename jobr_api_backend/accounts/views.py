@@ -59,8 +59,8 @@ class VATValidationView(generics.GenericAPIView):
         except ValidationError as e:
             return Response(
                 {
-                    "error": e.detail.get('error', 'VALIDATION_ERROR'),
-                    "message": e.detail.get('message', str(e))
+                    "error": "INVALID_FORMAT",
+                    "message": str(e)
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -75,10 +75,10 @@ class VATValidationView(generics.GenericAPIView):
         except Exception as e:
             return Response(
                 {
-                    "error": "SERVICE_UNAVAILABLE",
+                    "error": "INVALID_FORMAT",
                     "message": str(e)
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -103,11 +103,31 @@ class UserViewSet(viewsets.ModelViewSet):
             user.save()
 
     def perform_update(self, serializer):
-        """Handle password updates."""
+        """Handle password updates and profile data."""
         user = serializer.save()
+        
+        # Handle password updates
         if 'password' in self.request.data:
             user.set_password(self.request.data['password'])
             user.save()
+
+        # Handle employee profile updates
+        if 'employee_profile' in self.request.data and user.role == 'employee':
+            profile_data = self.request.data['employee_profile']
+            if not user.employee_profile:
+                user.employee_profile = Employee.objects.create(user=user)
+            for key, value in profile_data.items():
+                setattr(user.employee_profile, key, value)
+            user.employee_profile.save()
+
+        # Handle employer profile updates
+        if 'employer_profile' in self.request.data and user.role == 'employer':
+            profile_data = self.request.data['employer_profile']
+            if not user.employer_profile:
+                user.employer_profile = Employer.objects.create(user=user)
+            for key, value in profile_data.items():
+                setattr(user.employer_profile, key, value)
+            user.employer_profile.save()
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""
@@ -116,11 +136,11 @@ class EmployeeSearchView(generics.ListAPIView):
 
     def get_queryset(self):
         """Filter employees based on search criteria."""
-        queryset = CustomUser.objects.filter(role='employee')
+        queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYEE)
         city = self.request.query_params.get('city', None)
         if city:
             queryset = queryset.filter(employee_profile__city_name__icontains=city)
-        return queryset
+        return queryset.distinct()
 
 class EmployerSearchView(generics.ListAPIView):
     """Search for employers."""
@@ -129,11 +149,11 @@ class EmployerSearchView(generics.ListAPIView):
 
     def get_queryset(self):
         """Filter employers based on search criteria."""
-        queryset = CustomUser.objects.filter(role='employer')
+        queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYER)
         company = self.request.query_params.get('company', None)
         if company:
             queryset = queryset.filter(employer_profile__company_name__icontains=company)
-        return queryset
+        return queryset.distinct()
 
 class LikedEmployeeView(generics.ListCreateAPIView):
     """Handle liked employee operations."""

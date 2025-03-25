@@ -24,7 +24,7 @@ class Employee(models.Model):
     user = models.OneToOneField(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='employee_profile_reverse',
+        related_name='employee_profile_user',
         null=True
     )
     date_of_birth = models.DateField(null=True, blank=True)
@@ -56,7 +56,7 @@ class Employer(models.Model):
     user = models.OneToOneField(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='employer_profile_reverse',
+        related_name='employer_profile_user',
         null=True
     )
     vat_number = models.CharField(max_length=30, null=True, blank=True)
@@ -77,7 +77,7 @@ class Admin(models.Model):
     user = models.OneToOneField(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='admin_profile_reverse',
+        related_name='admin_profile_user',
         null=True
     )
     full_name = models.CharField(max_length=100)
@@ -134,55 +134,47 @@ class CustomUser(AbstractUser):
     def save(self, *args, **kwargs):
         """Handle profile creation/updates on save."""
         is_new = self.pk is None
-        old_role = None if is_new else CustomUser.objects.get(pk=self.pk).role
-
-        # Handle profile creation/updates if role has changed or is new
-        if is_new or old_role != self.role:
-            # Delete old profiles if role has changed
-            if not is_new:
-                if old_role == ProfileOption.EMPLOYEE and self.employee_profile:
-                    old_profile = self.employee_profile
-                    self.employee_profile = None
-                    old_profile.delete()
-                elif old_role == ProfileOption.EMPLOYER and self.employer_profile:
-                    old_profile = self.employer_profile
-                    self.employer_profile = None
-                    old_profile.delete()
-                elif old_role == ProfileOption.ADMIN and self.admin_profile:
-                    old_profile = self.admin_profile
-                    self.admin_profile = None
-                    old_profile.delete()
-
-            # Create new profile based on role
+        if is_new:
+            # For new users, first save the user without any profile
+            super().save(*args, **kwargs)
+            
+            # Then create the appropriate profile
             if self.role == ProfileOption.EMPLOYEE:
-                if not self.employee_profile:
-                    profile = Employee.objects.create(user=self)
-                    self.employee_profile = profile
+                Employee.objects.create(user=self)
             elif self.role == ProfileOption.EMPLOYER:
-                if not self.employer_profile:
-                    profile = Employer.objects.create(user=self)
-                    self.employer_profile = profile
+                Employer.objects.create(user=self)
             elif self.role == ProfileOption.ADMIN:
-                if not self.admin_profile:
-                    profile = Admin.objects.create(user=self)
-                    self.admin_profile = profile
+                Admin.objects.create(user=self)
+        else:
+            # Get the old instance to check if role changed
+            old_instance = CustomUser.objects.get(pk=self.pk)
+            old_role = old_instance.role
 
-        # Save the user
-        update_fields = kwargs.get('update_fields')
-        if update_fields:
-            # Ensure role is included in update_fields if it changed
             if old_role != self.role:
-                update_fields = list(update_fields) + ['role']
-            # Include profile fields if they changed
-            if self.employee_profile_id is not None:
-                update_fields.append('employee_profile')
-            if self.employer_profile_id is not None:
-                update_fields.append('employer_profile')
-            if self.admin_profile_id is not None:
-                update_fields.append('admin_profile')
-            kwargs['update_fields'] = update_fields
+                # Delete old profile
+                if old_role == ProfileOption.EMPLOYEE and old_instance.employee_profile:
+                    old_instance.employee_profile.delete()
+                    self.employee_profile = None
+                elif old_role == ProfileOption.EMPLOYER and old_instance.employer_profile:
+                    old_instance.employer_profile.delete()
+                    self.employer_profile = None
+                elif old_role == ProfileOption.ADMIN and old_instance.admin_profile:
+                    old_instance.admin_profile.delete()
+                    self.admin_profile = None
 
-        super().save(*args, **kwargs)
+                # Save user first
+                super().save(*args, **kwargs)
+
+                # Create new profile
+                if self.role == ProfileOption.EMPLOYEE:
+                    Employee.objects.create(user=self)
+                elif self.role == ProfileOption.EMPLOYER:
+                    Employer.objects.create(user=self)
+                elif self.role == ProfileOption.ADMIN:
+                    Admin.objects.create(user=self)
+            else:
+                # No role change, just save normally
+                super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['id']

@@ -38,25 +38,48 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         )
         return user
 
+class EmployeeProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        exclude = ('user',)
+
+class EmployerProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employer
+        exclude = ('user',)
+
+class UserGallerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserGallery
+        fields = '__all__'
+
 class UserSerializer(serializers.ModelSerializer):
+    employee_profile = EmployeeProfileSerializer(read_only=True)
+    employer_profile = EmployerProfileSerializer(read_only=True)
+    user_gallery = UserGallerySerializer(many=True, read_only=True)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'profile_picture', 'profile_banner', 'sector')
+        fields = ('id', 'username', 'email', 'role', 'profile_picture',
+                 'profile_banner', 'sector', 'employee_profile',
+                 'employer_profile', 'user_gallery')
         read_only_fields = ('id', 'profile_picture', 'profile_banner')
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    profile = EmployeeProfileSerializer(source='*', read_only=True)
     user = UserSerializer(read_only=True)
 
     class Meta:
         model = Employee
-        fields = '__all__'
+        fields = ('id', 'user', 'profile')
 
 class EmployerSerializer(serializers.ModelSerializer):
+    profile = EmployerProfileSerializer(source='*', read_only=True)
     user = UserSerializer(read_only=True)
 
     class Meta:
         model = Employer
-        fields = '__all__'
+        fields = ('id', 'user', 'profile')
 
 class LikedEmployeeSerializer(serializers.ModelSerializer):
     employee = serializers.SerializerMethodField()
@@ -79,13 +102,32 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
     city = serializers.CharField(source='employee_profile.city_name', read_only=True)
     biography = serializers.CharField(source='employee_profile.biography', read_only=True)
+    skill = serializers.SerializerMethodField()
+    language = serializers.SerializerMethodField()
+    function = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'profile_picture', 'city', 'biography')
+        fields = ('id', 'username', 'email', 'profile_picture', 'city', 'biography',
+                 'skill', 'language', 'function')
 
     def get_profile_picture(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None
+
+    def get_skill(self, obj):
+        if hasattr(obj, 'employee_profile') and obj.employee_profile:
+            return [{'id': s.id, 'name': s.name} for s in obj.employee_profile.skill.all()]
+        return []
+
+    def get_language(self, obj):
+        if hasattr(obj, 'employee_profile') and obj.employee_profile:
+            return [{'id': l.id, 'name': l.name} for l in obj.employee_profile.language.all()]
+        return []
+
+    def get_function(self, obj):
+        if hasattr(obj, 'employee_profile') and obj.employee_profile and obj.employee_profile.function:
+            return {'id': obj.employee_profile.function.id, 'name': obj.employee_profile.function.name}
+        return None
 
 class EmployerSearchSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
@@ -100,11 +142,6 @@ class EmployerSearchSerializer(serializers.ModelSerializer):
 
     def get_profile_picture(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None
-
-class UserGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserGallery
-        fields = '__all__'
 
 class ProfileImageUploadSerializer(serializers.ModelSerializer):
     image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])

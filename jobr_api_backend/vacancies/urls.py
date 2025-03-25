@@ -15,18 +15,27 @@ from .views import (
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
-router.register(r'locations', LocationViewSet, basename='locations')
-router.register(r'contracts', ContractTypeViewSet, basename='contracts')
-router.register(r'functions', FunctionViewSet, basename='functions')
-router.register(r'languages', LanguageViewSet, basename='languages')
-router.register(r'questions', QuestionViewSet, basename='questions')
-router.register(r'skills', SkillViewSet, basename='skills')
-router.register(r'function-skills', FunctionSkillViewSet, basename='function-skills')
+router.register(r'locations', LocationViewSet, basename='location')
+router.register(r'contracts', ContractTypeViewSet, basename='contract')
+router.register(r'functions', FunctionViewSet, basename='function')
+router.register(r'languages', LanguageViewSet, basename='language')
+router.register(r'questions', QuestionViewSet, basename='question')
+router.register(r'skills', SkillViewSet, basename='skill')
+router.register(r'function-skills', FunctionSkillViewSet, basename='function-skill')
 router.register(r'', VacancyViewSet, basename='vacancy')
+
+# The router will generate URLs like:
+# /locations/ -> location-list
+# /locations/{id}/ -> location-detail
+# /functions/ -> function-list
+# /functions/{id}/ -> function-detail
+# /skills/ -> skill-list
+# /skills/{id}/ -> skill-detail
+# etc.
 
 urlpatterns = [
     # Include router URLs
-    path('', include(router.urls)),
+    path('', include((router.urls, 'vacancies'), namespace='vacancies')),
     
     # Additional endpoints
     path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),

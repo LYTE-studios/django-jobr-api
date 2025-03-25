@@ -30,14 +30,49 @@ class ContractTypeAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
+from django import forms
+
+class FunctionAdminForm(forms.ModelForm):
+    all_skills = forms.ModelMultipleChoiceField(
+        queryset=Skill.objects.all(),
+        required=False,
+        widget=admin.widgets.FilteredSelectMultiple('Skills', False),
+        label='Select Skills'
+    )
+
+    class Meta:
+        model = Function
+        fields = '__all__'
+        exclude = ('skills',)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['all_skills'].initial = self.instance.skills.all()
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            # Clear existing skills to prepare for new ones
+            FunctionSkill.objects.filter(function=instance).delete()
+            # Add new skills with default weight=1
+            for skill in self.cleaned_data['all_skills']:
+                FunctionSkill.objects.create(
+                    function=instance,
+                    skill=skill,
+                    weight=1
+                )
+        return instance
+
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
+    form = FunctionAdminForm
     list_display = ('name', 'weight', 'sector', 'get_skills_count')
     search_fields = ('name', 'sector__name')
     list_filter = ('weight', 'sector')
     ordering = ('name',)
     list_per_page = 25
-    filter_horizontal = ('skills',)
     actions = ['edit_skill_weights']
 
     def get_skills_count(self, obj):

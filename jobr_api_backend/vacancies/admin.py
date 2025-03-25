@@ -1,4 +1,8 @@
 from django.contrib import admin
+from django.http import HttpResponseRedirect, Http404
+from django.template.response import TemplateResponse
+from django.urls import reverse
+from django import forms
 from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
@@ -30,8 +34,6 @@ class ContractTypeAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-from django import forms
-
 class FunctionAdminForm(forms.ModelForm):
     all_skills = forms.ModelMultipleChoiceField(
         queryset=Skill.objects.all(),
@@ -49,6 +51,32 @@ class FunctionAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['all_skills'].initial = self.instance.skills.all()
+            # Add weight fields for existing skills
+            for skill in self.instance.skills.all():
+                field_name = f'weight_{skill.id}'
+                self.fields[field_name] = forms.IntegerField(
+                    label=f'Weight for {skill.name}',
+                    initial=FunctionSkill.objects.get(function=self.instance, skill=skill).weight,
+                    min_value=1,
+                    required=False
+                )
+        
+        # Add weight fields for any skills in POST data
+        if 'all_skills' in self.data:
+            skill_ids = self.data.getlist('all_skills')
+            for skill_id in skill_ids:
+                try:
+                    skill = Skill.objects.get(id=skill_id)
+                    field_name = f'weight_{skill.id}'
+                    if field_name not in self.fields:
+                        self.fields[field_name] = forms.IntegerField(
+                            label=f'Weight for {skill.name}',
+                            initial=1,
+                            min_value=1,
+                            required=False
+                        )
+                except Skill.DoesNotExist:
+                    pass
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -56,12 +84,13 @@ class FunctionAdminForm(forms.ModelForm):
             instance.save()
             # Clear existing skills to prepare for new ones
             FunctionSkill.objects.filter(function=instance).delete()
-            # Add new skills with default weight=1
+            # Add new skills with specified weights
             for skill in self.cleaned_data['all_skills']:
+                weight = self.cleaned_data.get(f'weight_{skill.id}', 1)
                 FunctionSkill.objects.create(
                     function=instance,
                     skill=skill,
-                    weight=1
+                    weight=weight
                 )
         return instance
 
@@ -209,30 +238,6 @@ class JobListingPromptAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(VacancyLanguage)
-class VacancyLanguageAdmin(admin.ModelAdmin):
-    list_display = ('language', 'mastery')
-    list_filter = ('mastery', 'language')
-    search_fields = ('language__name',)
-    list_per_page = 25
-
-@admin.register(VacancyDescription)
-class VacancyDescriptionAdmin(admin.ModelAdmin):
-    list_display = ('get_description_preview', 'question')
-    list_filter = ('question',)
-    search_fields = ('description',)
-    list_per_page = 25
-
-    def get_description_preview(self, obj):
-        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
-    get_description_preview.short_description = 'Description'
-
-@admin.register(VacancyQuestion)
-class VacancyQuestionAdmin(admin.ModelAdmin):
-    list_display = ('question',)
-    search_fields = ('question',)
-    list_per_page = 25
-
 @admin.register(Vacancy)
 class VacancyAdmin(admin.ModelAdmin):
     list_display = ('title', 'employer', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
@@ -255,12 +260,4 @@ class VacancyAdmin(admin.ModelAdmin):
     filter_horizontal = ('contract_type', 'week_day', 'languages', 'descriptions', 'questions', 'skill')
     raw_id_fields = ('employer',)
     date_hierarchy = 'job_date'
-    list_per_page = 25
-
-@admin.register(ApplyVacancy)
-class ApplyVacancyAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'vacancy')
-    list_filter = ('employee', 'vacancy')
-    search_fields = ('employee__user__username', 'vacancy__title')
-    raw_id_fields = ('employee', 'vacancy')
     list_per_page = 25

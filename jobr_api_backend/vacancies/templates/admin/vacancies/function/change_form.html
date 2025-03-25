@@ -1,0 +1,74 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify vacancy_tags %}
+
+{% block extrahead %}{{ block.super }}
+<style type="text/css">
+    .weight-fields {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #eee;
+        background-color: #f9f9f9;
+    }
+    .weight-fields h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+    }
+    .weight-field {
+        margin-bottom: 10px;
+    }
+    .weight-field label {
+        display: inline-block;
+        width: 200px;
+    }
+    .weight-field input {
+        width: 100px;
+    }
+</style>
+<script type="text/javascript">
+(function($) {
+    $(document).ready(function() {
+        var $skillSelect = $('#id_all_skills');
+        var $weightFields = $('.weight-fields');
+        
+        // Show/hide weight fields based on selection
+        function updateWeightFields() {
+            var selectedOptions = $skillSelect.find('option:selected');
+            selectedOptions.each(function() {
+                var skillId = $(this).val();
+                var weightField = $('#id_weight_' + skillId).closest('.weight-field');
+                weightField.show();
+            });
+            
+            $weightFields.find('.weight-field').each(function() {
+                var fieldId = $(this).find('input').attr('id');
+                var skillId = fieldId.replace('id_weight_', '');
+                if (!$skillSelect.find('option[value="' + skillId + '"]:selected').length) {
+                    $(this).hide();
+                }
+            });
+        }
+        
+        // Initial update
+        updateWeightFields();
+        
+        // Update on selection change
+        $skillSelect.on('change', updateWeightFields);
+    });
+})(django.jQuery);
+</script>
+{% endblock %}
+
+{% block after_field_sets %}
+<div class="weight-fields">
+    <h3>{% trans "Skill Weights" %}</h3>
+    {% for field in adminform.form %}
+        {% if field.name|startswith:"weight_" %}
+            <div class="weight-field">
+                {{ field.errors }}
+                {{ field.label_tag }}
+                {{ field }}
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endblock %}

@@ -11,7 +11,8 @@ from .views import (
     QuestionViewSet,
     SkillViewSet,
     FunctionSkillViewSet,
-    SalaryBenefitViewSet
+    SalaryBenefitViewSet,
+    SectorViewSet
 )
 
 # Create a router and register our viewsets with it

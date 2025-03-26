@@ -9,9 +9,11 @@ class Sector(models.Model):
     Attributes:
         name (CharField): The name of the sector.
         weight (IntegerField): An optional field that stores the weight of the sector. Defaults to None.
+        enabled (BooleanField): Whether this sector is enabled. Defaults to True.
     """
     name = models.CharField(max_length=255, unique=True)
     weight = models.IntegerField(null=True)
+    enabled = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name

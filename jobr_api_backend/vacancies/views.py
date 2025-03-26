@@ -7,15 +7,22 @@ from accounts.models import ProfileOption, Employer
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
-    SalaryBenefit
+    SalaryBenefit, Sector
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
     FunctionSerializer, LanguageSerializer,
     QuestionSerializer, SkillSerializer,
     VacancySerializer, FunctionSkillSerializer,
-    SalaryBenefitSerializer
+    SalaryBenefitSerializer, SectorSerializer
 )
+
+class SectorViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing sectors."""
+    queryset = Sector.objects.all()
+    serializer_class = SectorSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
 
 class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing locations."""

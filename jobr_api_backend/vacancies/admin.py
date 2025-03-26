@@ -12,9 +12,9 @@ from .models import (
 
 @admin.register(Sector)
 class SectorAdmin(admin.ModelAdmin):
-    list_display = ('name', 'weight')
+    list_display = ('name', 'weight', 'enabled')
     search_fields = ('name',)
-    list_filter = ('weight',)
+    list_filter = ('weight', 'enabled')
     ordering = ('name',)
     list_per_page = 25
 

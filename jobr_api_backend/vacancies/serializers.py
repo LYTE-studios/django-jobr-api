@@ -15,11 +15,17 @@ from .models import (
     Location,
     ProfileInterest,
     SalaryBenefit,
-    FunctionSkill
+    FunctionSkill,
+    Sector
 )
 from accounts.models import ProfileOption
 
 User = get_user_model()
+
+class SectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sector
+        fields = ['id', 'name', 'weight', 'enabled']
 
 class SalaryBenefitSerializer(serializers.ModelSerializer):
     class Meta:

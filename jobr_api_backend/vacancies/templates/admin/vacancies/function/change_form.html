@@ -30,21 +30,24 @@
         var $skillSelect = $('#id_all_skills');
         var $weightFields = $('.weight-fields');
         
-        // Show/hide weight fields based on selection
         function updateWeightFields() {
+            // Hide all weight fields initially
+            $weightFields.find('.weight-field').hide();
+            
+            // Show and enable fields for selected skills
             var selectedOptions = $skillSelect.find('option:selected');
             selectedOptions.each(function() {
                 var skillId = $(this).val();
-                var weightField = $('#id_weight_' + skillId).closest('.weight-field');
-                weightField.show();
+                var weightField = $('#weight_field_' + skillId);
+                if (weightField.length) {
+                    weightField.show();
+                    weightField.find('input').prop('disabled', false);
+                }
             });
             
-            $weightFields.find('.weight-field').each(function() {
-                var fieldId = $(this).find('input').attr('id');
-                var skillId = fieldId.replace('id_weight_', '');
-                if (!$skillSelect.find('option[value="' + skillId + '"]:selected').length) {
-                    $(this).hide();
-                }
+            // Disable hidden fields but keep their values
+            $weightFields.find('.weight-field:hidden').each(function() {
+                $(this).find('input').prop('disabled', true);
             });
         }
         
@@ -52,7 +55,14 @@
         updateWeightFields();
         
         // Update on selection change
-        $skillSelect.on('change', updateWeightFields);
+        $skillSelect.on('change', function() {
+            updateWeightFields();
+        });
+        
+        // Ensure weight fields are enabled before form submission
+        $('form').on('submit', function() {
+            $weightFields.find('input').prop('disabled', false);
+        });
     });
 })(django.jQuery);
 </script>
@@ -63,10 +73,11 @@
     <h3>{% trans "Skill Weights" %}</h3>
     {% for field in adminform.form %}
         {% if field.name|startswith:"weight_" %}
-            <div class="weight-field">
+            <div class="weight-field" id="weight_field_{{ field.name|cut:'weight_' }}">
                 {{ field.errors }}
                 {{ field.label_tag }}
                 {{ field }}
+                <input type="hidden" name="{{ field.name }}" value="{{ field.value|default:1 }}" />
             </div>
         {% endif %}
     {% endfor %}

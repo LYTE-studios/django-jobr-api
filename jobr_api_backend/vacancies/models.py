@@ -201,9 +201,10 @@ class VacancyQuestion(models.Model):
 
 class Vacancy(models.Model):
     """
-    Represents a job vacancy posted by an employer.
+    Represents a job vacancy posted by a company.
     """
-    employer = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE)
+    company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='vacancies')
+    created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, related_name='created_vacancies')
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     expected_mastery = models.CharField(

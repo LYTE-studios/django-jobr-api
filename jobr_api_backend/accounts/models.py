@@ -52,6 +52,56 @@ class Employee(models.Model):
     def __str__(self):
         return self.user.username if self.user else "Not Found"
 
+class Company(models.Model):
+    """Company model that can have multiple users."""
+    name = models.CharField(max_length=100)
+    vat_number = models.CharField(max_length=30, unique=True)
+    street_name = models.CharField(max_length=100)
+    house_number = models.CharField(max_length=10)
+    city = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20)
+    coordinates = models.JSONField(null=True, blank=True)
+    website = models.URLField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    users = models.ManyToManyField(
+        'CustomUser',
+        through='CompanyUser',
+        related_name='companies'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Company'
+        verbose_name_plural = 'Companies'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class CompanyUser(models.Model):
+    """Through model for Company-User relationship with role."""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ('owner', 'Owner'),
+            ('admin', 'Administrator'),
+            ('member', 'Member')
+        ],
+        default='member'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'user')
+        verbose_name = 'Company User'
+        verbose_name_plural = 'Company Users'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.company.name} ({self.role})"
+
 class Employer(models.Model):
     """Employer profile model."""
     user = models.OneToOneField(
@@ -60,14 +110,6 @@ class Employer(models.Model):
         related_name='employer_profile',
         null=True
     )
-    vat_number = models.CharField(max_length=30, null=True, blank=True)
-    company_name = models.CharField(max_length=100, null=True, blank=True)
-    street_name = models.CharField(max_length=100, null=True, blank=True)
-    house_number = models.CharField(max_length=10, null=True, blank=True)
-    city = models.CharField(max_length=100, null=True, blank=True)
-    postal_code = models.CharField(max_length=20, null=True, blank=True)
-    coordinates = models.JSONField(null=True, blank=True)
-    website = models.URLField(blank=True, null=True)
     biography = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -183,25 +225,30 @@ class UserGallery(models.Model):
         return f"Gallery image for {self.user.username}"
 
 class LikedEmployee(models.Model):
-    """Represents an employee that has been liked by an employer."""
-    employer = models.ForeignKey(
-        Employer,
+    """Represents an employee that has been liked by a company."""
+    company = models.ForeignKey(
+        Company,
         on_delete=models.CASCADE,
         related_name='liked_employees'
+    )
+    liked_by = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='liked_employees_as_user'
     )
     employee = models.ForeignKey(
         Employee,
         on_delete=models.CASCADE,
-        related_name='liked_by_employers'
+        related_name='liked_by_companies'
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('employer', 'employee')
+        unique_together = ('company', 'employee')
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.employer} likes {self.employee}"
+        return f"{self.company.name} (by {self.liked_by.username}) likes {self.employee}"
 
 class Review(models.Model):
     """
@@ -245,12 +292,19 @@ class VATValidationResult(models.Model):
     company_name = models.CharField(max_length=255, blank=True)
     company_address = models.TextField(blank=True)
     validation_date = models.DateTimeField(auto_now_add=True)
-    employer = models.ForeignKey(
-        Employer,
+    company = models.ForeignKey(
+        Company,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='vat_validations'
+    )
+    validated_by = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vat_validations_performed'
     )
 
     class Meta:

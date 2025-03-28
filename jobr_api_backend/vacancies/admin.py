@@ -45,66 +45,70 @@ class FunctionAdminForm(forms.ModelForm):
     class Meta:
         model = Function
         fields = '__all__'
-        exclude = ('skills',)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
+            # Set initial skills
             self.fields['all_skills'].initial = self.instance.skills.all()
-            # Add weight fields for existing skills
-            for skill in self.instance.skills.all():
+            
+            # Add weight fields for all skills
+            for skill in Skill.objects.all():
                 field_name = f'weight_{skill.id}'
+                initial_weight = 1
+                
+                # Get existing weight if skill is already associated
+                try:
+                    if self.instance.pk:
+                        function_skill = FunctionSkill.objects.get(
+                            function=self.instance,
+                            skill=skill
+                        )
+                        initial_weight = function_skill.weight
+                except FunctionSkill.DoesNotExist:
+                    pass
+                
                 self.fields[field_name] = forms.IntegerField(
                     label=f'Weight for {skill.name}',
-                    initial=FunctionSkill.objects.get(function=self.instance, skill=skill).weight,
+                    initial=initial_weight,
                     min_value=1,
                     required=False
                 )
-        
-        # Add weight fields for any skills in POST data
-        if 'all_skills' in self.data:
-            skill_ids = self.data.getlist('all_skills')
-            for skill_id in skill_ids:
-                try:
-                    skill = Skill.objects.get(id=skill_id)
-                    field_name = f'weight_{skill.id}'
-                    if field_name not in self.fields:
-                        self.fields[field_name] = forms.IntegerField(
-                            label=f'Weight for {skill.name}',
-                            initial=1,
-                            min_value=1,
-                            required=False
-                        )
-                except Skill.DoesNotExist:
-                    pass
 
     def clean(self):
         cleaned_data = super().clean()
         all_skills = cleaned_data.get('all_skills', [])
         
-        # Validate that weights are provided for all selected skills
+        if not all_skills:
+            # If no skills are selected, don't proceed with cleaning
+            return cleaned_data
+            
+        # Ensure weight fields exist for selected skills
         for skill in all_skills:
             weight_field = f'weight_{skill.id}'
-            if weight_field not in cleaned_data:
-                cleaned_data[weight_field] = 1  # Default weight if not provided
+            if weight_field not in cleaned_data or not cleaned_data[weight_field]:
+                cleaned_data[weight_field] = 1
         
         return cleaned_data
 
     def save(self, commit=True):
-        instance = super().save(commit=False)
-        if commit:
-            instance.save()
-            # Clear existing skills to prepare for new ones
-            FunctionSkill.objects.filter(function=instance).delete()
-            # Add new skills with specified weights
-            if 'all_skills' in self.cleaned_data:
-                for skill in self.cleaned_data['all_skills']:
-                    weight = self.cleaned_data.get(f'weight_{skill.id}', 1)
-                    FunctionSkill.objects.create(
-                        function=instance,
-                        skill=skill,
-                        weight=weight
-                    )
+        instance = super().save(commit=True)  # Always save the instance first
+        
+        # Handle skills and weights
+        selected_skills = self.cleaned_data.get('all_skills', [])
+        
+        # Clear existing relationships
+        FunctionSkill.objects.filter(function=instance).delete()
+        
+        # Create new relationships with weights
+        for skill in selected_skills:
+            weight = self.cleaned_data.get(f'weight_{skill.id}', 1)
+            FunctionSkill.objects.create(
+                function=instance,
+                skill=skill,
+                weight=weight
+            )
+        
         return instance
 
 @admin.register(Function)

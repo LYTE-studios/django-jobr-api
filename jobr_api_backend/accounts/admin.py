@@ -3,8 +3,8 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from .models import (
-    CustomUser, Employee, Employer, UserGallery, Admin, ProfileOption,
-    Review
+    CustomUser, Employee, UserGallery, Admin, ProfileOption,
+    Review, Company, CompanyUser
 )
 
 # Unregister unwanted models from admin
@@ -26,10 +26,35 @@ class EmployeeInline(OneToOneInline):
     verbose_name_plural = 'Employee Profile'
     fk_name = 'user'
 
-class EmployerInline(OneToOneInline):
-    model = Employer
-    verbose_name_plural = 'Employer Profile'
-    fk_name = 'user'
+class CompanyUserInline(admin.TabularInline):
+    model = CompanyUser
+    extra = 1
+    verbose_name = "Company Membership"
+    verbose_name_plural = "Company Memberships"
+
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'vat_number', 'city', 'created_at')
+    list_filter = ('city', 'created_at')
+    search_fields = ('name', 'vat_number', 'city')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [CompanyUserInline]
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'vat_number')
+        }),
+        ('Location', {
+            'fields': ('street_name', 'house_number', 'city', 'postal_code', 'coordinates')
+        }),
+        ('Additional Information', {
+            'fields': ('website', 'description')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 class AdminInline(OneToOneInline):
     model = Admin
@@ -62,14 +87,14 @@ class CustomUserAdmin(UserAdmin):
             # For creating a new user
             return (
                 (None, {'fields': ('username', 'password1', 'password2')}),
-                ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector')}),
+                ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector', 'selected_company')}),
                 ('Profile Pictures', {'fields': ('profile_picture', 'profile_banner')}),
                 ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_blocked')}),
             )
         # For editing an existing user
         return (
             (None, {'fields': ('username', 'password')}),
-            ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector')}),
+            ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector', 'selected_company')}),
             ('Profile Pictures', {'fields': ('profile_picture', 'profile_banner')}),
             ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_blocked')}),
             ('Important dates', {'fields': ('last_login', 'date_joined')}),
@@ -83,7 +108,7 @@ class CustomUserAdmin(UserAdmin):
         if obj.role == ProfileOption.EMPLOYEE:
             inlines.append(EmployeeInline(self.model, self.admin_site))
         elif obj.role == ProfileOption.EMPLOYER:
-            inlines.append(EmployerInline(self.model, self.admin_site))
+            inlines.append(CompanyUserInline(self.model, self.admin_site))
         elif obj.role == ProfileOption.ADMIN:
             inlines.append(AdminInline(self.model, self.admin_site))
         # Always show gallery
@@ -105,38 +130,13 @@ class CustomUserAdmin(UserAdmin):
         super().save_model(request, obj, form, change)
 
     def response_add(self, request, obj, post_url_continue=None):
-        # Create profile after user is saved
-        if obj.role == ProfileOption.EMPLOYEE:
-            Employee.objects.create(user=obj)
-        elif obj.role == ProfileOption.EMPLOYER:
-            Employer.objects.create(user=obj)
-        elif obj.role == ProfileOption.ADMIN:
-            Admin.objects.create(user=obj)
-        
+        # Profile creation is handled by CustomUser.save()
         return super().response_add(request, obj, post_url_continue)
 
     def response_change(self, request, obj):
         form = self.get_form(request, obj)(request.POST, instance=obj)
         if form.is_valid():
-            # Handle role changes for existing users
-            if 'role' in form.changed_data:
-                # Delete existing profiles
-                if hasattr(obj, 'employee_profile') and obj.employee_profile:
-                    obj.employee_profile.delete()
-                if hasattr(obj, 'employer_profile') and obj.employer_profile:
-                    obj.employer_profile.delete()
-                if hasattr(obj, 'admin_profile') and obj.admin_profile:
-                    obj.admin_profile.delete()
-                
-                # Create new profile
-                if obj.role == ProfileOption.EMPLOYEE:
-                    Employee.objects.create(user=obj)
-                elif obj.role == ProfileOption.EMPLOYER:
-                    Employer.objects.create(user=obj)
-                elif obj.role == ProfileOption.ADMIN:
-                    Admin.objects.create(user=obj)
-
-            # Handle blocked status
+            # Handle blocked status only
             if 'is_blocked' in form.changed_data:
                 obj.is_active = not obj.is_blocked
                 obj.save(update_fields=['is_active'])

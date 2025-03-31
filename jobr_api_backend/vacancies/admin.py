@@ -92,24 +92,27 @@ class FunctionAdminForm(forms.ModelForm):
         return cleaned_data
 
     def save(self, commit=True):
-        instance = super().save(commit=True)  # Always save the instance first
-        
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            self.save_m2m = self._save_m2m
+        return instance
+    
+    def _save_m2m(self):
         # Handle skills and weights
         selected_skills = self.cleaned_data.get('all_skills', [])
         
         # Clear existing relationships
-        FunctionSkill.objects.filter(function=instance).delete()
+        FunctionSkill.objects.filter(function=self.instance).delete()
         
         # Create new relationships with weights
         for skill in selected_skills:
             weight = self.cleaned_data.get(f'weight_{skill.id}', 1)
             FunctionSkill.objects.create(
-                function=instance,
+                function=self.instance,
                 skill=skill,
                 weight=weight
             )
-        
-        return instance
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
@@ -257,7 +260,7 @@ class JobListingPromptAdmin(admin.ModelAdmin):
 
 @admin.register(Vacancy)
 class VacancyAdmin(admin.ModelAdmin):
-    list_display = ('title', 'employer', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
+    list_display = ('title', 'company', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
     list_filter = (
         'expected_mastery',
         'contract_type',
@@ -269,12 +272,12 @@ class VacancyAdmin(admin.ModelAdmin):
     search_fields = (
         'title',
         'description',
-        'employer__user__username',
-        'employer__user__email',
+        'company__name',
+        'created_by__email',
         'function__name',
         'location__name',
     )
     filter_horizontal = ('contract_type', 'week_day', 'languages', 'descriptions', 'questions', 'skill')
-    raw_id_fields = ('employer',)
+    raw_id_fields = ('company', 'created_by')
     date_hierarchy = 'job_date'
     list_per_page = 25

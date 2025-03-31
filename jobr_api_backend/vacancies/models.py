@@ -203,7 +203,7 @@ class Vacancy(models.Model):
     """
     Represents a job vacancy posted by a company.
     """
-    company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='vacancies')
+    company = models.ForeignKey('accounts.Company', on_delete=models.CASCADE, related_name='vacancies', null=True)
     created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, related_name='created_vacancies')
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)

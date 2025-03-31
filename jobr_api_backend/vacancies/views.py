@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db.models import Q, Count
-from accounts.models import ProfileOption, Employer
+from accounts.models import ProfileOption
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
@@ -113,14 +113,17 @@ class VacancyViewSet(viewsets.ModelViewSet):
         """Filter vacancies based on user role."""
         user = self.request.user
         if user.role == ProfileOption.EMPLOYER:
-            return Vacancy.objects.filter(employer=user)
+            return Vacancy.objects.filter(company__in=user.companies.all())
         return Vacancy.objects.all()
 
     def perform_create(self, serializer):
-        """Set employer when creating a vacancy."""
-        if self.request.user.role != ProfileOption.EMPLOYER:
+        """Set company when creating a vacancy."""
+        user = self.request.user
+        if user.role != ProfileOption.EMPLOYER:
             raise PermissionDenied("Only employers can create vacancies")
-        serializer.save(employer=self.request.user)
+        if not user.selected_company:
+            raise ValidationError("Please select a company before creating a vacancy")
+        serializer.save(company=user.selected_company, created_by=user)
 
 class VacancyFilterView(generics.ListAPIView):
     """View for filtering and sorting vacancies."""

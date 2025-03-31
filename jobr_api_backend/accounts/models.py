@@ -102,19 +102,6 @@ class CompanyUser(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.company.name} ({self.role})"
 
-class Employer(models.Model):
-    """Employer profile model."""
-    user = models.OneToOneField(
-        'CustomUser',
-        on_delete=models.CASCADE,
-        related_name='employer_profile',
-        null=True
-    )
-    biography = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return self.user.username if self.user else "Not Found"
-
 class Admin(models.Model):
     """Admin profile model."""
     user = models.OneToOneField(
@@ -144,6 +131,14 @@ class CustomUser(AbstractUser):
         blank=True,
         related_name='users',
         help_text="The business sector this user belongs to"
+    )
+    selected_company = models.ForeignKey(
+        'Company',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='selected_by_users',
+        help_text="The currently selected company for this user"
     )
     is_blocked = models.BooleanField(
         default=False,
@@ -187,10 +182,6 @@ class CustomUser(AbstractUser):
                     if hasattr(self, 'employee_profile') and self.employee_profile:
                         self.employee_profile.delete()
                         self.employee_profile = None
-                elif old_role == ProfileOption.EMPLOYER:
-                    if hasattr(self, 'employer_profile') and self.employer_profile:
-                        self.employer_profile.delete()
-                        self.employer_profile = None
                 elif old_role == ProfileOption.ADMIN:
                     if hasattr(self, 'admin_profile') and self.admin_profile:
                         self.admin_profile.delete()
@@ -200,7 +191,23 @@ class CustomUser(AbstractUser):
             if self.role == ProfileOption.EMPLOYEE:
                 Employee.objects.create(user=self)
             elif self.role == ProfileOption.EMPLOYER:
-                Employer.objects.create(user=self)
+                # Create a default company for new employer users
+                if is_new:
+                    company = Company.objects.create(
+                        name=f"{self.username}'s Company",
+                        vat_number=f"TEMP_{self.id}",  # Temporary VAT number
+                        street_name="",
+                        house_number="",
+                        city="",
+                        postal_code=""
+                    )
+                    CompanyUser.objects.create(
+                        company=company,
+                        user=self,
+                        role='owner'
+                    )
+                    self.selected_company = company
+                    self.save(update_fields=['selected_company'])
             elif self.role == ProfileOption.ADMIN:
                 Admin.objects.create(user=self)
 
@@ -229,12 +236,14 @@ class LikedEmployee(models.Model):
     company = models.ForeignKey(
         Company,
         on_delete=models.CASCADE,
-        related_name='liked_employees'
+        related_name='liked_employees',
+        null=True
     )
     liked_by = models.ForeignKey(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='liked_employees_as_user'
+        related_name='liked_employees_as_user',
+        null=True
     )
     employee = models.ForeignKey(
         Employee,

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-from .models import VATValidationResult, Employer
+from .models import VATValidationResult
 
 class VATValidationService:
     API_URL = "https://api.vatcheckapi.com/v1/validate"
@@ -115,7 +115,7 @@ class VATValidationService:
         cache.set(f"{cls.VAT_CACHE_PREFIX}{vat_number}", result, timeout=cls.VAT_CACHE_TIMEOUT)
 
     @classmethod
-    def validate_vat(cls, vat_number: str, ip_address: str, employer: Optional[Employer] = None) -> Dict:
+    def validate_vat(cls, vat_number: str, ip_address: str, employer = None) -> Dict:
         """
         Validate VAT number and retrieve company details using vatcheckapi.com.
         

@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
-    CustomUser, Employee, Employer, LikedEmployee,
+    CustomUser, Employee, LikedEmployee,
     ProfileOption, Review, UserGallery
 )
 from .serializers import (
@@ -272,15 +272,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 setattr(user.employee_profile, key, value)
             user.employee_profile.save()
 
-        # Handle employer profile updates
-        if 'employer_profile' in self.request.data and user.role == 'employer':
-            profile_data = self.request.data['employer_profile']
-            if not user.employer_profile:
-                user.employer_profile = Employer.objects.create(user=user)
-            for key, value in profile_data.items():
-                setattr(user.employer_profile, key, value)
-            user.employer_profile.save()
-
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""
     serializer_class = UserSerializer
@@ -290,10 +281,7 @@ class EmployeeSearchView(generics.ListAPIView):
     def get_queryset(self):
         """Filter employees based on search term."""
         queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYEE)
-        print(f"Initial queryset count: {queryset.count()}")
         search = self.request.GET.get('search', None)
-        print(f"Search query: {search}")
-        print(f"Query params: {self.request.GET}")
         if search:
             queryset = queryset.filter(
                 Q(username__icontains=search) |
@@ -303,8 +291,6 @@ class EmployeeSearchView(generics.ListAPIView):
                 Q(employee_profile__skill__name__icontains=search) |
                 Q(employee_profile__language__name__icontains=search)
             ).distinct()
-            print(f"Filtered queryset count: {queryset.count()}")
-            print(f"SQL query: {queryset.query}")
         return queryset
 
 class EmployerSearchView(generics.ListAPIView):
@@ -316,10 +302,7 @@ class EmployerSearchView(generics.ListAPIView):
     def get_queryset(self):
         """Filter employers based on search term."""
         queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYER)
-        print(f"Initial queryset count: {queryset.count()}")
         search = self.request.GET.get('search', None)
-        print(f"Search query: {search}")
-        print(f"Query params: {self.request.GET}")
         if search:
             queryset = queryset.filter(
                 Q(username__icontains=search) |
@@ -329,8 +312,6 @@ class EmployerSearchView(generics.ListAPIView):
                 Q(employer_profile__website__icontains=search) |
                 Q(employer_profile__vat_number__icontains=search)
             ).distinct()
-            print(f"Filtered queryset count: {queryset.count()}")
-            print(f"SQL query: {queryset.query}")
         return queryset
 
 class LikedEmployeeView(generics.ListCreateAPIView):

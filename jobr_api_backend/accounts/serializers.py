@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
-from .models import Employee, Employer, UserGallery, ProfileOption, LikedEmployee, Review
+from .models import Employee, UserGallery, ProfileOption, LikedEmployee, Review, Company, CompanyUser
 
 User = get_user_model()
 
@@ -48,14 +48,21 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             for field in Employee._meta.get_fields() if field.name != 'user'
         }
 
-class EmployerProfileSerializer(serializers.ModelSerializer):
+class CompanyUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Employer
-        exclude = ('user',)
-        extra_kwargs = {
-            field: {'allow_null': True, 'required': False}
-            for field in Employer._meta.get_fields() if field.name != 'user'
-        }
+        model = CompanyUser
+        fields = ('id', 'company', 'user', 'role', 'created_at')
+        read_only_fields = ('created_at',)
+
+class CompanySerializer(serializers.ModelSerializer):
+    users = CompanyUserSerializer(source='companyuser_set', many=True, read_only=True)
+
+    class Meta:
+        model = Company
+        fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
+                 'city', 'postal_code', 'coordinates', 'website', 'description',
+                 'users', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
 
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
@@ -90,7 +97,8 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     employee_profile = EmployeeProfileSerializer(required=False, allow_null=True)
-    employer_profile = EmployerProfileSerializer(required=False, allow_null=True)
+    companies = CompanyUserSerializer(source='companyuser_set', many=True, read_only=True)
+    selected_company = CompanySerializer(read_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,9 +108,8 @@ class UserSerializer(serializers.ModelSerializer):
             self.fields['email'].required = False
             self.fields['role'].required = False
             
-            # Profile fields are not required by default, validation will handle requirements
+            # Employee profile field is not required by default, validation will handle requirements
             self.fields['employee_profile'].required = False
-            self.fields['employer_profile'].required = False
     user_gallery = UserGallerySerializer(many=True, read_only=True)
     reviews_given = serializers.SerializerMethodField()
     reviews_received = serializers.SerializerMethodField()
@@ -118,22 +125,16 @@ class UserSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # Validate that profile data matches user role
         employee_profile_data = data.get('employee_profile')
-        employer_profile_data = data.get('employer_profile')
         role = self.instance.role if self.instance else data.get('role')
 
-        # For PUT requests, require the correct profile type if no profile exists yet
+        # For PUT requests, require employee profile if it doesn't exist yet
         if self.context['request'].method == 'PUT':
             if role == ProfileOption.EMPLOYEE:
                 if not hasattr(self.instance, 'employee_profile') and not employee_profile_data:
                     raise serializers.ValidationError("Employee profile is required for employee users")
-            elif role == ProfileOption.EMPLOYER:
-                if not hasattr(self.instance, 'employer_profile') and not employer_profile_data:
-                    raise serializers.ValidationError("Employer profile is required for employer users")
 
-        # Remove wrong profile type data silently
-        if role == ProfileOption.EMPLOYEE and employer_profile_data:
-            data.pop('employer_profile', None)
-        elif role == ProfileOption.EMPLOYER and employee_profile_data:
+        # Remove employee profile data for non-employee users
+        if role != ProfileOption.EMPLOYEE and employee_profile_data:
             data.pop('employee_profile', None)
 
         return data
@@ -141,7 +142,6 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Handle profile updates
         employee_profile_data = validated_data.pop('employee_profile', None)
-        employer_profile_data = validated_data.pop('employer_profile', None)
 
         # Update user fields
         for attr, value in validated_data.items():
@@ -156,21 +156,13 @@ class UserSerializer(serializers.ModelSerializer):
                 setattr(instance.employee_profile, attr, value)
             instance.employee_profile.save()
 
-        # Update employer profile
-        if employer_profile_data and instance.role == ProfileOption.EMPLOYER:
-            if not hasattr(instance, 'employer_profile'):
-                instance.employer_profile = Employer.objects.create(user=instance)
-            for attr, value in employer_profile_data.items():
-                setattr(instance.employer_profile, attr, value)
-            instance.employer_profile.save()
-
         return instance
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'role', 'profile_picture',
                  'profile_banner', 'sector', 'employee_profile',
-                 'employer_profile', 'user_gallery', 'reviews_given',
+                 'companies', 'selected_company', 'user_gallery', 'reviews_given',
                  'reviews_received')
         read_only_fields = ('id', 'profile_picture', 'profile_banner')
 
@@ -180,14 +172,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        fields = ('id', 'user', 'profile')
-
-class EmployerSerializer(serializers.ModelSerializer):
-    profile = EmployerProfileSerializer(source='*', read_only=True)
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Employer
         fields = ('id', 'user', 'profile')
 
 class LikedEmployeeSerializer(serializers.ModelSerializer):
@@ -240,15 +224,12 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
 
 class EmployerSearchSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
-    company_name = serializers.CharField(source='employer_profile.company_name', read_only=True)
-    city = serializers.CharField(source='employer_profile.city', read_only=True)
-    biography = serializers.CharField(source='employer_profile.biography', read_only=True)
-    website = serializers.URLField(source='employer_profile.website', read_only=True)
-    vat_number = serializers.CharField(source='employer_profile.vat_number', read_only=True)
+    companies = CompanySerializer(many=True, read_only=True)
+    selected_company = CompanySerializer(read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'profile_picture', 'company_name', 'city', 'biography', 'website', 'vat_number')
+        fields = ('id', 'username', 'email', 'profile_picture', 'companies', 'selected_company')
 
     def get_profile_picture(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None

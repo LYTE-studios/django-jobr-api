@@ -107,7 +107,8 @@ class VacancySalaryBenefitSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 class VacancySerializer(serializers.ModelSerializer):
-    employer = serializers.SerializerMethodField()
+    company = serializers.SerializerMethodField()
+    created_by = serializers.SerializerMethodField()
     contract_type = ContractTypeSerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, read_only=True)
     location = LocationSerializer(allow_null=True, read_only=True)
@@ -123,7 +124,8 @@ class VacancySerializer(serializers.ModelSerializer):
         model = Vacancy
         fields = [
             "id",
-            "employer",
+            "company",
+            "created_by",
             "expected_mastery",
             "contract_type",
             "location",
@@ -142,9 +144,13 @@ class VacancySerializer(serializers.ModelSerializer):
     def get_applicant_count(self, obj):
         return ApplyVacancy.objects.filter(vacancy=obj).count()
 
-    def get_employer(self, obj):
+    def get_company(self, obj):
+        from accounts.serializers import CompanySerializer
+        return CompanySerializer(obj.company).data
+
+    def get_created_by(self, obj):
         from accounts.serializers import UserSerializer
-        return UserSerializer(obj.employer).data
+        return UserSerializer(obj.created_by).data if obj.created_by else None
 
     def validate(self, data):
         """
@@ -174,9 +180,6 @@ class VacancySerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request:
             raise serializers.ValidationError("Request context is required")
-
-        # Set employer from authenticated user
-        validated_data["employer"] = request.user
 
         # Handle one-to-one relationships
         function_data = self.initial_data.get("function", {})

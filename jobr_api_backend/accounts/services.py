@@ -156,12 +156,12 @@ class VATValidationService:
         try:
             validation_result = VATValidationResult.objects.get(vat_number=vat_number)
             # If employer exists and is linked to this validation, use their details
-            if validation_result.employer:
-                employer = validation_result.employer
+            if validation_result.company:
+                employer = validation_result.company
                 return {
                     "is_valid": validation_result.is_valid,
                     "company_details": {
-                        "name": employer.company_name,
+                        "name": employer.name,
                         "street_name": employer.street_name,
                         "house_number": employer.house_number,
                         "city": employer.city,

@@ -163,7 +163,6 @@ pip install pipenv
     "house_number": "string",
     "city": "string",
     "postal_code": "string",
-    "coordinates": {"latitude": 12.34, "longitude": 56.78},
     "website": "url",
     "biography": "string",
     "username": "string",

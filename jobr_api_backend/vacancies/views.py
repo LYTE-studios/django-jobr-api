@@ -115,6 +115,32 @@ class VacancyViewSet(viewsets.ModelViewSet):
         if user.role == ProfileOption.EMPLOYER:
             return Vacancy.objects.filter(company__in=user.companies.all())
         return Vacancy.objects.all()
+    
+    def perform_update(self, serializer):
+        """Update a vacancy with proper permission checks."""
+        user = self.request.user
+        vacancy = self.get_object()
+
+        # Check if user has permission to update this vacancy
+        if user.role != ProfileOption.EMPLOYER:
+            raise PermissionDenied("Only employers can update vacancies")
+        
+        if vacancy.company not in user.companies.all():
+            raise PermissionDenied("You can only update vacancies for your companies")
+
+        if not user.selected_company:
+            raise ValidationError("Please select a company before updating a vacancy")
+        
+        if vacancy.company != user.selected_company:
+            raise ValidationError("You can only update vacancies for your selected company")
+
+        # Validate min_salary is not greater than max_salary if both are provided
+        min_salary = serializer.validated_data.get('min_salary')
+        max_salary = serializer.validated_data.get('max_salary')
+        if min_salary and max_salary and min_salary > max_salary:
+            raise ValidationError("Minimum salary cannot be greater than maximum salary")
+
+        serializer.save()
 
     def perform_create(self, serializer):
         """Set company when creating a vacancy."""

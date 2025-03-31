@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.validators import FileExtensionValidator
+from common.utils import validate_image_size
 from django.conf import settings
 
 
@@ -10,10 +12,21 @@ class Sector(models.Model):
         name (CharField): The name of the sector.
         weight (IntegerField): An optional field that stores the weight of the sector. Defaults to None.
         enabled (BooleanField): Whether this sector is enabled. Defaults to True.
+        icon (ImageField): An icon representing the sector.
     """
     name = models.CharField(max_length=255, unique=True)
     weight = models.IntegerField(null=True)
     enabled = models.BooleanField(default=True)
+    icon = models.ImageField(
+        upload_to="sector_icons/",
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'svg']),
+            validate_image_size
+        ],
+        help_text="Sector's icon (max 5MB, jpg, jpeg, png, gif, svg)"
+    )
 
     def __str__(self):
         return self.name

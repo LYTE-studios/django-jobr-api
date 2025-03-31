@@ -42,10 +42,13 @@ class CompanyAdmin(admin.ModelAdmin):
     inlines = [CompanyUserInline]
     fieldsets = (
         (None, {
-            'fields': ('name', 'vat_number')
+            'fields': ('name', 'vat_number', 'sector')
         }),
         ('Location', {
-            'fields': ('street_name', 'house_number', 'city', 'postal_code', 'coordinates')
+            'fields': ('street_name', 'house_number', 'city', 'postal_code')
+        }),
+        ('Profile Images', {
+            'fields': ('profile_picture', 'profile_banner')
         }),
         ('Additional Information', {
             'fields': ('website', 'description')
@@ -87,32 +90,31 @@ class CustomUserAdmin(UserAdmin):
             # For creating a new user
             return (
                 (None, {'fields': ('username', 'password1', 'password2')}),
-                ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector', 'selected_company')}),
-                ('Profile Pictures', {'fields': ('profile_picture', 'profile_banner')}),
+                ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'selected_company')}),
                 ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_blocked')}),
             )
         # For editing an existing user
         return (
             (None, {'fields': ('username', 'password')}),
-            ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'sector', 'selected_company')}),
-            ('Profile Pictures', {'fields': ('profile_picture', 'profile_banner')}),
+            ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role', 'selected_company')}),
             ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_blocked')}),
             ('Important dates', {'fields': ('last_login', 'date_joined')}),
         )
 
-    def get_inline_instances(self, request, obj=None):
+    def get_inlines(self, request, obj=None):
         if not obj:  # No inlines when creating a new user
             return []
+        
         inlines = []
         # Show profile fields based on role
         if obj.role == ProfileOption.EMPLOYEE:
-            inlines.append(EmployeeInline(self.model, self.admin_site))
+            inlines.append(EmployeeInline)
         elif obj.role == ProfileOption.EMPLOYER:
-            inlines.append(CompanyUserInline(self.model, self.admin_site))
+            inlines.append(CompanyUserInline)
         elif obj.role == ProfileOption.ADMIN:
-            inlines.append(AdminInline(self.model, self.admin_site))
+            inlines.append(AdminInline)
         # Always show gallery
-        inlines.append(UserGalleryInline(self.model, self.admin_site))
+        inlines.append(UserGalleryInline)
         return inlines
 
     def block_users(self, request, queryset):
@@ -125,23 +127,63 @@ class CustomUserAdmin(UserAdmin):
         self.message_user(request, f"{queryset.count()} users were successfully unblocked.")
     unblock_users.short_description = "Unblock selected users"
 
-    def save_model(self, request, obj, form, change):
-        # Let UserAdmin handle the basic user save
-        super().save_model(request, obj, form, change)
-
     def response_add(self, request, obj, post_url_continue=None):
-        # Profile creation is handled by CustomUser.save()
-        return super().response_add(request, obj, post_url_continue)
+        """Handle response after adding a new user."""
+        from django.db import transaction
+        
+        with transaction.atomic():
+            return super().response_add(request, obj, post_url_continue)
+
+    def save_model(self, request, obj, form, change):
+        """Handle saving the model and any special fields."""
+        from django.db import transaction
+
+        with transaction.atomic():
+            # Handle blocked status
+            if change and 'is_blocked' in form.changed_data:
+                obj.is_active = not obj.is_blocked
+
+            # Check if role is being changed
+            if change and 'role' in form.changed_data:
+                try:
+                    old_obj = self.model.objects.select_for_update().get(pk=obj.pk)
+                    old_role = old_obj.role
+                    
+                    # Clean up old profile if role is changing
+                    if old_role == ProfileOption.EMPLOYEE and hasattr(old_obj, 'employee_profile'):
+                        old_obj.employee_profile.delete()
+                    elif old_role == ProfileOption.ADMIN and hasattr(old_obj, 'admin_profile'):
+                        old_obj.admin_profile.delete()
+                    
+                    # Reset selected company if changing from employer
+                    if old_role == ProfileOption.EMPLOYER:
+                        obj.selected_company = None
+                except self.model.DoesNotExist:
+                    pass
+
+            # Save the user
+            super().save_model(request, obj, form, change)
+
+            # Create new profile based on role if needed
+            if not change or (change and 'role' in form.changed_data):
+                if obj.role == ProfileOption.EMPLOYEE and not hasattr(obj, 'employee_profile'):
+                    Employee.objects.create(user=obj)
+                elif obj.role == ProfileOption.ADMIN and not hasattr(obj, 'admin_profile'):
+                    Admin.objects.create(user=obj)
 
     def response_change(self, request, obj):
-        form = self.get_form(request, obj)(request.POST, instance=obj)
-        if form.is_valid():
-            # Handle blocked status only
-            if 'is_blocked' in form.changed_data:
-                obj.is_active = not obj.is_blocked
-                obj.save(update_fields=['is_active'])
+        """Handle response after changing a user."""
+        from django.db import transaction
+        from django.contrib import messages
         
-        return super().response_change(request, obj)
+        with transaction.atomic():
+            try:
+                # Refresh the object to ensure we have the latest data
+                obj.refresh_from_db()
+                return super().response_change(request, obj)
+            except self.model.DoesNotExist:
+                messages.warning(request, 'The user no longer exists.')
+                return self.response_post_save_change(request, obj)
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):

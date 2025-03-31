@@ -8,11 +8,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from vacancies.models import Language, ContractType, Function, Skill, Sector
 
-def validate_image_size(value):
-    """Validate that the uploaded image is not too large."""
-    filesize = value.size
-    if filesize > 5 * 1024 * 1024:  # 5MB
-        raise ValidationError("The maximum file size that can be uploaded is 5MB")
+from common.utils import validate_image_size
 
 class ProfileOption(models.TextChoices):
     """Profile types for users in the application."""
@@ -45,6 +41,26 @@ class Employee(models.Model):
     contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
     skill = models.ManyToManyField(Skill, blank=True)
+    profile_picture = models.ImageField(
+        upload_to="profile_pictures/",
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="User's profile picture (max 5MB, jpg, jpeg, png, gif)"
+    )
+    profile_banner = models.ImageField(
+        upload_to="profile_banners/",
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="User's profile banner image (max 5MB, jpg, jpeg, png, gif)"
+    )
 
     class Meta:
         ordering = ['id']
@@ -60,13 +76,40 @@ class Company(models.Model):
     house_number = models.CharField(max_length=10)
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
-    coordinates = models.JSONField(null=True, blank=True)
     website = models.URLField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     users = models.ManyToManyField(
         'CustomUser',
         through='CompanyUser',
         related_name='companies'
+    )
+    sector = models.ForeignKey(
+        Sector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sector',
+        help_text="The business sector this user belongs to"
+    )
+    profile_picture = models.ImageField(
+        upload_to="company_profile_pictures/",
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="Company's profile picture (max 5MB, jpg, jpeg, png, gif)"
+    )
+    profile_banner = models.ImageField(
+        upload_to="company_profile_banners/",
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="Company's profile banner image (max 5MB, jpg, jpeg, png, gif)"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -124,14 +167,6 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True
     )
-    sector = models.ForeignKey(
-        Sector,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='users',
-        help_text="The business sector this user belongs to"
-    )
     selected_company = models.ForeignKey(
         'Company',
         on_delete=models.SET_NULL,
@@ -143,26 +178,6 @@ class CustomUser(AbstractUser):
     is_blocked = models.BooleanField(
         default=False,
         help_text="Designates whether this user is blocked from accessing the platform."
-    )
-    profile_picture = models.ImageField(
-        upload_to="profile_pictures/",
-        blank=True,
-        null=True,
-        validators=[
-            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
-            validate_image_size
-        ],
-        help_text="User's profile picture (max 5MB, jpg, jpeg, png, gif)"
-    )
-    profile_banner = models.ImageField(
-        upload_to="profile_banners/",
-        blank=True,
-        null=True,
-        validators=[
-            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
-            validate_image_size
-        ],
-        help_text="User's profile banner image (max 5MB, jpg, jpeg, png, gif)"
     )
 
     @transaction.atomic
@@ -193,21 +208,28 @@ class CustomUser(AbstractUser):
             elif self.role == ProfileOption.EMPLOYER:
                 # Create a default company for new employer users
                 if is_new:
-                    company = Company.objects.create(
-                        name=f"{self.username}'s Company",
-                        vat_number=f"TEMP_{self.id}",  # Temporary VAT number
-                        street_name="",
-                        house_number="",
-                        city="",
-                        postal_code=""
-                    )
-                    CompanyUser.objects.create(
-                        company=company,
-                        user=self,
-                        role='owner'
-                    )
-                    self.selected_company = company
-                    self.save(update_fields=['selected_company'])
+                    with transaction.atomic():
+                        company = Company.objects.create(
+                            name=f"{self.username}'s Company",
+                            vat_number=f"TEMP_{self.id}",  # Temporary VAT number
+                            street_name="",
+                            house_number="",
+                            city="",
+                            postal_code=""
+                        )
+                        CompanyUser.objects.create(
+                            company=company,
+                            user=self,
+                            role='owner'
+                        )
+                        self.selected_company = company
+                        self.save(update_fields=['selected_company'])
+                else:
+                    # For existing employer users without a selected company,
+                    # set it to their first company if they have any
+                    if not self.selected_company and self.companies.exists():
+                        self.selected_company = self.companies.first()
+                        self.save(update_fields=['selected_company'])
             elif self.role == ProfileOption.ADMIN:
                 Admin.objects.create(user=self)
 

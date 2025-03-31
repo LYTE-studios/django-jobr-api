@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+
 from .models import (
     Vacancy,
     ApplyVacancy,
@@ -23,9 +24,14 @@ from accounts.models import ProfileOption
 User = get_user_model()
 
 class SectorSerializer(serializers.ModelSerializer):
+    icon_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Sector
-        fields = ['id', 'name', 'weight', 'enabled']
+        fields = ['id', 'name', 'weight', 'enabled', 'icon_url']
+
+    def get_icon_url(self, obj):
+        return obj.icon.url if obj.icon else None
 
 class SalaryBenefitSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,8 +113,10 @@ class VacancySalaryBenefitSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 class VacancySerializer(serializers.ModelSerializer):
-    company = serializers.SerializerMethodField()
-    created_by = serializers.SerializerMethodField()
+    from accounts.serializers import CompanySerializer
+
+    company = CompanySerializer(read_only=True)
+    created_by = serializers.SerializerMethodField(read_only=True)
     contract_type = ContractTypeSerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, read_only=True)
     location = LocationSerializer(allow_null=True, read_only=True)
@@ -143,11 +151,7 @@ class VacancySerializer(serializers.ModelSerializer):
 
     def get_applicant_count(self, obj):
         return ApplyVacancy.objects.filter(vacancy=obj).count()
-
-    def get_company(self, obj):
-        from accounts.serializers import CompanySerializer
-        return CompanySerializer(obj.company).data
-
+    
     def get_created_by(self, obj):
         from accounts.serializers import UserSerializer
         return UserSerializer(obj.created_by).data if obj.created_by else None
@@ -173,25 +177,18 @@ class VacancySerializer(serializers.ModelSerializer):
 
         return data
 
-    def create(self, validated_data):
+    def _handle_relationships(self, vacancy, validated_data):
         """
-        Create a new Vacancy instance with related objects
+        Handle all relationships for vacancy creation/update
         """
-        request = self.context.get('request')
-        if not request:
-            raise serializers.ValidationError("Request context is required")
-
         # Handle one-to-one relationships
         function_data = self.initial_data.get("function", {})
         if function_data and 'id' in function_data:
-            validated_data["function"] = Function.objects.get(id=function_data['id'])
+            vacancy.function = Function.objects.get(id=function_data['id'])
 
         location_data = self.initial_data.get("location", {})
         if location_data and 'id' in location_data:
-            validated_data["location"] = Location.objects.get(id=location_data['id'])
-
-        # Create the vacancy
-        vacancy = Vacancy.objects.create(**validated_data)
+            vacancy.location = Location.objects.get(id=location_data['id'])
 
         # Handle many-to-many relationships
         contract_type_data = self.initial_data.get("contract_type", [])
@@ -259,6 +256,32 @@ class VacancySerializer(serializers.ModelSerializer):
 
         vacancy.save()
         return vacancy
+
+    def create(self, validated_data):
+        """
+        Create a new Vacancy instance with related objects
+        """
+        request = self.context.get('request')
+        if not request:
+            raise serializers.ValidationError("Request context is required")
+
+        # Create the vacancy
+        vacancy = Vacancy.objects.create(**validated_data)
+        return self._handle_relationships(vacancy, validated_data)
+
+    def update(self, instance, validated_data):
+        """
+        Update a Vacancy instance and its related objects
+        """
+        request = self.context.get('request')
+        if not request:
+            raise serializers.ValidationError("Request context is required")
+
+        # Update simple fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        return self._handle_relationships(instance, validated_data)
 
 class ApplySerializer(serializers.ModelSerializer):
     employee = serializers.PrimaryKeyRelatedField(

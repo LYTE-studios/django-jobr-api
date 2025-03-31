@@ -13,7 +13,8 @@ from .serializers import (
     UserSerializer,
     UserAuthenticationSerializer,
     LoginSerializer,
-    ProfileImageUploadSerializer,
+    CompanyImageUploadSerializer,
+    EmployeeImageUploadSerializer,
     EmployeeSearchSerializer,
     EmployerSearchSerializer,
     LikedEmployeeSerializer,
@@ -160,117 +161,160 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get', 'put', 'patch'], url_path='profile', url_name='profile')
     def profile(self, request):
-        """Get or update current user's profile."""
+        """Get or update current user's profile or company details."""
         if request.method == 'GET':
-            serializer = self.get_serializer(request.user)
-            return Response(serializer.data)
+            if request.user.role == ProfileOption.EMPLOYER and request.user.selected_company:
+                # Return company details for employers
+                from .serializers import CompanySerializer
+                serializer = CompanySerializer(request.user.selected_company)
+                return Response(serializer.data)
+            else:
+                # Return user details for employees and employers without selected company
+                serializer = self.get_serializer(request.user)
+                return Response(serializer.data)
         
         # PUT or PATCH
-        serializer = self.get_serializer(request.user, data=request.data, partial=request.method == 'PATCH')
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        if request.user.role == ProfileOption.EMPLOYER and request.user.selected_company:
+            # Update company details
+            from .serializers import CompanySerializer
+            serializer = CompanySerializer(
+                request.user.selected_company,
+                data=request.data,
+                partial=request.method == 'PATCH'
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        else:
+            # Update user details
+            serializer = self.get_serializer(
+                request.user,
+                data=request.data,
+                partial=request.method == 'PATCH'
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+        
         return Response(serializer.data)
-
-    def update_profile(self, request):
-        """Update current user's profile."""
-        user = request.user
-        serializer = self.get_serializer(user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['post'], url_path='profile-picture')
-    def update_profile_picture(self, request):
-        """Update user's profile picture."""
-        serializer = ProfileImageUploadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        user = request.user
-        if user.profile_picture:
-            user.profile_picture.delete()
-        user.profile_picture = serializer.validated_data['image']
-        user.save()
-        
-        return Response(UserSerializer(user).data)
-
-    @action(detail=False, methods=['delete'], url_path='profile-picture')
-    def delete_profile_picture(self, request):
-        """Delete user's profile picture."""
-        user = request.user
-        if user.profile_picture:
-            user.profile_picture.delete()
-            user.profile_picture = None
-            user.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=False, methods=['post'], url_path='profile-banner')
-    def update_profile_banner(self, request):
-        """Update user's profile banner."""
-        serializer = ProfileImageUploadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        user = request.user
-        if user.profile_banner:
-            user.profile_banner.delete()
-        user.profile_banner = serializer.validated_data['image']
-        user.save()
-        
-        return Response(UserSerializer(user).data)
-
-    @action(detail=False, methods=['delete'], url_path='profile-banner')
-    def delete_profile_banner(self, request):
-        """Delete user's profile banner."""
-        user = request.user
-        if user.profile_banner:
-            user.profile_banner.delete()
-            user.profile_banner = None
-            user.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=False, methods=['post'], url_path='gallery')
-    def add_gallery_image(self, request):
-        """Add an image to user's gallery."""
-        if 'image' not in request.FILES:
+@action(detail=False, methods=['post'], url_path='profile-image')
+def update_profile_image(self, request):
+    """Update profile picture or banner based on user role."""
+    if request.user.role == ProfileOption.EMPLOYER:
+        if not request.user.selected_company:
             return Response(
-                {"error": "No image provided"},
+                {"detail": "No company selected."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        gallery = UserGallery.objects.create(
-            user=request.user,
-            gallery=request.FILES['image']
+        target = request.user.selected_company
+        serializer = CompanyImageUploadSerializer(data=request.data)
+    elif request.user.role == ProfileOption.EMPLOYEE:
+        if not hasattr(request.user, 'employee_profile'):
+            return Response(
+                {"detail": "Employee profile not found."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        target = request.user.employee_profile
+        serializer = EmployeeImageUploadSerializer(data=request.data)
+    else:
+        return Response(
+            {"detail": "Invalid user role for image upload."},
+            status=status.HTTP_403_FORBIDDEN
         )
-        
-        return Response(UserSerializer(request.user).data)
 
-    @action(detail=True, methods=['delete'], url_path='gallery')
-    def delete_gallery_image(self, request, pk=None):
-        """Delete an image from user's gallery."""
-        gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
-        # Delete the file first
-        if gallery.gallery:
-            gallery.gallery.delete()
-        # Then delete the model instance
-        gallery.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer.is_valid(raise_exception=True)
+    image_type = serializer.validated_data['image_type']
+    image = serializer.validated_data['image']
 
-    def perform_update(self, serializer):
-        """Handle password updates and profile data."""
-        user = serializer.save()
-        
-        # Handle password updates
-        if 'password' in self.request.data:
-            user.set_password(self.request.data['password'])
-            user.save()
+    if image_type == 'profile_picture':
+        if target.profile_picture:
+            target.profile_picture.delete()
+        target.profile_picture = image
+    else:  # profile_banner
+        if target.profile_banner:
+            target.profile_banner.delete()
+        target.profile_banner = image
 
-        # Handle employee profile updates
-        if 'employee_profile' in self.request.data and user.role == 'employee':
-            profile_data = self.request.data['employee_profile']
-            if not user.employee_profile:
-                user.employee_profile = Employee.objects.create(user=user)
-            for key, value in profile_data.items():
-                setattr(user.employee_profile, key, value)
-            user.employee_profile.save()
+    target.save()
+    return Response({"detail": "Image updated successfully"})
+
+@action(detail=False, methods=['delete'], url_path='profile-image/(?P<image_type>profile-picture|profile-banner)')
+def delete_profile_image(self, request, image_type):
+    """Delete profile picture or banner based on user role."""
+    if request.user.role == ProfileOption.EMPLOYER:
+        if not request.user.selected_company:
+            return Response(
+                {"detail": "No company selected."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        target = request.user.selected_company
+    elif request.user.role == ProfileOption.EMPLOYEE:
+        if not hasattr(request.user, 'employee_profile'):
+            return Response(
+                {"detail": "Employee profile not found."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        target = request.user.employee_profile
+    else:
+        return Response(
+            {"detail": "Invalid user role for image deletion."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if image_type == 'profile-picture':
+        if target.profile_picture:
+            target.profile_picture.delete()
+            target.profile_picture = None
+    else:  # profile-banner
+        if target.profile_banner:
+            target.profile_banner.delete()
+            target.profile_banner = None
+
+    target.save()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+@action(detail=False, methods=['post'], url_path='gallery')
+def add_gallery_image(self, request):
+    """Add an image to user's gallery."""
+    if 'image' not in request.FILES:
+        return Response(
+            {"error": "No image provided"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    gallery = UserGallery.objects.create(
+        user=request.user,
+        gallery=request.FILES['image']
+    )
+    
+    return Response(UserSerializer(request.user).data)
+
+@action(detail=True, methods=['delete'], url_path='gallery')
+def delete_gallery_image(self, request, pk=None):
+    """Delete an image from user's gallery."""
+    gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
+    # Delete the file first
+    if gallery.gallery:
+        gallery.gallery.delete()
+    # Then delete the model instance
+    gallery.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+def perform_update(self, serializer):
+    """Handle password updates and profile data."""
+    user = serializer.save()
+    
+    # Handle password updates
+    if 'password' in self.request.data:
+        user.set_password(self.request.data['password'])
+        user.save()
+
+    # Handle employee profile updates
+    if 'employee_profile' in self.request.data and user.role == 'employee':
+        profile_data = self.request.data['employee_profile']
+        if not user.employee_profile:
+            user.employee_profile = Employee.objects.create(user=user)
+        for key, value in profile_data.items():
+            setattr(user.employee_profile, key, value)
+        user.employee_profile.save()
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""

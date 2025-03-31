@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
+
 from .models import Employee, UserGallery, ProfileOption, LikedEmployee, Review, Company, CompanyUser
 
 User = get_user_model()
@@ -40,13 +41,23 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         return user
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
+    profile_picture_url = serializers.SerializerMethodField()
+    profile_banner_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Employee
-        exclude = ('user',)
+        exclude = ('user', 'profile_picture', 'profile_banner')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
-            for field in Employee._meta.get_fields() if field.name != 'user'
+            for field in Employee._meta.get_fields()
+            if field.name not in ['user', 'profile_picture', 'profile_banner']
         }
+
+    def get_profile_picture_url(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
+
+    def get_profile_banner_url(self, obj):
+        return obj.profile_banner.url if obj.profile_banner else None
 
 class CompanyUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,13 +67,29 @@ class CompanyUserSerializer(serializers.ModelSerializer):
 
 class CompanySerializer(serializers.ModelSerializer):
     users = CompanyUserSerializer(source='companyuser_set', many=True, read_only=True)
+    profile_picture_url = serializers.SerializerMethodField()
+    profile_banner_url = serializers.SerializerMethodField()
+    sector = serializers.SerializerMethodField()
+
+    def get_sector(self, obj):
+        from vacancies.serializers import SectorSerializer
+        if obj.sector:
+            return SectorSerializer(obj.sector).data
+        return None
 
     class Meta:
         model = Company
         fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
-                 'city', 'postal_code', 'coordinates', 'website', 'description',
-                 'users', 'created_at', 'updated_at')
+                 'city', 'postal_code', 'website', 'description',
+                 'users', 'created_at', 'updated_at', 'sector',
+                 'profile_picture_url', 'profile_banner_url')
         read_only_fields = ('created_at', 'updated_at')
+
+    def get_profile_picture_url(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
+
+    def get_profile_banner_url(self, obj):
+        return obj.profile_banner.url if obj.profile_banner else None
 
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:
@@ -98,7 +125,11 @@ class ReviewSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     employee_profile = EmployeeProfileSerializer(required=False, allow_null=True)
     companies = CompanyUserSerializer(source='companyuser_set', many=True, read_only=True)
-    selected_company = CompanySerializer(read_only=True)
+    selected_company = CompanySerializer(
+        required=False,
+        allow_null=True,
+        read_only=True
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -137,6 +168,14 @@ class UserSerializer(serializers.ModelSerializer):
         if role != ProfileOption.EMPLOYEE and employee_profile_data:
             data.pop('employee_profile', None)
 
+        # Validate selected_company for employer users
+        selected_company = data.get('selected_company')
+        if selected_company and self.instance:
+            if self.instance.role != ProfileOption.EMPLOYER:
+                raise serializers.ValidationError("Only employer users can select a company")
+            if not self.instance.companies.filter(id=selected_company.id).exists():
+                raise serializers.ValidationError("Selected company must belong to the user")
+
         return data
 
     def update(self, instance, validated_data):
@@ -160,11 +199,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'profile_picture',
-                 'profile_banner', 'sector', 'employee_profile',
+        fields = ('id', 'username', 'email', 'role', 'employee_profile',
                  'companies', 'selected_company', 'user_gallery', 'reviews_given',
                  'reviews_received')
-        read_only_fields = ('id', 'profile_picture', 'profile_banner')
+        read_only_fields = ('id',)
 
 class EmployeeSerializer(serializers.ModelSerializer):
     profile = EmployeeProfileSerializer(source='*', read_only=True)
@@ -188,24 +226,32 @@ class LikedEmployeeSerializer(serializers.ModelSerializer):
             'id': employee_user.id,
             'username': employee_user.username,
             'email': employee_user.email,
-            'profile_picture': employee_user.profile_picture.url if employee_user.profile_picture else None,
         }
 
 class EmployeeSearchSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.SerializerMethodField()
     city = serializers.CharField(source='employee_profile.city_name', read_only=True)
     biography = serializers.CharField(source='employee_profile.biography', read_only=True)
     skill = serializers.SerializerMethodField()
     language = serializers.SerializerMethodField()
     function = serializers.SerializerMethodField()
+    profile_picture_url = serializers.SerializerMethodField()
+    profile_banner_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'profile_picture', 'city', 'biography',
-                 'skill', 'language', 'function')
+        fields = ('id', 'username', 'email', 'city', 'biography',
+                 'skill', 'language', 'function', 'profile_picture_url',
+                 'profile_banner_url')
 
-    def get_profile_picture(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else None
+    def get_profile_picture_url(self, obj):
+        if hasattr(obj, 'employee_profile') and obj.employee_profile:
+            return obj.employee_profile.profile_picture.url if obj.employee_profile.profile_picture else None
+        return None
+
+    def get_profile_banner_url(self, obj):
+        if hasattr(obj, 'employee_profile') and obj.employee_profile:
+            return obj.employee_profile.profile_banner.url if obj.employee_profile.profile_banner else None
+        return None
 
     def get_skill(self, obj):
         if hasattr(obj, 'employee_profile') and obj.employee_profile:
@@ -223,23 +269,43 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
         return None
 
 class EmployerSearchSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.SerializerMethodField()
     companies = CompanySerializer(many=True, read_only=True)
     selected_company = CompanySerializer(read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'profile_picture', 'companies', 'selected_company')
+        fields = ('id', 'username', 'email', 'companies', 'selected_company')
 
-    def get_profile_picture(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else None
-
-class ProfileImageUploadSerializer(serializers.ModelSerializer):
+class CompanyImageUploadSerializer(serializers.ModelSerializer):
     image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])
     image = serializers.ImageField()
 
     class Meta:
-        model = User
+        model = Company
+        fields = ('image_type', 'image')
+
+    def update(self, instance, validated_data):
+        image_type = validated_data.pop('image_type')
+        image = validated_data.pop('image')
+
+        if image_type == 'profile_picture':
+            if instance.profile_picture:
+                instance.profile_picture.delete()
+            instance.profile_picture = image
+        else:  # profile_banner
+            if instance.profile_banner:
+                instance.profile_banner.delete()
+            instance.profile_banner = image
+
+        instance.save()
+        return instance
+
+class EmployeeImageUploadSerializer(serializers.ModelSerializer):
+    image_type = serializers.ChoiceField(choices=['profile_picture', 'profile_banner'])
+    image = serializers.ImageField()
+
+    class Meta:
+        model = Employee
         fields = ('image_type', 'image')
 
     def update(self, instance, validated_data):

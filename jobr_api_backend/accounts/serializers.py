@@ -40,10 +40,9 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         )
         return user
 
-class EmployeeProfileSerializer(serializers.ModelSerializer):
-    
-    from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
+from ..vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
 
+class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     skill = SkillSerializer(many=True, read_only=True)
@@ -82,7 +81,7 @@ class CompanySerializer(serializers.ModelSerializer):
     def get_sector(self, obj):
         if obj.sector:
             # Import here to avoid circular import
-            from vacancies.serializers import SectorSerializer
+            from ..vacancies.serializers import SectorSerializer
             return {
                 'id': obj.sector.id,
                 'name': obj.sector.name,

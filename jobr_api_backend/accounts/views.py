@@ -195,9 +195,9 @@ class UserViewSet(viewsets.ModelViewSet):
             self.perform_update(serializer)
         
         return Response(serializer.data)
-@action(detail=False, methods=['post'], url_path='profile-image')
-def update_profile_image(self, request):
-    """Update profile picture or banner based on user role."""
+@action(detail=False, methods=['post'])
+def update_profile_picture(self, request):
+    """Update profile picture based on user role."""
     if request.user.role == ProfileOption.EMPLOYER:
         if not request.user.selected_company:
             return Response(
@@ -205,7 +205,7 @@ def update_profile_image(self, request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         target = request.user.selected_company
-        serializer = CompanyImageUploadSerializer(data=request.data)
+        serializer = CompanyImageUploadSerializer(data={'image_type': 'profile_picture', 'image': request.FILES.get('image')})
     elif request.user.role == ProfileOption.EMPLOYEE:
         if not hasattr(request.user, 'employee_profile'):
             return Response(
@@ -213,7 +213,7 @@ def update_profile_image(self, request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         target = request.user.employee_profile
-        serializer = EmployeeImageUploadSerializer(data=request.data)
+        serializer = EmployeeImageUploadSerializer(data={'image_type': 'profile_picture', 'image': request.FILES.get('image')})
     else:
         return Response(
             {"detail": "Invalid user role for image upload."},
@@ -221,20 +221,43 @@ def update_profile_image(self, request):
         )
 
     serializer.is_valid(raise_exception=True)
-    image_type = serializer.validated_data['image_type']
-    image = serializer.validated_data['image']
-
-    if image_type == 'profile_picture':
-        if target.profile_picture:
-            target.profile_picture.delete()
-        target.profile_picture = image
-    else:  # profile_banner
-        if target.profile_banner:
-            target.profile_banner.delete()
-        target.profile_banner = image
-
+    if target.profile_picture:
+        target.profile_picture.delete()
+    target.profile_picture = serializer.validated_data['image']
     target.save()
-    return Response({"detail": "Image updated successfully"})
+    return Response({"detail": "Profile picture updated successfully"})
+
+@action(detail=False, methods=['post'])
+def update_profile_banner(self, request):
+    """Update profile banner based on user role."""
+    if request.user.role == ProfileOption.EMPLOYER:
+        if not request.user.selected_company:
+            return Response(
+                {"detail": "No company selected."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        target = request.user.selected_company
+        serializer = CompanyImageUploadSerializer(data={'image_type': 'profile_banner', 'image': request.FILES.get('image')})
+    elif request.user.role == ProfileOption.EMPLOYEE:
+        if not hasattr(request.user, 'employee_profile'):
+            return Response(
+                {"detail": "Employee profile not found."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        target = request.user.employee_profile
+        serializer = EmployeeImageUploadSerializer(data={'image_type': 'profile_banner', 'image': request.FILES.get('image')})
+    else:
+        return Response(
+            {"detail": "Invalid user role for image upload."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    serializer.is_valid(raise_exception=True)
+    if target.profile_banner:
+        target.profile_banner.delete()
+    target.profile_banner = serializer.validated_data['image']
+    target.save()
+    return Response({"detail": "Profile banner updated successfully"})
 
 @action(detail=False, methods=['delete'], url_path='profile-image/(?P<image_type>profile-picture|profile-banner)')
 def delete_profile_image(self, request, image_type):
@@ -337,7 +360,7 @@ class EmployeeSearchView(generics.ListAPIView):
             ).distinct()
         return queryset
 
-class EmployerSearchView(generics.ListAPIView):
+class EmployerSearchView(generics.ListAPIView):ß
     """Search for employers."""
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]

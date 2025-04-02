@@ -90,6 +90,10 @@ class VacancyLanguageSerializer(serializers.ModelSerializer):
         model = VacancyLanguage
         fields = ["language", "mastery"]
 
+    def validate_mastery(self, value):
+        """Capitalize the mastery value before validation."""
+        return value.capitalize() if value else value
+
 class VacancyDescriptionSerializer(serializers.ModelSerializer):
     question = QuestionSerializer()
     
@@ -157,6 +161,10 @@ class VacancySerializer(serializers.ModelSerializer):
     def get_created_by(self, obj):
         from accounts.serializers import UserSerializer
         return UserSerializer(obj.created_by).data if obj.created_by else None
+
+    def validate_expected_mastery(self, value):
+        """Capitalize the mastery value before validation."""
+        return value.capitalize() if value else value
 
     def validate(self, data):
         """

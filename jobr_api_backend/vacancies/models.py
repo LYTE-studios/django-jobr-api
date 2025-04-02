@@ -129,12 +129,13 @@ class Language(models.Model):
 class MasteryOption(models.TextChoices):
     """
     Enum for representing the different levels of mastery in a skill.
+    Includes both capitalized and lowercase versions for flexibility.
     """
-    NONE = "None"
-    BEGINNER = "Beginner"
-    INTERMEDIATE = "Intermediate"
-    ADVANCED = "Advanced"
-    EXPERT = "Expert"
+    NONE = "None", "none"
+    BEGINNER = "Beginner", "beginner"
+    INTERMEDIATE = "Intermediate", "intermediate"
+    ADVANCED = "Advanced", "advanced"
+    EXPERT = "Expert", "expert"
 
 
 class Weekday(models.Model):

@@ -94,7 +94,7 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
-                 'city', 'postal_code', 'website', 'description',
+                 'city', 'postal_code', 'website', 'description', 'employee_count',
                 'created_at', 'updated_at', 'sector',
                  'profile_picture_url', 'profile_banner_url',)
         read_only_fields = ('created_at', 'updated_at', 'users', 'profile_picture_url', 'profile_banner_url')
@@ -108,6 +108,7 @@ class CompanySerializer(serializers.ModelSerializer):
             'website': {'allow_null': True},
             'description': {'allow_null': True},
             'sector': {'allow_null': True},
+            'employee_count': {'allow_null': True},
         }
 
     def get_profile_picture_url(self, obj):

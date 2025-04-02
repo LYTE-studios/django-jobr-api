@@ -78,6 +78,12 @@ class Company(models.Model):
     postal_code = models.CharField(max_length=20, null=True, blank=True)
     website = models.URLField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    employee_count = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Number of employees in the company (e.g., '1-10', '11-50', '51-200', etc.)"
+    )
     users = models.ManyToManyField(
         'CustomUser',
         through='CompanyUser',

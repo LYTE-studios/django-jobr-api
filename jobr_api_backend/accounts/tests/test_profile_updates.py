@@ -89,3 +89,15 @@ class ProfileUpdateTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertFalse(hasattr(self.user, 'employer_profile'))
+
+    def test_update_user_names(self):
+        """Test updating user's first and last name."""
+        data = {
+            'first_name': 'John',
+            'last_name': 'Doe'
+        }
+        response = self.client.put(self.profile_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'John')
+        self.assertEqual(self.user.last_name, 'Doe')

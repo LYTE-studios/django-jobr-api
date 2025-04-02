@@ -170,6 +170,8 @@ class UserSerializer(serializers.ModelSerializer):
         if self.instance is not None:
             self.fields['username'].required = False
             self.fields['email'].required = False
+            self.fields['first_name'].required = False
+            self.fields['last_name'].required = False
             self.fields['role'].required = False
             
             # Employee profile field is not required by default, validation will handle requirements
@@ -232,7 +234,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'employee_profile',
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'employee_profile',
                  'companies', 'selected_company', 'user_gallery', 'reviews_given',
                  'reviews_received')
         read_only_fields = ('id',)

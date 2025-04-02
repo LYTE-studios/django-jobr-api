@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from .models import (
-    CustomUser, Employee, UserGallery, Admin, ProfileOption,
+    CustomUser, Employee, Admin, ProfileOption,
     Review, Company, CompanyUser
 )
 
@@ -64,17 +64,6 @@ class AdminInline(OneToOneInline):
     verbose_name_plural = 'Admin Profile'
     fk_name = 'user'
 
-class UserGalleryInline(admin.TabularInline):
-    model = UserGallery
-    extra = 1
-    verbose_name = "Gallery Image"
-    verbose_name_plural = "Gallery Images"
-    
-    def has_add_permission(self, request, obj=None):
-        if obj is None:  # Don't show when creating new user
-            return False
-        return True
-
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'role', 'is_active', 'is_blocked', 'date_joined', 'last_login')
@@ -113,8 +102,6 @@ class CustomUserAdmin(UserAdmin):
             inlines.append(CompanyUserInline)
         elif obj.role == ProfileOption.ADMIN:
             inlines.append(AdminInline)
-        # Always show gallery
-        inlines.append(UserGalleryInline)
         return inlines
 
     def block_users(self, request, queryset):

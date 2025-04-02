@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
     CustomUser, Employee, LikedEmployee,
-    ProfileOption, Review, UserGallery
+    ProfileOption, Review, CompanyGallery
 )
 from .serializers import (
     UserSerializer,
@@ -319,24 +319,53 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='gallery')
     def add_gallery_image(self, request):
-        """Add an image to user's gallery."""
+        """Add an image to company's gallery."""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employers can add gallery images"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if not request.user.selected_company:
+            return Response(
+                {"error": "No company selected"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if 'image' not in request.FILES:
             return Response(
                 {"error": "No image provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        gallery = UserGallery.objects.create(
-            user=request.user,
+        gallery = CompanyGallery.objects.create(
+            company=request.user.selected_company,
             gallery=request.FILES['image']
         )
         
-        return Response(UserSerializer(request.user).data)
+        from .serializers import CompanySerializer
+        return Response(CompanySerializer(request.user.selected_company).data)
 
     @action(detail=True, methods=['delete'], url_path='gallery')
     def delete_gallery_image(self, request, pk=None):
-        """Delete an image from user's gallery."""
-        gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
+        """Delete an image from company's gallery."""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employers can delete gallery images"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if not request.user.selected_company:
+            return Response(
+                {"error": "No company selected"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        gallery = get_object_or_404(
+            CompanyGallery,
+            pk=pk,
+            company=request.user.selected_company
+        )
         # Delete the file first
         if gallery.gallery:
             gallery.gallery.delete()

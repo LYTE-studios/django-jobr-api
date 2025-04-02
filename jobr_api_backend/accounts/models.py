@@ -246,17 +246,30 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
-class UserGallery(models.Model):
-    """User gallery for uploading images."""
-    user = models.ForeignKey(
-        CustomUser,
+class CompanyGallery(models.Model):
+    """Company gallery for uploading images."""
+    company = models.ForeignKey(
+        Company,
         on_delete=models.CASCADE,
-        related_name="user_gallery"
+        related_name="company_gallery"
     )
-    gallery = models.ImageField(upload_to="galleries/", blank=False)
+    gallery = models.ImageField(
+        upload_to="company_galleries/",
+        blank=False,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="Company gallery image (max 5MB, jpg, jpeg, png, gif)"
+    )
+
+    class Meta:
+        verbose_name = 'Company Gallery'
+        verbose_name_plural = 'Company Galleries'
+        ordering = ['id']
 
     def __str__(self):
-        return f"Gallery image for {self.user.username}"
+        return f"Gallery image for {self.company.name}"
 
 class LikedEmployee(models.Model):
     """Represents an employee that has been liked by a company."""

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
 
-from .models import Employee, UserGallery, ProfileOption, LikedEmployee, Review, Company, CompanyUser
+from .models import Employee, CompanyGallery, ProfileOption, LikedEmployee, Review, Company, CompanyUser
 
 User = get_user_model()
 
@@ -66,10 +66,22 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     def get_profile_banner_url(self, obj):
         return obj.profile_banner.url if obj.profile_banner else None
 
+class CompanyGallerySerializer(serializers.ModelSerializer):
+    gallery_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CompanyGallery
+        fields = ('id', 'company', 'gallery_url')
+        read_only_fields = ('gallery_url',)
+
+    def get_gallery_url(self, obj):
+        return obj.gallery.url if obj.gallery else None
+
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     sector = serializers.SerializerMethodField()
+    company_gallery = CompanyGallerySerializer(source='company_gallery', many=True, read_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -96,7 +108,7 @@ class CompanySerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
                  'city', 'postal_code', 'website', 'description', 'employee_count',
                 'created_at', 'updated_at', 'sector',
-                 'profile_picture_url', 'profile_banner_url',)
+                 'profile_picture_url', 'profile_banner_url', 'company_gallery')
         read_only_fields = ('created_at', 'updated_at', 'users', 'profile_picture_url', 'profile_banner_url')
         extra_kwargs = {
             'name': {'allow_null': True},
@@ -124,11 +136,6 @@ class CompanyUserSerializer(serializers.ModelSerializer):
         model = CompanyUser
         fields = ('id', 'company', 'user', 'role', 'created_at')
         read_only_fields = ('created_at',)
-
-class UserGallerySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserGallery
-        fields = '__all__'
 
 class ReviewSerializer(serializers.ModelSerializer):
     reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
@@ -177,7 +184,6 @@ class UserSerializer(serializers.ModelSerializer):
             
             # Employee profile field is not required by default, validation will handle requirements
             self.fields['employee_profile'].required = False
-    user_gallery = UserGallerySerializer(many=True, read_only=True)
     reviews_given = serializers.SerializerMethodField()
     reviews_received = serializers.SerializerMethodField()
 
@@ -236,8 +242,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'employee_profile',
-                 'companies', 'selected_company', 'user_gallery', 'reviews_given',
-                 'reviews_received')
+                 'companies', 'selected_company', 'reviews_given', 'reviews_received')
         read_only_fields = ('id',)
 
 class EmployeeSerializer(serializers.ModelSerializer):

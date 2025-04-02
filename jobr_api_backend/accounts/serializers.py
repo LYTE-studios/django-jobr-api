@@ -129,6 +129,14 @@ class CompanySerializer(serializers.ModelSerializer):
     def get_profile_banner_url(self, obj):
         return obj.profile_banner.url if obj.profile_banner else None
 
+    def update(self, instance, validated_data):
+        # Only update fields that are not None
+        for attr, value in validated_data.items():
+            if value is not None:
+                setattr(instance, attr, value)
+        instance.save()
+        return instance
+
 class CompanyUserSerializer(serializers.ModelSerializer):
     company = CompanySerializer(read_only=True)
 

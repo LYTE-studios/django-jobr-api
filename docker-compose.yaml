@@ -4,6 +4,6 @@ services:
     build: jobr_api_backend
     restart: on-failure
     volumes:
-      - ./api:/app
+      - ./jobr_api_backend:/app
     ports:
       - "8000:8000"

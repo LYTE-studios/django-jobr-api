@@ -81,7 +81,7 @@ class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     sector = serializers.SerializerMethodField()
-    company_gallery = CompanyGallerySerializer(source='company_gallery', many=True, read_only=True)
+    company_gallery = CompanyGallerySerializer(many=True, read_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

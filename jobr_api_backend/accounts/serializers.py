@@ -236,6 +236,17 @@ class UserSerializer(serializers.ModelSerializer):
             for attr, value in employee_profile_data.items():
                 setattr(instance.employee_profile, attr, value)
             instance.employee_profile.save()
+        # Update company profile for employers
+        elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:
+            company_data = self.context['request'].data.get('company', {})
+            if company_data:
+                company_serializer = CompanySerializer(
+                    instance.selected_company,
+                    data=company_data,
+                    partial=True
+                )
+                company_serializer.is_valid(raise_exception=True)
+                company_serializer.save()
 
         return instance
 

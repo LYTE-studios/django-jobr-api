@@ -241,9 +241,20 @@ class UserSerializer(serializers.ModelSerializer):
         if employee_profile_data and instance.role == ProfileOption.EMPLOYEE:
             if not hasattr(instance, 'employee_profile'):
                 instance.employee_profile = Employee.objects.create(user=instance)
+            # Handle many-to-many fields separately
+            language_data = employee_profile_data.pop('language', None)
+            skill_data = employee_profile_data.pop('skill', None)
+
+            # Update regular fields
             for attr, value in employee_profile_data.items():
                 setattr(instance.employee_profile, attr, value)
             instance.employee_profile.save()
+
+            # Update many-to-many fields using set()
+            if language_data is not None:
+                instance.employee_profile.language.set(language_data)
+            if skill_data is not None:
+                instance.employee_profile.skill.set(skill_data)
         # Update company profile for employers
         elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:
             company_data = self.context['request'].data.get('company', {})

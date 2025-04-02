@@ -202,7 +202,8 @@ class VacancySerializer(serializers.ModelSerializer):
         skill_data = self.initial_data.get("skill", [])
         if skill_data:
             skill_ids = [skill.get('id') for skill in skill_data if 'id' in skill]
-            vacancy.skill.set(Skill.objects.filter(id__in=skill_ids))
+            skills = Skill.objects.filter(id__in=skill_ids)
+            vacancy.skill.set(skills)
 
         language_data = self.initial_data.get("languages", [])
         if language_data:

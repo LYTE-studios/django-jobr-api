@@ -52,7 +52,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     contract_type = ContractTypeSerializer(read_only=True, allow_null=True)
 
     class Meta:
-        model = Employeeß
+        model = Employee
         exclude = ('user', 'profile_picture', 'profile_banner')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}

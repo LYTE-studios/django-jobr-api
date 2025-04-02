@@ -360,7 +360,7 @@ class EmployeeSearchView(generics.ListAPIView):
             ).distinct()
         return queryset
 
-class EmployerSearchView(generics.ListAPIView):ß
+class EmployerSearchView(generics.ListAPIView):
     """Search for employers."""
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -380,6 +380,7 @@ class EmployerSearchView(generics.ListAPIView):ß
                 Q(employer_profile__vat_number__icontains=search)
             ).distinct()
         return queryset
+
 
 class LikedEmployeeView(generics.ListCreateAPIView):
     """Handle liked employee operations."""

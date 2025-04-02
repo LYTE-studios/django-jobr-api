@@ -175,10 +175,14 @@ class FunctionAdmin(admin.ModelAdmin):
             if form.is_valid():
                 for skill in function.skills.all():
                     weight = form.cleaned_data[f'weight_{skill.id}']
-                    FunctionSkill.objects.filter(
+                    function_skill, created = FunctionSkill.objects.get_or_create(
                         function=function,
-                        skill=skill
-                    ).update(weight=weight)
+                        skill=skill,
+                        defaults={'weight': weight}
+                    )
+                    if not created:
+                        function_skill.weight = weight
+                        function_skill.save()
                 self.message_user(request, "Skill weights updated successfully.")
                 return HttpResponseRedirect(
                     reverse('admin:vacancies_function_changelist')

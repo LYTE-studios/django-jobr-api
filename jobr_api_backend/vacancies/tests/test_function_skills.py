@@ -11,27 +11,27 @@ class FunctionSkillTests(TestCase):
 
         # Create functions
         self.bartending = Function.objects.create(
-            function="Bartending",
+            name="Bartending",
             weight=1,
             sector=self.sector
         )
         self.dishwashing = Function.objects.create(
-            function="Dish Washing",
+            name="Dish Washing",
             weight=1,
             sector=self.sector
         )
 
         # Create skills
         self.washing_dishes = Skill.objects.create(
-            skill="Washing dishes",
+            name="Washing dishes",
             category="hard"
         )
         self.customer_service = Skill.objects.create(
-            skill="Customer service",
+            name="Customer service",
             category="soft"
         )
         self.cocktail_making = Skill.objects.create(
-            skill="Cocktail making",
+            name="Cocktail making",
             category="hard"
         )
 
@@ -83,7 +83,7 @@ class FunctionSkillTests(TestCase):
 
         # Get ordered skills
         skills = FunctionSkill.objects.filter(function=self.bartending).order_by('-weight')
-        ordered_skills = [fs.skill.skill for fs in skills]
+        ordered_skills = [fs.skill.name for fs in skills]
 
         # Verify order
         self.assertEqual(ordered_skills, [
@@ -130,6 +130,50 @@ class FunctionSkillTests(TestCase):
         function_skills = FunctionSkill.objects.filter(function=self.bartending)
         
         # Verify weights for each skill
-        skill_weights = {fs.skill.skill: fs.weight for fs in function_skills}
+        skill_weights = {fs.skill.name: fs.weight for fs in function_skills}
         self.assertEqual(skill_weights["Cocktail making"], 10)
         self.assertEqual(skill_weights["Washing dishes"], 2)
+
+    def test_admin_weight_editing(self):
+        """Test that weights can be updated through the admin interface"""
+        from django.contrib.auth import get_user_model
+        from django.urls import reverse
+        
+        # Create admin user
+        User = get_user_model()
+        admin_user = User.objects.create_superuser(
+            email='admin@test.com',
+            password='testpass123'
+        )
+        self.client.force_login(admin_user)
+
+        # Add initial skills with weights
+        fs1 = FunctionSkill.objects.create(
+            function=self.bartending,
+            skill=self.cocktail_making,
+            weight=5
+        )
+        fs2 = FunctionSkill.objects.create(
+            function=self.bartending,
+            skill=self.customer_service,
+            weight=3
+        )
+
+        # Prepare POST data for weight update
+        post_data = {
+            f'weight_{self.cocktail_making.id}': 8,
+            f'weight_{self.customer_service.id}': 6
+        }
+
+        # Make request to admin weight editing view
+        url = reverse('admin:edit-function-skill-weights', args=[self.bartending.pk])
+        response = self.client.post(url, post_data)
+
+        # Check redirect after successful update
+        self.assertRedirects(response, reverse('admin:vacancies_function_changelist'))
+
+        # Verify weights were updated
+        fs1.refresh_from_db()
+        fs2.refresh_from_db()
+        self.assertEqual(fs1.weight, 8)
+        self.assertEqual(fs2.weight, 6)

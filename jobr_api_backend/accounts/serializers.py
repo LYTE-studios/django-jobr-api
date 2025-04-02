@@ -40,7 +40,8 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         )
         return user
 
-from ..vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
+# Import serializers from vacancies app using absolute imports
+from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
@@ -81,7 +82,7 @@ class CompanySerializer(serializers.ModelSerializer):
     def get_sector(self, obj):
         if obj.sector:
             # Import here to avoid circular import
-            from ..vacancies.serializers import SectorSerializer
+            from vacancies.serializers import SectorSerializer
             return {
                 'id': obj.sector.id,
                 'name': obj.sector.name,

@@ -195,149 +195,149 @@ class UserViewSet(viewsets.ModelViewSet):
             self.perform_update(serializer)
         
         return Response(serializer.data)
-@action(detail=False, methods=['post'])
-def update_profile_picture(self, request):
-    """Update profile picture based on user role."""
-    if request.user.role == ProfileOption.EMPLOYER:
-        if not request.user.selected_company:
+    @action(detail=False, methods=['post'])
+    def update_profile_picture(self, request):
+        """Update profile picture based on user role."""
+        if request.user.role == ProfileOption.EMPLOYER:
+            if not request.user.selected_company:
+                return Response(
+                    {"detail": "No company selected."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.selected_company
+            serializer = CompanyImageUploadSerializer(data={'image_type': 'profile_picture', 'image': request.FILES.get('image')})
+        elif request.user.role == ProfileOption.EMPLOYEE:
+            if not hasattr(request.user, 'employee_profile'):
+                return Response(
+                    {"detail": "Employee profile not found."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.employee_profile
+            serializer = EmployeeImageUploadSerializer(data={'image_type': 'profile_picture', 'image': request.FILES.get('image')})
+        else:
             return Response(
-                {"detail": "No company selected."},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Invalid user role for image upload."},
+                status=status.HTTP_403_FORBIDDEN
             )
-        target = request.user.selected_company
-        serializer = CompanyImageUploadSerializer(data={'image_type': 'profile_picture', 'image': request.FILES.get('image')})
-    elif request.user.role == ProfileOption.EMPLOYEE:
-        if not hasattr(request.user, 'employee_profile'):
-            return Response(
-                {"detail": "Employee profile not found."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        target = request.user.employee_profile
-        serializer = EmployeeImageUploadSerializer(data={'image_type': 'profile_picture', 'image': request.FILES.get('image')})
-    else:
-        return Response(
-            {"detail": "Invalid user role for image upload."},
-            status=status.HTTP_403_FORBIDDEN
-        )
 
-    serializer.is_valid(raise_exception=True)
-    if target.profile_picture:
-        target.profile_picture.delete()
-    target.profile_picture = serializer.validated_data['image']
-    target.save()
-    return Response({"detail": "Profile picture updated successfully"})
-
-@action(detail=False, methods=['post'])
-def update_profile_banner(self, request):
-    """Update profile banner based on user role."""
-    if request.user.role == ProfileOption.EMPLOYER:
-        if not request.user.selected_company:
-            return Response(
-                {"detail": "No company selected."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        target = request.user.selected_company
-        serializer = CompanyImageUploadSerializer(data={'image_type': 'profile_banner', 'image': request.FILES.get('image')})
-    elif request.user.role == ProfileOption.EMPLOYEE:
-        if not hasattr(request.user, 'employee_profile'):
-            return Response(
-                {"detail": "Employee profile not found."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        target = request.user.employee_profile
-        serializer = EmployeeImageUploadSerializer(data={'image_type': 'profile_banner', 'image': request.FILES.get('image')})
-    else:
-        return Response(
-            {"detail": "Invalid user role for image upload."},
-            status=status.HTTP_403_FORBIDDEN
-        )
-
-    serializer.is_valid(raise_exception=True)
-    if target.profile_banner:
-        target.profile_banner.delete()
-    target.profile_banner = serializer.validated_data['image']
-    target.save()
-    return Response({"detail": "Profile banner updated successfully"})
-
-@action(detail=False, methods=['delete'], url_path='profile-image/(?P<image_type>profile-picture|profile-banner)')
-def delete_profile_image(self, request, image_type):
-    """Delete profile picture or banner based on user role."""
-    if request.user.role == ProfileOption.EMPLOYER:
-        if not request.user.selected_company:
-            return Response(
-                {"detail": "No company selected."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        target = request.user.selected_company
-    elif request.user.role == ProfileOption.EMPLOYEE:
-        if not hasattr(request.user, 'employee_profile'):
-            return Response(
-                {"detail": "Employee profile not found."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        target = request.user.employee_profile
-    else:
-        return Response(
-            {"detail": "Invalid user role for image deletion."},
-            status=status.HTTP_403_FORBIDDEN
-        )
-
-    if image_type == 'profile-picture':
+        serializer.is_valid(raise_exception=True)
         if target.profile_picture:
             target.profile_picture.delete()
-            target.profile_picture = None
-    else:  # profile-banner
+        target.profile_picture = serializer.validated_data['image']
+        target.save()
+        return Response({"detail": "Profile picture updated successfully"})
+
+    @action(detail=False, methods=['post'])
+    def update_profile_banner(self, request):
+        """Update profile banner based on user role."""
+        if request.user.role == ProfileOption.EMPLOYER:
+            if not request.user.selected_company:
+                return Response(
+                    {"detail": "No company selected."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.selected_company
+            serializer = CompanyImageUploadSerializer(data={'image_type': 'profile_banner', 'image': request.FILES.get('image')})
+        elif request.user.role == ProfileOption.EMPLOYEE:
+            if not hasattr(request.user, 'employee_profile'):
+                return Response(
+                    {"detail": "Employee profile not found."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.employee_profile
+            serializer = EmployeeImageUploadSerializer(data={'image_type': 'profile_banner', 'image': request.FILES.get('image')})
+        else:
+            return Response(
+                {"detail": "Invalid user role for image upload."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer.is_valid(raise_exception=True)
         if target.profile_banner:
             target.profile_banner.delete()
-            target.profile_banner = None
+        target.profile_banner = serializer.validated_data['image']
+        target.save()
+        return Response({"detail": "Profile banner updated successfully"})
 
-    target.save()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    @action(detail=False, methods=['delete'], url_path='profile-image/(?P<image_type>profile-picture|profile-banner)')
+    def delete_profile_image(self, request, image_type):
+        """Delete profile picture or banner based on user role."""
+        if request.user.role == ProfileOption.EMPLOYER:
+            if not request.user.selected_company:
+                return Response(
+                    {"detail": "No company selected."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.selected_company
+        elif request.user.role == ProfileOption.EMPLOYEE:
+            if not hasattr(request.user, 'employee_profile'):
+                return Response(
+                    {"detail": "Employee profile not found."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.employee_profile
+        else:
+            return Response(
+                {"detail": "Invalid user role for image deletion."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-@action(detail=False, methods=['post'], url_path='gallery')
-def add_gallery_image(self, request):
-    """Add an image to user's gallery."""
-    if 'image' not in request.FILES:
-        return Response(
-            {"error": "No image provided"},
-            status=status.HTTP_400_BAD_REQUEST
+        if image_type == 'profile-picture':
+            if target.profile_picture:
+                target.profile_picture.delete()
+                target.profile_picture = None
+        else:  # profile-banner
+            if target.profile_banner:
+                target.profile_banner.delete()
+                target.profile_banner = None
+
+        target.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='gallery')
+    def add_gallery_image(self, request):
+        """Add an image to user's gallery."""
+        if 'image' not in request.FILES:
+            return Response(
+                {"error": "No image provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        gallery = UserGallery.objects.create(
+            user=request.user,
+            gallery=request.FILES['image']
         )
-    
-    gallery = UserGallery.objects.create(
-        user=request.user,
-        gallery=request.FILES['image']
-    )
-    
-    return Response(UserSerializer(request.user).data)
+        
+        return Response(UserSerializer(request.user).data)
 
-@action(detail=True, methods=['delete'], url_path='gallery')
-def delete_gallery_image(self, request, pk=None):
-    """Delete an image from user's gallery."""
-    gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
-    # Delete the file first
-    if gallery.gallery:
-        gallery.gallery.delete()
-    # Then delete the model instance
-    gallery.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    @action(detail=True, methods=['delete'], url_path='gallery')
+    def delete_gallery_image(self, request, pk=None):
+        """Delete an image from user's gallery."""
+        gallery = get_object_or_404(UserGallery, pk=pk, user=request.user)
+        # Delete the file first
+        if gallery.gallery:
+            gallery.gallery.delete()
+        # Then delete the model instance
+        gallery.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-def perform_update(self, serializer):
-    """Handle password updates and profile data."""
-    user = serializer.save()
-    
-    # Handle password updates
-    if 'password' in self.request.data:
-        user.set_password(self.request.data['password'])
-        user.save()
+    def perform_update(self, serializer):
+        """Handle password updates and profile data."""
+        user = serializer.save()
+        
+        # Handle password updates
+        if 'password' in self.request.data:
+            user.set_password(self.request.data['password'])
+            user.save()
 
-    # Handle employee profile updates
-    if 'employee_profile' in self.request.data and user.role == 'employee':
-        profile_data = self.request.data['employee_profile']
-        if not user.employee_profile:
-            user.employee_profile = Employee.objects.create(user=user)
-        for key, value in profile_data.items():
-            setattr(user.employee_profile, key, value)
-        user.employee_profile.save()
+        # Handle employee profile updates
+        if 'employee_profile' in self.request.data and user.role == 'employee':
+            profile_data = self.request.data['employee_profile']
+            if not user.employee_profile:
+                user.employee_profile = Employee.objects.create(user=user)
+            for key, value in profile_data.items():
+                setattr(user.employee_profile, key, value)
+            user.employee_profile.save()
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""

@@ -71,11 +71,11 @@ class Employee(models.Model):
 class Company(models.Model):
     """Company model that can have multiple users."""
     name = models.CharField(max_length=100)
-    vat_number = models.CharField(max_length=30, unique=True)
-    street_name = models.CharField(max_length=100)
-    house_number = models.CharField(max_length=10)
-    city = models.CharField(max_length=100)
-    postal_code = models.CharField(max_length=20)
+    vat_number = models.CharField(max_length=30, unique=True, null=True, blank=True)
+    street_name = models.CharField(max_length=100, null=True, blank=True)
+    house_number = models.CharField(max_length=10, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    postal_code = models.CharField(max_length=20, null=True, blank=True)
     website = models.URLField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     users = models.ManyToManyField(
@@ -211,7 +211,6 @@ class CustomUser(AbstractUser):
                     with transaction.atomic():
                         company = Company.objects.create(
                             name=f"{self.username}'s Company",
-                            vat_number=f"TEMP_{self.id}",  # Temporary VAT number
                             street_name="",
                             house_number="",
                             city="",

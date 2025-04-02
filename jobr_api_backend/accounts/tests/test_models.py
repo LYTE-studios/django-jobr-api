@@ -4,7 +4,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import (
     CustomUser,
     Employee,
-    Employer,
     Admin,
     UserGallery,
     ProfileOption,

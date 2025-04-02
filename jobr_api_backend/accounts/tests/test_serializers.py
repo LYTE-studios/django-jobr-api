@@ -1,6 +1,6 @@
 from django.test import TestCase
 from accounts.models import (
-    CustomUser, Employee, Employer, LikedEmployee, ProfileOption,
+    CustomUser, Employee, LikedEmployee, ProfileOption,
     UserGallery
 )
 from accounts.serializers import (
@@ -238,3 +238,78 @@ class UserSerializerTests(TestCase):
         self.assertIsNone(updated_user.employee_profile)
         self.assertIsNotNone(updated_user.employer_profile)
         self.assertEqual(updated_user.employer_profile.company_name, 'Test Company')
+
+from accounts.models import Company
+
+class CompanySerializerTests(TestCase):
+    def setUp(self):
+        """Set up test data"""
+        self.company_data = {
+            'name': 'Test Company',
+            'vat_number': 'BE0123456789',
+            'street_name': 'Test Street',
+            'house_number': '123',
+            'city': 'Test City',
+            'postal_code': '1000',
+            'website': 'https://test.com',
+            'description': 'Test Description'
+        }
+        self.company = Company.objects.create(**self.company_data)
+
+    def test_partial_update(self):
+        """Test that partial updates don't affect other fields"""
+        from accounts.serializers import CompanySerializer
+        
+        update_data = {
+            'name': 'Updated Company',
+            'website': 'https://updated.com'
+        }
+        
+        serializer = CompanySerializer(self.company, data=update_data, partial=True)
+        self.assertTrue(serializer.is_valid())
+        updated_company = serializer.save()
+        
+        # Check updated fields
+        self.assertEqual(updated_company.name, 'Updated Company')
+        self.assertEqual(updated_company.website, 'https://updated.com')
+        
+        # Check unchanged fields
+        self.assertEqual(updated_company.vat_number, self.company_data['vat_number'])
+        self.assertEqual(updated_company.street_name, self.company_data['street_name'])
+        self.assertEqual(updated_company.house_number, self.company_data['house_number'])
+        self.assertEqual(updated_company.city, self.company_data['city'])
+        self.assertEqual(updated_company.postal_code, self.company_data['postal_code'])
+        self.assertEqual(updated_company.description, self.company_data['description'])
+
+    def test_null_values_update(self):
+        """Test that fields can be set to null during update"""
+        from accounts.serializers import CompanySerializer
+        
+        update_data = {
+            'website': None,
+            'description': None
+        }
+        
+        serializer = CompanySerializer(self.company, data=update_data, partial=True)
+        self.assertTrue(serializer.is_valid())
+        updated_company = serializer.save()
+        
+        # Check nullified fields
+        self.assertIsNone(updated_company.website)
+        self.assertIsNone(updated_company.description)
+        
+        # Check unchanged fields
+        self.assertEqual(updated_company.name, self.company_data['name'])
+        self.assertEqual(updated_company.vat_number, self.company_data['vat_number'])
+
+    def test_optional_fields_update(self):
+        """Test that fields are optional during updates"""
+        from accounts.serializers import CompanySerializer
+        
+        # Empty update should be valid
+        serializer = CompanySerializer(self.company, data={}, partial=True)
+        self.assertTrue(serializer.is_valid())
+        
+        # Update with only one field should be valid
+        serializer = CompanySerializer(self.company, data={'name': 'New Name'}, partial=True)
+        self.assertTrue(serializer.is_valid())

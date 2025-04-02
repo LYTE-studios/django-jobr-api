@@ -113,10 +113,12 @@ class VacancySalaryBenefitSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 class VacancySerializer(serializers.ModelSerializer):
-    from accounts.serializers import CompanySerializer
-
-    company = CompanySerializer(read_only=True)
+    company = serializers.SerializerMethodField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
+
+    def get_company(self, obj):
+        from accounts.serializers import CompanySerializer
+        return CompanySerializer(obj.company).data if obj.company else None
     contract_type = ContractTypeSerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, read_only=True)
     location = LocationSerializer(allow_null=True, read_only=True)

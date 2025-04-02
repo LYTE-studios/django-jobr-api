@@ -41,8 +41,15 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         return user
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
+    
+    from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
+
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
+    skill = SkillSerializer(many=True, read_only=True)
+    language = LanguageSerializer(many=True, read_only=True)
+    function = FunctionSerializer(allow_null=True, read_only=True)
+    contract_type = ContractTypeSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Employee
@@ -59,37 +66,63 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     def get_profile_banner_url(self, obj):
         return obj.profile_banner.url if obj.profile_banner else None
 
-class CompanyUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CompanyUser
-        fields = ('id', 'company', 'user', 'role', 'created_at')
-        read_only_fields = ('created_at',)
-
 class CompanySerializer(serializers.ModelSerializer):
-    users = CompanyUserSerializer(source='companyuser_set', many=True, read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     sector = serializers.SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make fields optional for updates
+        if self.instance is not None:
+            for field in self.fields:
+                if field not in self.Meta.read_only_fields:
+                    self.fields[field].required = False
+
     def get_sector(self, obj):
-        from vacancies.serializers import SectorSerializer
         if obj.sector:
-            return SectorSerializer(obj.sector).data
+            # Import here to avoid circular import
+            from vacancies.serializers import SectorSerializer
+            return {
+                'id': obj.sector.id,
+                'name': obj.sector.name,
+                'enabled': obj.sector.enabled,
+                'icon': obj.sector.icon.url if obj.sector.icon else None
+            }
         return None
 
     class Meta:
         model = Company
         fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
                  'city', 'postal_code', 'website', 'description',
-                 'users', 'created_at', 'updated_at', 'sector',
-                 'profile_picture_url', 'profile_banner_url')
-        read_only_fields = ('created_at', 'updated_at')
+                'created_at', 'updated_at', 'sector',
+                 'profile_picture_url', 'profile_banner_url',)
+        read_only_fields = ('created_at', 'updated_at', 'users', 'profile_picture_url', 'profile_banner_url')
+        extra_kwargs = {
+            'name': {'allow_null': True},
+            'vat_number': {'allow_null': True},
+            'street_name': {'allow_null': True},
+            'house_number': {'allow_null': True},
+            'city': {'allow_null': True},
+            'postal_code': {'allow_null': True},
+            'website': {'allow_null': True},
+            'description': {'allow_null': True},
+            'sector': {'allow_null': True},
+        }
 
     def get_profile_picture_url(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None
 
     def get_profile_banner_url(self, obj):
         return obj.profile_banner.url if obj.profile_banner else None
+
+class CompanyUserSerializer(serializers.ModelSerializer):
+    company = CompanySerializer(read_only=True)
+
+    class Meta:
+        model = CompanyUser
+        fields = ('id', 'company', 'user', 'role', 'created_at')
+        read_only_fields = ('created_at',)
 
 class UserGallerySerializer(serializers.ModelSerializer):
     class Meta:

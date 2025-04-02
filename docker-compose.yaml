@@ -3,3 +3,7 @@ services:
     network_mode: "host"
     build: jobr_api_backend
     restart: on-failure
+    volumes:
+      - ./api:/app
+    ports:
+      - "8000:8000"

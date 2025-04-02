@@ -384,6 +384,19 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         liked.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class AISuggestionsView(generics.ListAPIView):
+    """Get AI-powered employee suggestions."""
+    serializer_class = EmployeeSearchSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        """Return top 5 employees (placeholder for AI implementation)."""
+        return CustomUser.objects.filter(
+            role=ProfileOption.EMPLOYEE,
+            is_active=True
+        ).order_by('-date_joined')[:5]
+
 class ReviewViewSet(viewsets.ModelViewSet):
     """Handle review operations."""
     queryset = Review.objects.all()

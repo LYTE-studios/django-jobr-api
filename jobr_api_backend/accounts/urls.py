@@ -10,7 +10,8 @@ from .views import (
     ReviewViewSet,
     LoginView,
     RegisterView,
-    TestConnectionView
+    TestConnectionView,
+    AISuggestionsView
 )
 
 # Create router
@@ -67,6 +68,7 @@ urlpatterns = [
     # Employee interaction endpoints
     path('employees/liked/', LikedEmployeeView.as_view(), name='liked-employees-list'),
     path('employees/<int:employee_id>/like/', LikedEmployeeView.as_view(), name='like-employee'),
+    path('employees/ai/suggestions/', AISuggestionsView.as_view(), name='ai-suggestions'),
 
     # Review endpoints
     path('users/<int:user_id>/reviews/given/', ReviewViewSet.as_view({'get': 'list'}), {'type': 'given'}, name='user-reviews-given'),

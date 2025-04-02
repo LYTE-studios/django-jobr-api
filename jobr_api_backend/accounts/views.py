@@ -259,9 +259,8 @@ class UserViewSet(viewsets.ModelViewSet):
         target.save()
         return Response({"detail": "Profile banner updated successfully"})
 
-    @action(detail=False, methods=['delete'], url_path='profile-image/(?P<image_type>profile-picture|profile-banner)')
-    def delete_profile_image(self, request, image_type):
-        """Delete profile picture or banner based on user role."""
+    @action(detail=False, methods=['delete'])
+    def delete_profile_picture(self, request):
         if request.user.role == ProfileOption.EMPLOYER:
             if not request.user.selected_company:
                 return Response(
@@ -282,16 +281,39 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        if image_type == 'profile-picture':
-            if target.profile_picture:
-                target.profile_picture.delete()
-                target.profile_picture = None
-        else:  # profile-banner
-            if target.profile_banner:
-                target.profile_banner.delete()
-                target.profile_banner = None
+        if target.profile_picture:
+            target.profile_picture.delete()
+            target.profile_picture = None
+            target.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        target.save()
+    @action(detail=False, methods=['delete'])
+    def delete_profile_banner(self, request):
+        """Delete profile banner based on user role."""
+        if request.user.role == ProfileOption.EMPLOYER:
+            if not request.user.selected_company:
+                return Response(
+                    {"detail": "No company selected."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.selected_company
+        elif request.user.role == ProfileOption.EMPLOYEE:
+            if not hasattr(request.user, 'employee_profile'):
+                return Response(
+                    {"detail": "Employee profile not found."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            target = request.user.employee_profile
+        else:
+            return Response(
+                {"detail": "Invalid user role for image deletion."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if target.profile_banner:
+            target.profile_banner.delete()
+            target.profile_banner = None
+            target.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['post'], url_path='gallery')

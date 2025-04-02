@@ -261,6 +261,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['delete'])
     def delete_profile_picture(self, request):
+        """Delete profile picture based on user role."""
         if request.user.role == ProfileOption.EMPLOYER:
             if not request.user.selected_company:
                 return Response(

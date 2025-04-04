@@ -77,11 +77,32 @@ class CompanyGallerySerializer(serializers.ModelSerializer):
     def get_gallery_url(self, obj):
         return obj.gallery.url if obj.gallery else None
 
+class CompanyBasicSerializer(serializers.ModelSerializer):
+    """Simplified Company serializer for nested relationships."""
+    profile_picture_url = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Company
+        fields = ('id', 'name', 'profile_picture_url', 'address')
+
+    def get_profile_picture_url(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
+
+    def get_address(self, obj):
+        return {
+            'street_name': obj.street_name,
+            'house_number': obj.house_number,
+            'city': obj.city,
+            'postal_code': obj.postal_code
+        }
+
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     sector = serializers.SerializerMethodField()
     company_gallery = CompanyGallerySerializer(many=True, read_only=True)
+    companies = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,8 +129,9 @@ class CompanySerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
                  'city', 'postal_code', 'website', 'description', 'employee_count',
                 'created_at', 'updated_at', 'sector',
-                 'profile_picture_url', 'profile_banner_url', 'company_gallery')
-        read_only_fields = ('created_at', 'updated_at', 'users', 'profile_picture_url', 'profile_banner_url')
+                 'profile_picture_url', 'profile_banner_url', 'company_gallery',
+                 'companies')
+        read_only_fields = ('created_at', 'updated_at', 'users', 'profile_picture_url', 'profile_banner_url', 'companies')
         extra_kwargs = {
             'name': {'allow_null': True},
             'vat_number': {'allow_null': True},
@@ -122,6 +144,14 @@ class CompanySerializer(serializers.ModelSerializer):
             'sector': {'allow_null': True},
             'employee_count': {'allow_null': True},
         }
+        
+    def get_companies(self, obj):
+        """Get all companies associated with the user who owns this company."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            user_companies = request.user.companies.exclude(id=obj.id)
+            return CompanyBasicSerializer(user_companies, many=True).data
+        return []
 
     def get_profile_picture_url(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None

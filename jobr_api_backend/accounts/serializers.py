@@ -80,22 +80,13 @@ class CompanyGallerySerializer(serializers.ModelSerializer):
 class CompanyBasicSerializer(serializers.ModelSerializer):
     """Simplified Company serializer for nested relationships."""
     profile_picture_url = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField()
-
     class Meta:
         model = Company
-        fields = ('id', 'name', 'profile_picture_url', 'address')
+        fields = ('id', 'name', 'profile_picture_url', 'street_name', 'house_number',
+                 'city', 'postal_code')
 
     def get_profile_picture_url(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None
-
-    def get_address(self, obj):
-        return {
-            'street_name': obj.street_name,
-            'house_number': obj.house_number,
-            'city': obj.city,
-            'postal_code': obj.postal_code
-        }
 
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()

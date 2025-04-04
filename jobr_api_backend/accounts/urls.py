@@ -29,6 +29,10 @@ urlpatterns = [
         'patch': 'profile'
     }), name='profile-profile'),
     
+    path('profile/select-company/', UserViewSet.as_view({
+        'post': 'set_selected_company'
+    }), name='profile-select-company'),
+    
     # Image upload endpoints
     path('profile/picture/', UserViewSet.as_view({
         'post': 'update_profile_picture',

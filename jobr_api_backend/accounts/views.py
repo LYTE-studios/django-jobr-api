@@ -373,6 +373,39 @@ class UserViewSet(viewsets.ModelViewSet):
         gallery.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['post'])
+    def set_selected_company(self, request):
+        """Set the selected company for an employer user."""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employer users can select a company"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        company_id = request.data.get('company_id')
+        if not company_id:
+            return Response(
+                {"error": "company_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            company = Company.objects.get(
+                id=company_id,
+                users=request.user
+            )
+        except Company.DoesNotExist:
+            return Response(
+                {"error": "Company not found or you don't have access to it"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        request.user.selected_company = company
+        request.user.save()
+
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
     def perform_update(self, serializer):
         """Handle password updates and profile data."""
         user = serializer.save()

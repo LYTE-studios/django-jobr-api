@@ -147,12 +147,11 @@ class CompanySerializer(serializers.ModelSerializer):
         
     def get_companies(self, obj):
         """Get all companies associated with the user who owns this company."""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            # Get all CompanyUser relationships for this user
-            company_users = CompanyUser.objects.filter(user=request.user)
-            # Extract the companies from the relationships
-            user_companies = [cu.company for cu in company_users]
+        # Find the owner of this company
+        company_user = CompanyUser.objects.filter(company=obj).first()
+        if company_user:
+            # Get all companies associated with this user
+            user_companies = [cu.company for cu in CompanyUser.objects.filter(user=company_user.user)]
             return CompanyBasicSerializer(user_companies, many=True).data
         return []
 

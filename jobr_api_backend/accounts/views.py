@@ -395,10 +395,9 @@ class UserViewSet(viewsets.ModelViewSet):
             role='owner'
         )
 
-        # Set as selected company if user doesn't have one
-        if not request.user.selected_company:
-            request.user.selected_company = company
-            request.user.save()
+        # Always set the newly created company as the selected company
+        request.user.selected_company = company
+        request.user.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

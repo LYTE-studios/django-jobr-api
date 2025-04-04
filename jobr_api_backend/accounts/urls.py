@@ -33,6 +33,14 @@ urlpatterns = [
         'post': 'set_selected_company'
     }), name='profile-select-company'),
     
+    path('profile/company/create/', UserViewSet.as_view({
+        'post': 'create_company'
+    }), name='profile-create-company'),
+    
+    path('profile/company/add/', UserViewSet.as_view({
+        'post': 'add_company'
+    }), name='profile-add-company'),
+    
     # Image upload endpoints
     path('profile/picture/', UserViewSet.as_view({
         'post': 'update_profile_picture',

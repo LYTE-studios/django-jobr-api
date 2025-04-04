@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
-    CustomUser, Employee, LikedEmployee,
+    Company, CustomUser, Employee, LikedEmployee,
     ProfileOption, Review, CompanyGallery
 )
 from .serializers import (
@@ -372,6 +372,89 @@ class UserViewSet(viewsets.ModelViewSet):
         # Then delete the model instance
         gallery.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'])
+    def create_company(self, request):
+        """Create a new company and add it to the user's companies."""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employer users can create companies"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Use CompanySerializer to validate and create the company
+        serializer = CompanySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        company = serializer.save()
+
+        # Create CompanyUser relationship with 'owner' role
+        CompanyUser.objects.create(
+            company=company,
+            user=request.user,
+            role='owner'
+        )
+
+        # Set as selected company if user doesn't have one
+        if not request.user.selected_company:
+            request.user.selected_company = company
+            request.user.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def add_company(self, request):
+        """Add an existing company to the user's companies."""
+        if request.user.role != ProfileOption.EMPLOYER:
+            return Response(
+                {"error": "Only employer users can add companies"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        company_id = request.data.get('company_id')
+        role = request.data.get('role', 'member')  # Default role is member
+
+        if not company_id:
+            return Response(
+                {"error": "company_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate role
+        valid_roles = ['owner', 'admin', 'member']
+        if role not in valid_roles:
+            return Response(
+                {"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            company = Company.objects.get(id=company_id)
+        except Company.DoesNotExist:
+            return Response(
+                {"error": "Company not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if relationship already exists
+        if CompanyUser.objects.filter(company=company, user=request.user).exists():
+            return Response(
+                {"error": "User is already associated with this company"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create CompanyUser relationship
+        company_user = CompanyUser.objects.create(
+            company=company,
+            user=request.user,
+            role=role
+        )
+
+        # Set as selected company if user doesn't have one
+        if not request.user.selected_company:
+            request.user.selected_company = company
+            request.user.save()
+
+        return Response(CompanySerializer(company).data)
 
     @action(detail=False, methods=['post'])
     def set_selected_company(self, request):

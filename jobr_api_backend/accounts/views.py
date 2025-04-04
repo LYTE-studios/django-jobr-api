@@ -6,10 +6,11 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
-    Company, CustomUser, Employee, LikedEmployee,
+    Company, CompanyUser, CustomUser, Employee, LikedEmployee,
     ProfileOption, Review, CompanyGallery
 )
 from .serializers import (
+    CompanySerializer,
     UserSerializer,
     UserAuthenticationSerializer,
     LoginSerializer,

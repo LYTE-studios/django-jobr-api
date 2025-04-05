@@ -37,6 +37,41 @@ class Employee(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     phone_session_counts = models.IntegerField(default=0)
+    availability_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('immediately', 'Immediately Available'),
+            ('two_weeks', 'Available in 2 Weeks'),
+            ('one_month', 'Available in 1 Month'),
+            ('three_months', 'Available in 3 Months'),
+            ('unavailable', 'Not Available')
+        ],
+        default='immediately',
+        help_text="Employee's current availability status"
+    )
+    availability_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Specific date when the employee will be available"
+    )
+    experience_description = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Description of work experience"
+    )
+    employment_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('full_time', 'Full Time'),
+            ('part_time', 'Part Time'),
+            ('contract', 'Contract'),
+            ('temporary', 'Temporary'),
+            ('internship', 'Internship')
+        ],
+        null=True,
+        blank=True,
+        help_text="Preferred type of employment"
+    )
     language = models.ManyToManyField(Language, blank=True)
     contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)

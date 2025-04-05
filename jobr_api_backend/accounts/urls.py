@@ -11,7 +11,9 @@ from .views import (
     LoginView,
     RegisterView,
     TestConnectionView,
-    AISuggestionsView
+    AISuggestionsView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView
 )
 
 # Create router
@@ -65,6 +67,8 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('test-connection/', TestConnectionView.as_view(), name='test-connection'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('password/reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('password/reset/<str:uidb64>/<str:token>/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     
     # Profile endpoints
     path('users/', UserViewSet.as_view({'get': 'list', 'post': 'create'}), name='user-list'),

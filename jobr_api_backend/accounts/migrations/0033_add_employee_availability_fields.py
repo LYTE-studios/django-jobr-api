@@ -1,0 +1,61 @@
+from django.db import migrations, models
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('accounts', '0032_companygallery_delete_usergallery'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='employee',
+            name='availability_status',
+            field=models.CharField(
+                choices=[
+                    ('immediately', 'Immediately Available'),
+                    ('two_weeks', 'Available in 2 Weeks'),
+                    ('one_month', 'Available in 1 Month'),
+                    ('three_months', 'Available in 3 Months'),
+                    ('unavailable', 'Not Available')
+                ],
+                default='immediately',
+                help_text="Employee's current availability status",
+                max_length=20
+            ),
+        ),
+        migrations.AddField(
+            model_name='employee',
+            name='availability_date',
+            field=models.DateField(
+                blank=True,
+                help_text='Specific date when the employee will be available',
+                null=True
+            ),
+        ),
+        migrations.AddField(
+            model_name='employee',
+            name='experience_description',
+            field=models.TextField(
+                blank=True,
+                help_text='Description of work experience',
+                null=True
+            ),
+        ),
+        migrations.AddField(
+            model_name='employee',
+            name='employment_type',
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ('full_time', 'Full Time'),
+                    ('part_time', 'Part Time'),
+                    ('contract', 'Contract'),
+                    ('temporary', 'Temporary'),
+                    ('internship', 'Internship')
+                ],
+                help_text='Preferred type of employment',
+                max_length=20,
+                null=True
+            ),
+        ),
+    ]

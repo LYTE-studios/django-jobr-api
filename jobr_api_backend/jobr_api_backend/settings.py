@@ -177,6 +177,18 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 MEDIA_URL = "https://api.jobr.lytestudios.be/api/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Update with your SMTP server
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')  # Set this in environment
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Set this in environment
+DEFAULT_FROM_EMAIL = 'noreply@jobr.be'
+
+# Frontend URL for password reset
+FRONTEND_URL = 'https://jobr.lytestudios.be'
+
 GOOGLE_CLIENT_ID = "Google_client_id"
 APPLE_CLIENT_ID = "Apple_client_id"
 

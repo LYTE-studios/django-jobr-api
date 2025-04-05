@@ -133,6 +133,8 @@ class VacancySerializer(serializers.ModelSerializer):
     week_day = WeekdaySerializer(many=True, read_only=True)
     salary_benefits = VacancySalaryBenefitSerializer(many=True, read_only=True)
     applicant_count = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
+    application_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Vacancy
@@ -153,7 +155,36 @@ class VacancySerializer(serializers.ModelSerializer):
             "skill",
             "salary_benefits",
             "applicant_count",
+            "is_favorited",
+            "application_status",
+            "latitude",
+            "longitude",
         ]
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and hasattr(request.user, 'employee_profile'):
+            return FavoriteVacancy.objects.filter(
+                employee=request.user.employee_profile,
+                vacancy=obj
+            ).exists()
+        return False
+
+    def get_application_status(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and hasattr(request.user, 'employee_profile'):
+            application = ApplyVacancy.objects.filter(
+                employee=request.user.employee_profile,
+                vacancy=obj
+            ).first()
+            if application:
+                return {
+                    'status': application.status,
+                    'applied_at': application.applied_at,
+                    'updated_at': application.updated_at,
+                    'notes': application.notes
+                }
+        return None
 
     def get_applicant_count(self, obj):
         return ApplyVacancy.objects.filter(vacancy=obj).count()
@@ -303,7 +334,24 @@ class ApplySerializer(serializers.ModelSerializer):
         queryset=Vacancy.objects.all(),
         many=False
     )
+    status = serializers.ChoiceField(choices=ApplicationStatus.choices, read_only=True)
+    applied_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = ApplyVacancy
-        fields = ["employee", "vacancy"]
+        fields = ["id", "employee", "vacancy", "status", "notes", "applied_at", "updated_at"]
+        read_only_fields = ["status", "applied_at", "updated_at"]
+
+class FavoriteVacancySerializer(serializers.ModelSerializer):
+    vacancy = VacancySerializer(read_only=True)
+    vacancy_id = serializers.PrimaryKeyRelatedField(
+        queryset=Vacancy.objects.all(),
+        source='vacancy',
+        write_only=True
+    )
+
+    class Meta:
+        model = FavoriteVacancy
+        fields = ['id', 'vacancy', 'vacancy_id', 'created_at']
+        read_only_fields = ['created_at']

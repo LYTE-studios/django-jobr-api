@@ -50,6 +50,28 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     language = LanguageSerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, read_only=True)
     contract_type = ContractTypeSerializer(read_only=True, allow_null=True)
+    availability_status = serializers.ChoiceField(
+        choices=[
+            ('immediately', 'Immediately Available'),
+            ('two_weeks', 'Available in 2 Weeks'),
+            ('one_month', 'Available in 1 Month'),
+            ('three_months', 'Available in 3 Months'),
+            ('unavailable', 'Not Available')
+        ],
+        required=False,
+        allow_null=True
+    )
+    employment_type = serializers.ChoiceField(
+        choices=[
+            ('full_time', 'Full Time'),
+            ('part_time', 'Part Time'),
+            ('contract', 'Contract'),
+            ('temporary', 'Temporary'),
+            ('internship', 'Internship')
+        ],
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Employee
@@ -443,6 +465,24 @@ class ReviewSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("You have already reviewed this user")
 
         return data
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user found with this email address.")
+        return value
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate_new_password(self, value):
+        # Add password validation here if needed
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        return value
 
 class VATValidationSerializer(serializers.Serializer):
     vat_number = serializers.CharField(max_length=12)

@@ -12,7 +12,10 @@ from .views import (
     SkillViewSet,
     FunctionSkillViewSet,
     SalaryBenefitViewSet,
-    SectorViewSet
+    SectorViewSet,
+    JobApplicationViewSet,
+    FavoriteVacancyViewSet,
+    AIVacancySuggestionsView
 )
 
 # Create a router and register our viewsets with it
@@ -27,15 +30,8 @@ router.register(r'skills', SkillViewSet, basename='skill')
 router.register(r'function-skills', FunctionSkillViewSet, basename='function-skill')
 router.register(r'vacancies', VacancyViewSet, basename='vacancy')
 router.register(r'salary-benefits', SalaryBenefitViewSet, basename='salary-benefit')
-
-# The router will generate URLs like:
-# /locations/ -> location-list
-# /locations/{id}/ -> location-detail
-# /functions/ -> function-list
-# /functions/{id}/ -> function-detail
-# /skills/ -> skill-list
-# /skills/{id}/ -> skill-detail
-# etc.
+router.register(r'applications', JobApplicationViewSet, basename='application')
+router.register(r'favorites', FavoriteVacancyViewSet, basename='favorite')
 
 urlpatterns = [
     # Include router URLs
@@ -43,4 +39,5 @@ urlpatterns = [
     
     # Additional endpoints
     path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),
+    path('suggestions/', AIVacancySuggestionsView.as_view(), name='vacancy-suggestions'),
 ]

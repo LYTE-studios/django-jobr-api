@@ -7,14 +7,16 @@ from accounts.models import ProfileOption
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
-    SalaryBenefit, Sector
+    SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
+    ApplicationStatus
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
     FunctionSerializer, LanguageSerializer,
     QuestionSerializer, SkillSerializer,
     VacancySerializer, FunctionSkillSerializer,
-    SalaryBenefitSerializer, SectorSerializer
+    SalaryBenefitSerializer, SectorSerializer,
+    ApplySerializer, FavoriteVacancySerializer
 )
 
 class SectorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -160,6 +162,11 @@ class VacancyFilterView(generics.ListAPIView):
         """Filter and sort vacancies based on query parameters."""
         queryset = Vacancy.objects.all()
 
+        # Filter by sector
+        sector = self.request.query_params.get('sector', None)
+        if sector:
+            queryset = queryset.filter(function__sectors__id=sector)
+
         # Filter by contract type
         contract_type = self.request.query_params.get('contract_type', None)
         if contract_type:
@@ -169,6 +176,19 @@ class VacancyFilterView(generics.ListAPIView):
         skills = self.request.query_params.getlist('skills', None)
         if skills:
             queryset = queryset.filter(skill__id__in=skills)
+
+        # Filter by function
+        function = self.request.query_params.get('function', None)
+        if function:
+            queryset = queryset.filter(function_id=function)
+
+        # Filter by salary range
+        min_salary = self.request.query_params.get('min_salary', None)
+        max_salary = self.request.query_params.get('max_salary', None)
+        if min_salary:
+            queryset = queryset.filter(salary__gte=float(min_salary))
+        if max_salary:
+            queryset = queryset.filter(salary__lte=float(max_salary))
 
         # Filter by distance if user has location
         if hasattr(self.request.user, 'employee_profile'):
@@ -214,3 +234,131 @@ class FunctionSkillViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(function_id=function_id)
         
         return queryset.order_by('-weight')
+
+class JobApplicationViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing job applications."""
+    serializer_class = ApplySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter applications based on user role."""
+        user = self.request.user
+        if user.role == ProfileOption.EMPLOYER:
+            return ApplyVacancy.objects.filter(vacancy__company__in=user.companies.all())
+        elif user.role == ProfileOption.EMPLOYEE and hasattr(user, 'employee_profile'):
+            return ApplyVacancy.objects.filter(employee=user.employee_profile)
+        return ApplyVacancy.objects.none()
+
+    def perform_create(self, serializer):
+        """Create a job application."""
+        user = self.request.user
+        if user.role != ProfileOption.EMPLOYEE:
+            raise PermissionDenied("Only employees can apply for jobs")
+        if not hasattr(user, 'employee_profile'):
+            raise ValidationError("Employee profile not found")
+        serializer.save(employee=user.employee_profile)
+
+    def update(self, request, *args, **kwargs):
+        """Update application status."""
+        instance = self.get_object()
+        user = request.user
+
+        # Only employers can update application status
+        if user.role != ProfileOption.EMPLOYER:
+            raise PermissionDenied("Only employers can update application status")
+
+        # Ensure employer owns the vacancy
+        if instance.vacancy.company not in user.companies.all():
+            raise PermissionDenied("You can only update applications for your vacancies")
+
+        # Update status
+        new_status = request.data.get('status')
+        if new_status not in dict(ApplicationStatus.choices):
+            raise ValidationError("Invalid status")
+
+        instance.status = new_status
+        instance.notes = request.data.get('notes', instance.notes)
+        instance.save()
+
+        return Response(self.get_serializer(instance).data)
+
+class FavoriteVacancyViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing favorite vacancies."""
+    serializer_class = FavoriteVacancySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Get user's favorite vacancies."""
+        user = self.request.user
+        if user.role == ProfileOption.EMPLOYEE and hasattr(user, 'employee_profile'):
+            return FavoriteVacancy.objects.filter(employee=user.employee_profile)
+        return FavoriteVacancy.objects.none()
+
+    def perform_create(self, serializer):
+        """Add a vacancy to favorites."""
+        user = self.request.user
+        if user.role != ProfileOption.EMPLOYEE:
+            raise PermissionDenied("Only employees can favorite vacancies")
+        if not hasattr(user, 'employee_profile'):
+            raise ValidationError("Employee profile not found")
+        serializer.save(employee=user.employee_profile)
+
+    def destroy(self, request, *args, **kwargs):
+        """Remove a vacancy from favorites."""
+        instance = self.get_object()
+        if instance.employee.user != request.user:
+            raise PermissionDenied("You can only remove your own favorites")
+        return super().destroy(request, *args, **kwargs)
+
+class AIVacancySuggestionsView(generics.ListAPIView):
+    """View for AI-powered vacancy suggestions."""
+    serializer_class = VacancySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Get AI-suggested vacancies for the employee."""
+        user = self.request.user
+        if user.role != ProfileOption.EMPLOYEE or not hasattr(user, 'employee_profile'):
+            return Vacancy.objects.none()
+
+        employee = user.employee_profile
+        
+        # Base query for active vacancies
+        queryset = Vacancy.objects.all()
+
+        # Match by function if available
+        if employee.function:
+            queryset = queryset.filter(function=employee.function)
+
+        # Match by skills
+        if employee.skill.exists():
+            queryset = queryset.filter(skill__in=employee.skill.all())
+
+        # Match by languages
+        if employee.language.exists():
+            queryset = queryset.filter(languages__language__in=employee.language.all())
+
+        # Filter by location if available
+        if employee.latitude and employee.longitude:
+            queryset = queryset.filter(
+                latitude__isnull=False,
+                longitude__isnull=False
+            ).extra(
+                where=[
+                    """
+                    ST_Distance_Sphere(
+                        point(longitude, latitude),
+                        point(%s, %s)
+                    ) <= %s * 1000
+                    """
+                ],
+                params=[employee.longitude, employee.latitude, 50]  # 50km radius
+            )
+
+        # Order by relevance (number of matching criteria)
+        queryset = queryset.annotate(
+            relevance_score=Count('skill', filter=Q(skill__in=employee.skill.all())) +
+            Count('languages__language', filter=Q(languages__language__in=employee.language.all()))
+        ).order_by('-relevance_score')
+
+        return queryset[:10]  # Return top 10 matches

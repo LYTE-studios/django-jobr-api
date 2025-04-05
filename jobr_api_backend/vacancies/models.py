@@ -248,12 +248,46 @@ class Vacancy(models.Model):
         return self.title if self.title else "Untitled Vacancy"
 
 
+class ApplicationStatus(models.TextChoices):
+    """Status options for job applications."""
+    PENDING = 'pending', 'Pending'
+    UNDER_REVIEW = 'under_review', 'Under Review'
+    ACCEPTED = 'accepted', 'Accepted'
+    REJECTED = 'rejected', 'Rejected'
+    WITHDRAWN = 'withdrawn', 'Withdrawn'
+
 class ApplyVacancy(models.Model):
     """
     Represents an application for a job vacancy by an employee.
     """
     employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
     vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=ApplicationStatus.choices,
+        default=ApplicationStatus.PENDING
+    )
+    applied_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-applied_at']
 
     def __str__(self):
-        return f"{self.employee} applied to {self.vacancy}"
+        return f"{self.employee} applied to {self.vacancy} - {self.status}"
+
+class FavoriteVacancy(models.Model):
+    """
+    Represents a vacancy that has been favorited by an employee.
+    """
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE, related_name='favorite_vacancies')
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('employee', 'vacancy')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee} favorited {self.vacancy}"

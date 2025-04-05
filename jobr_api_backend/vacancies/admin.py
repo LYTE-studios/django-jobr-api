@@ -169,7 +169,7 @@ class FunctionAdmin(admin.ModelAdmin):
                     function_skill.save()
                 self.message_user(request, "Skill weights updated successfully.")
                 return HttpResponseRedirect(
-                    reverse('admin:vacancies_function_changelist')
+                    reverse('admin:vacancies_function_change', args=[function.pk])
                 )
         else:
             form = SkillWeightForm()

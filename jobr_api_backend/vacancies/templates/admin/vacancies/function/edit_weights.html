@@ -2,41 +2,69 @@
 {% load i18n admin_urls static admin_modify %}
 
 {% block extrahead %}{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <style type="text/css">
-    .weight-fields {
+    .weight-container {
         margin: 20px;
         padding: 20px;
         background-color: #fff;
         border: 1px solid #ddd;
         border-radius: 4px;
     }
-    .weight-field {
-        margin-bottom: 15px;
+    .sortable-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .sortable-item {
+        padding: 12px 15px;
+        margin: 5px 0;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        cursor: move;
         display: flex;
         align-items: center;
+        transition: background-color 0.2s;
     }
-    .weight-field label {
-        flex: 0 0 200px;
-        font-weight: bold;
+    .sortable-item:hover {
+        background-color: #e9ecef;
     }
-    .weight-field input {
-        width: 100px;
-        padding: 5px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+    .sortable-item.sortable-ghost {
+        opacity: 0.4;
+    }
+    .sortable-item.sortable-chosen {
+        background-color: #e9ecef;
+    }
+    .handle {
+        margin-right: 10px;
+        color: #6c757d;
+        cursor: move;
+    }
+    .item-name {
+        flex-grow: 1;
+        font-weight: 500;
+    }
+    .weight-display {
+        margin-left: 15px;
+        color: #6c757d;
+        font-size: 0.9em;
     }
     .submit-row {
         padding: 20px;
         text-align: right;
+    }
+    .submit-row a.closelink {
+        margin-left: 10px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div id="content-main">
-    <form method="post">
+    <form method="post" id="weight-form">
         {% csrf_token %}
-        <div class="weight-fields">
+        <div class="weight-container">
             <h1>{{ title }}</h1>
             {% if form.errors %}
                 <p class="errornote">
@@ -44,13 +72,16 @@
                 </p>
             {% endif %}
             
-            {% for field in form %}
-                <div class="weight-field">
-                    {{ field.errors }}
-                    {{ field.label_tag }}
-                    {{ field }}
-                </div>
-            {% endfor %}
+            <ul class="sortable-list" id="sortable">
+                {% for field in form %}
+                    <li class="sortable-item" data-field-id="{{ field.name }}">
+                        <span class="handle">⋮⋮</span>
+                        <span class="item-name">{{ field.label }}</span>
+                        <span class="weight-display">Weight: <span class="weight-value">0</span></span>
+                        <input type="hidden" name="{{ field.name }}" value="0" />
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
         
         <div class="submit-row">
@@ -59,4 +90,35 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var sortableList = document.getElementById('sortable');
+    var items = sortableList.getElementsByClassName('sortable-item');
+
+    // Initialize weights
+    function updateWeights() {
+        Array.from(items).forEach(function(item, index) {
+            var weightDisplay = item.querySelector('.weight-value');
+            var weightInput = item.querySelector('input[type="hidden"]');
+            weightDisplay.textContent = index;
+            weightInput.value = index;
+        });
+    }
+
+    // Initialize Sortable
+    new Sortable(sortableList, {
+        animation: 150,
+        handle: '.handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function() {
+            updateWeights();
+        }
+    });
+
+    // Set initial weights
+    updateWeights();
+});
+</script>
 {% endblock %}

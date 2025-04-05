@@ -97,7 +97,7 @@ class Function(models.Model):
     """
     name = models.CharField(max_length=255)
     weight = models.IntegerField(null=True)
-    sector = models.ForeignKey(Sector, on_delete=models.CASCADE, related_name='functions', null=True, blank=True)
+    sectors = models.ManyToManyField(Sector, related_name='functions', blank=True)
     skills = models.ManyToManyField(Skill, through=FunctionSkill, related_name='functions')
 
     def __str__(self):

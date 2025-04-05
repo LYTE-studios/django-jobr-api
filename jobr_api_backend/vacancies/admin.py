@@ -41,6 +41,13 @@ class FunctionAdminForm(forms.ModelForm):
         widget=admin.widgets.FilteredSelectMultiple('Skills', False),
         label='Select Skills'
     )
+    
+    sectors = forms.ModelMultipleChoiceField(
+        queryset=Sector.objects.all(),
+        required=False,
+        widget=admin.widgets.FilteredSelectMultiple('Sectors', False),
+        label='Select Sectors'
+    )
 
     class Meta:
         model = Function
@@ -117,9 +124,13 @@ class FunctionAdminForm(forms.ModelForm):
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
     form = FunctionAdminForm
-    list_display = ('name', 'weight', 'sector', 'get_skills_count')
-    search_fields = ('name', 'sector__name')
-    list_filter = ('weight', 'sector')
+    list_display = ('name', 'weight', 'get_sectors', 'get_skills_count')
+    search_fields = ('name', 'sectors__name')
+    list_filter = ('weight', 'sectors')
+
+    def get_sectors(self, obj):
+        return ", ".join([sector.name for sector in obj.sectors.all()])
+    get_sectors.short_description = 'Sectors'
     ordering = ('name',)
     list_per_page = 25
     actions = ['edit_skill_weights']

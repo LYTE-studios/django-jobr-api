@@ -10,13 +10,35 @@ from .models import (
     FunctionSkill
 )
 
+class SectorAdminForm(forms.ModelForm):
+    functions = forms.ModelMultipleChoiceField(
+        queryset=Function.objects.all(),
+        required=False,
+        widget=admin.widgets.FilteredSelectMultiple('Functions', False),
+        label='Select Functions'
+    )
+
+    class Meta:
+        model = Sector
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['functions'].initial = self.instance.functions.all()
+
 @admin.register(Sector)
 class SectorAdmin(admin.ModelAdmin):
-    list_display = ('name', 'weight', 'enabled')
-    search_fields = ('name',)
+    form = SectorAdminForm
+    list_display = ('name', 'weight', 'enabled', 'get_functions_count')
+    search_fields = ('name', 'functions__name')
     list_filter = ('weight', 'enabled')
     ordering = ('name',)
     list_per_page = 25
+
+    def get_functions_count(self, obj):
+        return obj.functions.count()
+    get_functions_count.short_description = 'Functions'
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):

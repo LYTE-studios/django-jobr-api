@@ -56,15 +56,14 @@ class ContractTypeAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-class FunctionSkillInline(admin.TabularInline):
-    model = FunctionSkill
-    extra = 1
-    autocomplete_fields = ['skill']
-    fields = ('skill', 'weight')
-    verbose_name = "Skill with Weight"
-    verbose_name_plural = "Skills with Weights"
-
 class FunctionAdminForm(forms.ModelForm):
+    all_skills = forms.ModelMultipleChoiceField(
+        queryset=Skill.objects.all(),
+        required=False,
+        widget=admin.widgets.FilteredSelectMultiple('Skills', False),
+        label='Select Skills'
+    )
+    
     sectors = forms.ModelMultipleChoiceField(
         queryset=Sector.objects.all(),
         required=False,
@@ -80,16 +79,44 @@ class FunctionAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['sectors'].initial = self.instance.sectors.all()
+            self.fields['all_skills'].initial = self.instance.skills.all()
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            self.save_m2m = self._save_m2m
+        return instance
+    
+    def _save_m2m(self):
+        # Handle skills
+        selected_skills = self.cleaned_data.get('all_skills', [])
+        
+        # Clear existing relationships but preserve weights
+        existing_weights = {
+            fs.skill_id: fs.weight
+            for fs in FunctionSkill.objects.filter(function=self.instance)
+        }
+        FunctionSkill.objects.filter(function=self.instance).delete()
+        
+        # Create new relationships with preserved or default weights
+        for skill in selected_skills:
+            weight = existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
+            FunctionSkill.objects.create(
+                function=self.instance,
+                skill=skill,
+                weight=weight
+            )
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
     form = FunctionAdminForm
-    inlines = [FunctionSkillInline]
     list_display = ('name', 'weight', 'get_sectors', 'get_skills_count')
     search_fields = ('name', 'sectors__name', 'skills__name')
     list_filter = ('weight', 'sectors')
     ordering = ('name',)
     list_per_page = 25
+    change_form_template = 'admin/vacancies/function/change_form.html'
 
     def get_sectors(self, obj):
         return ", ".join([sector.name for sector in obj.sectors.all()])
@@ -98,6 +125,67 @@ class FunctionAdmin(admin.ModelAdmin):
     def get_skills_count(self, obj):
         return obj.skills.count()
     get_skills_count.short_description = 'Skills'
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:function_id>/edit-weights/',
+                self.admin_site.admin_view(self.edit_weights_view),
+                name='edit-function-skill-weights',
+            ),
+        ]
+        return custom_urls + urls
+
+    def edit_weights_view(self, request, function_id):
+        function = self.get_object(request, function_id)
+        
+        if not function:
+            raise Http404("Function does not exist")
+
+        class SkillWeightForm(forms.Form):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                for skill in function.skills.all():
+                    weight = FunctionSkill.objects.get(function=function, skill=skill).weight
+                    self.fields[f'weight_{skill.id}'] = forms.IntegerField(
+                        label=skill.name,
+                        initial=weight,
+                        min_value=1,
+                        required=True
+                    )
+
+        if request.method == 'POST':
+            form = SkillWeightForm(request.POST)
+            if form.is_valid():
+                for skill in function.skills.all():
+                    weight = form.cleaned_data[f'weight_{skill.id}']
+                    function_skill = FunctionSkill.objects.get(
+                        function=function,
+                        skill=skill
+                    )
+                    function_skill.weight = weight
+                    function_skill.save()
+                self.message_user(request, "Skill weights updated successfully.")
+                return HttpResponseRedirect(
+                    reverse('admin:vacancies_function_changelist')
+                )
+        else:
+            form = SkillWeightForm()
+
+        context = {
+            'title': f'Edit Skill Weights for {function}',
+            'form': form,
+            'opts': self.model._meta,
+            'original': function,
+            'media': self.media + form.media,
+        }
+        return TemplateResponse(
+            request,
+            'admin/vacancies/function/edit_weights.html',
+            context,
+        )
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):

@@ -1,85 +1,13 @@
 {% extends "admin/change_form.html" %}
-{% load i18n admin_urls static admin_modify vacancy_tags %}
+{% load i18n admin_urls %}
 
-{% block extrahead %}{{ block.super }}
-<style type="text/css">
-    .weight-fields {
-        margin-top: 20px;
-        padding: 10px;
-        border: 1px solid #eee;
-        background-color: #f9f9f9;
-    }
-    .weight-fields h3 {
-        margin-top: 0;
-        margin-bottom: 15px;
-    }
-    .weight-field {
-        margin-bottom: 10px;
-    }
-    .weight-field label {
-        display: inline-block;
-        width: 200px;
-    }
-    .weight-field input {
-        width: 100px;
-    }
-</style>
-<script type="text/javascript">
-(function($) {
-    $(document).ready(function() {
-        var $skillSelect = $('#id_all_skills');
-        var $weightFields = $('.weight-fields');
-        
-        function updateWeightFields() {
-            // Hide all weight fields initially
-            $weightFields.find('.weight-field').hide();
-            
-            // Show and enable fields for selected skills
-            var selectedOptions = $skillSelect.find('option:selected');
-            selectedOptions.each(function() {
-                var skillId = $(this).val();
-                var weightField = $('#weight_field_' + skillId);
-                if (weightField.length) {
-                    weightField.show();
-                    weightField.find('input').prop('disabled', false);
-                }
-            });
-            
-            // Disable hidden fields but keep their values
-            $weightFields.find('.weight-field:hidden').each(function() {
-                $(this).find('input').prop('disabled', true);
-            });
-        }
-        
-        // Initial update
-        updateWeightFields();
-        
-        // Update on selection change
-        $skillSelect.on('change', function() {
-            updateWeightFields();
-        });
-        
-        // Ensure weight fields are enabled before form submission
-        $('form').on('submit', function() {
-            $weightFields.find('input').prop('disabled', false);
-        });
-    });
-})(django.jQuery);
-</script>
-{% endblock %}
-
-{% block after_field_sets %}
-<div class="weight-fields">
-    <h3>{% trans "Skill Weights" %}</h3>
-    {% for field in adminform.form %}
-        {% if field.name|startswith:"weight_" %}
-            <div class="weight-field" id="weight_field_{{ field.name|cut:'weight_' }}">
-                {{ field.errors }}
-                {{ field.label_tag }}
-                {{ field }}
-                <input type="hidden" name="{{ field.name }}" value="{{ field.value|default:1 }}" />
-            </div>
-        {% endif %}
-    {% endfor %}
-</div>
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    {% if original %}
+        <div class="submit-row">
+            <a href="{% url 'admin:edit-function-skill-weights' original.pk %}" class="button" style="background: #79aec8; padding: 10px 15px; color: white; border-radius: 4px; text-decoration: none;">
+                {% trans "Edit Skill Weights" %}
+            </a>
+        </div>
+    {% endif %}
 {% endblock %}

@@ -5,7 +5,7 @@ import django.utils.timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0033_add_employee_availability_fields'),
+        ('accounts', '0033_employee_availability_date_and_more'),
         ('vacancies', '0019_function_sectors_manytomany'),
     ]
 

@@ -84,7 +84,7 @@ class FunctionSkill(models.Model):
 
     class Meta:
         unique_together = ('function', 'skill')
-        ordering = ['-weight']  # Order by weight descending
+        ordering = ['weight']  # Order by weight ascending (0 at top)
 
     def __str__(self):
         return f"{self.skill} for {self.function} (weight: {self.weight})"

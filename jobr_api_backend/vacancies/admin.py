@@ -151,12 +151,16 @@ class FunctionAdmin(admin.ModelAdmin):
         class SkillWeightForm(forms.Form):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
-                skills = function.skills.filter(category=skill_type)
-                for skill in skills:
-                    weight = FunctionSkill.objects.get(function=function, skill=skill).weight
-                    self.fields[f'weight_{skill.id}'] = forms.IntegerField(
-                        label=skill.name,
-                        initial=weight,
+                # Get skills ordered by their current weights
+                function_skills = FunctionSkill.objects.filter(
+                    function=function,
+                    skill__category=skill_type
+                ).select_related('skill').order_by('weight')
+                
+                for function_skill in function_skills:
+                    self.fields[f'weight_{function_skill.skill.id}'] = forms.IntegerField(
+                        label=function_skill.skill.name,
+                        initial=function_skill.weight,
                         min_value=0,
                         required=True
                     )
@@ -173,15 +177,23 @@ class FunctionAdmin(admin.ModelAdmin):
             if form.is_valid():
                 # Update all weights in a single transaction
                 with transaction.atomic():
-                    skills = function.skills.filter(category=skill_type)
-                    for skill in skills:
-                        field_name = f'weight_{skill.id}'
-                        if field_name in form.cleaned_data:
-                            weight = form.cleaned_data[field_name]
-                            FunctionSkill.objects.filter(
-                                function=function,
-                                skill=skill
-                            ).update(weight=weight)
+                    # Get all skills for this function of the specified type
+                    function_skills = FunctionSkill.objects.filter(
+                        function=function,
+                        skill__category=skill_type
+                    ).select_related('skill')
+                    
+                    # Create a mapping of skill_id to weight from the form data
+                    new_weights = {
+                        int(key.split('_')[1]): value
+                        for key, value in form.cleaned_data.items()
+                    }
+                    
+                    # Update each function_skill with its new weight
+                    for function_skill in function_skills:
+                        if function_skill.skill.id in new_weights:
+                            function_skill.weight = new_weights[function_skill.skill.id]
+                            function_skill.save()
                 
                 self.message_user(request, f"{skill_type.title()} skill weights updated successfully.")
                 return HttpResponseRedirect(

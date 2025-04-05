@@ -17,7 +17,9 @@ from .models import (
     ProfileInterest,
     SalaryBenefit,
     FunctionSkill,
-    Sector
+    Sector,
+    ApplicationStatus,
+    FavoriteVacancy
 )
 from accounts.models import ProfileOption
 

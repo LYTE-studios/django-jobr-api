@@ -3,6 +3,7 @@ from django.http import HttpResponseRedirect, Http404
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django import forms
+from django.db import transaction
 from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
@@ -138,54 +139,84 @@ class FunctionAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    def edit_weights_view(self, request, function_id):
+    def edit_weights_view(self, request, function_id, skill_type=None):
         function = self.get_object(request, function_id)
         
         if not function:
             raise Http404("Function does not exist")
 
+        if skill_type not in ['hard', 'soft']:
+            raise Http404("Invalid skill type")
+
         class SkillWeightForm(forms.Form):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
-                for skill in function.skills.all():
+                skills = function.skills.filter(category=skill_type)
+                for skill in skills:
                     weight = FunctionSkill.objects.get(function=function, skill=skill).weight
                     self.fields[f'weight_{skill.id}'] = forms.IntegerField(
                         label=skill.name,
                         initial=weight,
-                        min_value=1,
+                        min_value=0,
                         required=True
                     )
 
         if request.method == 'POST':
-            form = SkillWeightForm(request.POST)
+            # Create a dictionary of field names and values from POST data
+            post_data = {
+                f'weight_{key.split("_")[-1]}': value
+                for key, value in request.POST.items()
+                if key.startswith('weight_')
+            }
+            
+            form = SkillWeightForm(post_data)
             if form.is_valid():
-                for skill in function.skills.all():
-                    weight = form.cleaned_data[f'weight_{skill.id}']
-                    function_skill = FunctionSkill.objects.get(
-                        function=function,
-                        skill=skill
-                    )
-                    function_skill.weight = weight
-                    function_skill.save()
-                self.message_user(request, "Skill weights updated successfully.")
+                # Update all weights in a single transaction
+                with transaction.atomic():
+                    skills = function.skills.filter(category=skill_type)
+                    for skill in skills:
+                        field_name = f'weight_{skill.id}'
+                        if field_name in form.cleaned_data:
+                            weight = form.cleaned_data[field_name]
+                            FunctionSkill.objects.filter(
+                                function=function,
+                                skill=skill
+                            ).update(weight=weight)
+                
+                self.message_user(request, f"{skill_type.title()} skill weights updated successfully.")
                 return HttpResponseRedirect(
                     reverse('admin:vacancies_function_change', args=[function.pk])
                 )
+            else:
+                self.message_user(request, "Error updating weights. Please check the values.", level='ERROR')
         else:
             form = SkillWeightForm()
 
         context = {
-            'title': f'Edit Skill Weights for {function}',
+            'title': f'Edit {skill_type.title()} Skill Weights for {function}',
             'form': form,
             'opts': self.model._meta,
             'original': function,
             'media': self.media + form.media,
+            'skill_type': skill_type,
         }
         return TemplateResponse(
             request,
             'admin/vacancies/function/edit_weights.html',
             context,
         )
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:function_id>/edit-weights/<str:skill_type>/',
+                self.admin_site.admin_view(self.edit_weights_view),
+                name='edit-function-skill-weights',
+            ),
+        ]
+        return custom_urls + urls
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):

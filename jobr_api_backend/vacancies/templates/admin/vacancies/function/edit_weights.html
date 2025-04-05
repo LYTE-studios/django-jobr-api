@@ -57,6 +57,19 @@
     .submit-row a.closelink {
         margin-left: 10px;
     }
+    /* Skill type specific styles */
+    .skill-type-hard .sortable-item {
+        border-left: 4px solid #79aec8;
+    }
+    .skill-type-soft .sortable-item {
+        border-left: 4px solid #ba79c8;
+    }
+    .skill-type-hard .submit-row input[type="submit"] {
+        background: #79aec8;
+    }
+    .skill-type-soft .submit-row input[type="submit"] {
+        background: #ba79c8;
+    }
 </style>
 {% endblock %}
 
@@ -64,28 +77,35 @@
 <div id="content-main">
     <form method="post" id="weight-form">
         {% csrf_token %}
-        <div class="weight-container">
+        <div class="weight-container skill-type-{{ skill_type }}">
             <h1>{{ title }}</h1>
             {% if form.errors %}
                 <p class="errornote">
                     {% blocktranslate count counter=form.errors.items|length %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
                 </p>
+                {{ form.errors }}
             {% endif %}
             
-            <ul class="sortable-list" id="sortable">
-                {% for field in form %}
-                    <li class="sortable-item" data-field-id="{{ field.name }}">
-                        <span class="handle">⋮⋮</span>
-                        <span class="item-name">{{ field.label }}</span>
-                        <span class="weight-display">Weight: <span class="weight-value">0</span></span>
-                        <input type="hidden" name="{{ field.name }}" value="0" />
-                    </li>
-                {% endfor %}
-            </ul>
+            {% if not form.fields %}
+                <p>No {{ skill_type }} skills assigned to this function yet. Add some {{ skill_type }} skills first.</p>
+            {% else %}
+                <ul class="sortable-list" id="sortable">
+                    {% for field in form %}
+                        <li class="sortable-item" data-field-id="{{ field.name }}">
+                            <span class="handle">⋮⋮</span>
+                            <span class="item-name">{{ field.label }}</span>
+                            <span class="weight-display">Weight: <span class="weight-value">0</span></span>
+                            <input type="hidden" name="{{ field.name }}" id="{{ field.auto_id }}" value="0" />
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
         </div>
         
-        <div class="submit-row">
-            <input type="submit" value="{% trans 'Save weights' %}" class="default" name="_save">
+        <div class="submit-row skill-type-{{ skill_type }}">
+            {% if form.fields %}
+                <input type="submit" value="{% trans 'Save weights' %}" class="default" name="_save">
+            {% endif %}
             <a href="{% url 'admin:vacancies_function_change' original.pk %}" class="closelink">{% trans 'Cancel' %}</a>
         </div>
     </form>
@@ -94,6 +114,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var sortableList = document.getElementById('sortable');
+    if (!sortableList) return;  // Exit if no sortable list (no skills)
+    
     var items = sortableList.getElementsByClassName('sortable-item');
 
     // Initialize weights

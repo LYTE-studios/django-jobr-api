@@ -4,9 +4,12 @@
 {% block submit_buttons_bottom %}
     {{ block.super }}
     {% if original %}
-        <div class="submit-row">
-            <a href="{% url 'admin:edit-function-skill-weights' original.pk %}" class="button" style="background: #79aec8; padding: 10px 15px; color: white; border-radius: 4px; text-decoration: none;">
-                {% trans "Edit Skill Weights" %}
+        <div class="submit-row" style="display: flex; gap: 10px; justify-content: flex-end;">
+            <a href="{% url 'admin:edit-function-skill-weights' original.pk 'hard' %}" class="button" style="background: #79aec8; padding: 10px 15px; color: white; border-radius: 4px; text-decoration: none;">
+                {% trans "Edit Hard Skill Weights" %}
+            </a>
+            <a href="{% url 'admin:edit-function-skill-weights' original.pk 'soft' %}" class="button" style="background: #ba79c8; padding: 10px 15px; color: white; border-radius: 4px; text-decoration: none;">
+                {% trans "Edit Soft Skill Weights" %}
             </a>
         </div>
     {% endif %}

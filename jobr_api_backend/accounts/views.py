@@ -90,7 +90,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
-        user = User.objects.get(email=email)
+        user = CustomUser.objects.get(email=email)
 
         # Generate password reset token
         token = default_token_generator.make_token(user)
@@ -121,8 +121,8 @@ class PasswordResetConfirmView(generics.GenericAPIView):
     def post(self, request, uidb64, token):
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
             return Response(
                 {"detail": "Invalid reset link."},
                 status=status.HTTP_400_BAD_REQUEST

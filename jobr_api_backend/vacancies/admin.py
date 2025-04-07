@@ -86,28 +86,35 @@ class FunctionAdminForm(forms.ModelForm):
         instance = super().save(commit=False)
         if commit:
             instance.save()
-            self.save_m2m = self._save_m2m
+            # Store the original save_m2m
+            original_save_m2m = self.save_m2m
+            
+            def combined_save_m2m():
+                # First save the sectors using the default M2M save
+                original_save_m2m()
+                
+                # Then handle skills with weights
+                selected_skills = self.cleaned_data.get('all_skills', [])
+                
+                # Clear existing relationships but preserve weights
+                existing_weights = {
+                    fs.skill_id: fs.weight
+                    for fs in FunctionSkill.objects.filter(function=self.instance)
+                }
+                FunctionSkill.objects.filter(function=self.instance).delete()
+                
+                # Create new relationships with preserved or default weights
+                for skill in selected_skills:
+                    weight = existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
+                    FunctionSkill.objects.create(
+                        function=self.instance,
+                        skill=skill,
+                        weight=weight
+                    )
+            
+            # Replace save_m2m with our combined version
+            self.save_m2m = combined_save_m2m
         return instance
-    
-    def _save_m2m(self):
-        # Handle skills
-        selected_skills = self.cleaned_data.get('all_skills', [])
-        
-        # Clear existing relationships but preserve weights
-        existing_weights = {
-            fs.skill_id: fs.weight
-            for fs in FunctionSkill.objects.filter(function=self.instance)
-        }
-        FunctionSkill.objects.filter(function=self.instance).delete()
-        
-        # Create new relationships with preserved or default weights
-        for skill in selected_skills:
-            weight = existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
-            FunctionSkill.objects.create(
-                function=self.instance,
-                skill=skill,
-                weight=weight
-            )
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):

@@ -5,6 +5,8 @@ from accounts.models import (
     CustomUser,
     Employee,
     Admin,
+    Company,
+    CompanyUser,
     UserGallery,
     ProfileOption,
     LikedEmployee,
@@ -446,3 +448,46 @@ class ReviewModelTests(TestCase):
                 rating=5,
                 comment="Duplicate review"
             )
+
+class CompanyModelTests(TestCase):
+    def setUp(self):
+        """Set up test data for Company model tests"""
+        self.employer = CustomUser.objects.create_user(
+            username='employer@test.com',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+
+    def test_vat_number_inheritance(self):
+        """Test that new companies inherit VAT number from the first company"""
+        # Get the first company that was automatically created
+        first_company = self.employer.companies.first()
+        
+        # Set a VAT number on the first company
+        first_company.vat_number = 'BE0123456789'
+        first_company.save()
+
+        # Create a new company using the same flow as the application
+        second_company = Company(name="Second Company")
+        second_company.save(company_users=[self.employer])
+        CompanyUser.objects.create(
+            company=second_company,
+            user=self.employer,
+            role='owner'
+        )
+
+        # Verify the second company got the same VAT number
+        self.assertEqual(second_company.vat_number, first_company.vat_number)
+
+        # Create a third company using the same flow
+        third_company = Company(name="Third Company")
+        third_company.save(company_users=[self.employer])
+        CompanyUser.objects.create(
+            company=third_company,
+            user=self.employer,
+            role='owner'
+        )
+
+        # Verify the third company got the same VAT number
+        self.assertEqual(third_company.vat_number, first_company.vat_number)

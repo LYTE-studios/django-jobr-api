@@ -119,6 +119,21 @@ class Company(models.Model):
         null=True,
         help_text="Number of employees in the company (e.g., '1-10', '11-50', '51-200', etc.)"
     )
+
+    def save(self, *args, **kwargs):
+        """Override save to set VAT number from first company if not set."""
+        if not self.vat_number and not self.pk:  # Only for new companies without VAT
+            # Get all users who will be owners of this company
+            company_users = kwargs.pop('company_users', [])
+            for user in company_users:
+                if user.role == ProfileOption.EMPLOYER:
+                    # Get the first company's VAT number
+                    first_company = user.companies.order_by('created_at').first()
+                    if first_company and first_company.vat_number:
+                        self.vat_number = first_company.vat_number
+                        break
+        
+        super().save(*args, **kwargs)
     users = models.ManyToManyField(
         'CustomUser',
         through='CompanyUser',
@@ -250,13 +265,18 @@ class CustomUser(AbstractUser):
                 # Create a default company for new employer users
                 if is_new:
                     with transaction.atomic():
-                        company = Company.objects.create(
+                        # Get VAT number from first company if it exists
+                        from .services import CompanyService
+                        vat_number = CompanyService.get_first_company_vat_number(self)
+                        
+                        company = Company(
                             name=f"{self.username}'s Company",
                             street_name="",
                             house_number="",
                             city="",
                             postal_code=""
                         )
+                        company.save(company_users=[self])
                         CompanyUser.objects.create(
                             company=company,
                             user=self,

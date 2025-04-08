@@ -277,6 +277,22 @@ class VATValidationService:
                 "message": f"Unable to validate VAT number: {str(e)}"
             })
 
+class CompanyService:
+    @staticmethod
+    def get_first_company_vat_number(user):
+        """
+        Get the VAT number of the first company created by a user.
+        Args:
+            user: CustomUser instance
+        Returns:
+            str or None: VAT number if found, None otherwise
+        """
+        if user.role != 'employer':
+            return None
+            
+        first_company = user.companies.order_by('created_at').first()
+        return first_company.vat_number if first_company else None
+
 class TokenService:
     @staticmethod
     def get_tokens_for_user(user):

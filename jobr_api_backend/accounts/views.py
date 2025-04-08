@@ -578,7 +578,15 @@ class UserViewSet(viewsets.ModelViewSet):
             if not user.employee_profile:
                 user.employee_profile = Employee.objects.create(user=user)
             for key, value in profile_data.items():
-                setattr(user.employee_profile, key, value)
+                # Handle many-to-many fields
+                if key in ['skill', 'language']:
+                    # Get the related manager for the field
+                    related_manager = getattr(user.employee_profile, key)
+                    # Use set() method for many-to-many fields
+                    related_manager.set(value)
+                else:
+                    # For regular fields, use setattr
+                    setattr(user.employee_profile, key, value)
             user.employee_profile.save()
 
 class EmployeeSearchView(generics.ListAPIView):

@@ -577,21 +577,43 @@ class UserViewSet(viewsets.ModelViewSet):
             profile_data = self.request.data['employee_profile']
             if not user.employee_profile:
                 user.employee_profile = Employee.objects.create(user=user)
-            # First handle all non-many-to-many fields
+            # First handle all non-many-to-many and non-OneToOne fields
             m2m_fields = {}
+            one_to_one_fields = {}
             for key, value in profile_data.items():
                 if key in ['skill', 'language']:
                     m2m_fields[key] = value
+                elif key in ['function']:
+                    one_to_one_fields[key] = value
                 else:
                     setattr(user.employee_profile, key, value)
             
             # Save the profile first
             user.employee_profile.save()
             
-            # Now handle many-to-many fields after the profile is saved
+            # Handle OneToOne fields
+            for key, value in one_to_one_fields.items():
+                if value is not None:
+                    setattr(user.employee_profile, key, value)
+                else:
+                    # If value is None, clear the relationship
+                    setattr(user.employee_profile, key, None)
+            
+            # Save again after OneToOne fields are set
+            user.employee_profile.save()
+            
+            # Now handle many-to-many fields
             for key, value in m2m_fields.items():
-                related_manager = getattr(user.employee_profile, key)
-                related_manager.set(value)
+                if value is not None:
+                    related_manager = getattr(user.employee_profile, key)
+                    try:
+                        related_manager.set(value)
+                    except Exception as e:
+                        print(f"Error setting {key}: {str(e)}")
+                else:
+                    # If value is None, clear the relationship
+                    related_manager = getattr(user.employee_profile, key)
+                    related_manager.clear()
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""

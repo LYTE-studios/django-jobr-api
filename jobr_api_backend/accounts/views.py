@@ -577,17 +577,21 @@ class UserViewSet(viewsets.ModelViewSet):
             profile_data = self.request.data['employee_profile']
             if not user.employee_profile:
                 user.employee_profile = Employee.objects.create(user=user)
+            # First handle all non-many-to-many fields
+            m2m_fields = {}
             for key, value in profile_data.items():
-                # Handle many-to-many fields
                 if key in ['skill', 'language']:
-                    # Get the related manager for the field
-                    related_manager = getattr(user.employee_profile, key)
-                    # Use set() method for many-to-many fields
-                    related_manager.set(value)
+                    m2m_fields[key] = value
                 else:
-                    # For regular fields, use setattr
                     setattr(user.employee_profile, key, value)
+            
+            # Save the profile first
             user.employee_profile.save()
+            
+            # Now handle many-to-many fields after the profile is saved
+            for key, value in m2m_fields.items():
+                related_manager = getattr(user.employee_profile, key)
+                related_manager.set(value)
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""

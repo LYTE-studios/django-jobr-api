@@ -575,11 +575,8 @@ class UserViewSet(viewsets.ModelViewSet):
         # Handle employee profile updates
         if 'employee_profile' in self.request.data and user.role == 'employee':
             profile_data = self.request.data['employee_profile']
-            # Save user first to ensure it has an ID
-            user.save()
-            
-            # Get or create employee profile
-            employee_profile, created = Employee.objects.get_or_create(user=user)
+            # Get the existing employee profile
+            employee_profile = user.employee_profile
             
             # First handle all non-many-to-many and non-OneToOne fields
             m2m_fields = {}

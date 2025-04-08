@@ -575,8 +575,12 @@ class UserViewSet(viewsets.ModelViewSet):
         # Handle employee profile updates
         if 'employee_profile' in self.request.data and user.role == 'employee':
             profile_data = self.request.data['employee_profile']
-            if not user.employee_profile:
-                user.employee_profile = Employee.objects.create(user=user)
+            # Save user first to ensure it has an ID
+            user.save()
+            
+            # Get or create employee profile
+            employee_profile, created = Employee.objects.get_or_create(user=user)
+            
             # First handle all non-many-to-many and non-OneToOne fields
             m2m_fields = {}
             one_to_one_fields = {}
@@ -586,33 +590,33 @@ class UserViewSet(viewsets.ModelViewSet):
                 elif key in ['function']:
                     one_to_one_fields[key] = value
                 else:
-                    setattr(user.employee_profile, key, value)
+                    setattr(employee_profile, key, value)
             
             # Save the profile first
-            user.employee_profile.save()
+            employee_profile.save()
             
             # Handle OneToOne fields
             for key, value in one_to_one_fields.items():
                 if value is not None:
-                    setattr(user.employee_profile, key, value)
+                    setattr(employee_profile, key, value)
                 else:
                     # If value is None, clear the relationship
-                    setattr(user.employee_profile, key, None)
+                    setattr(employee_profile, key, None)
             
             # Save again after OneToOne fields are set
-            user.employee_profile.save()
+            employee_profile.save()
             
             # Now handle many-to-many fields
             for key, value in m2m_fields.items():
                 if value is not None:
-                    related_manager = getattr(user.employee_profile, key)
+                    related_manager = getattr(employee_profile, key)
                     try:
                         related_manager.set(value)
                     except Exception as e:
                         print(f"Error setting {key}: {str(e)}")
                 else:
                     # If value is None, clear the relationship
-                    related_manager = getattr(user.employee_profile, key)
+                    related_manager = getattr(employee_profile, key)
                     related_manager.clear()
 
 class EmployeeSearchView(generics.ListAPIView):

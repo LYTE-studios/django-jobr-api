@@ -21,7 +21,7 @@ from .models import (
     ApplicationStatus,
     FavoriteVacancy
 )
-from accounts.models import ProfileOption
+from accounts.models import ProfileOption, Employee
 
 User = get_user_model()
 
@@ -330,7 +330,7 @@ class VacancySerializer(serializers.ModelSerializer):
 class ApplySerializer(serializers.ModelSerializer):
     # Write operations (when creating/updating applications)
     employee_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role=ProfileOption.EMPLOYEE),
+        queryset=Employee.objects.all(),
         source='employee',
         write_only=True
     )

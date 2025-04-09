@@ -59,7 +59,6 @@ class SectorAdminForm(forms.ModelForm):
                 raise
         return sector
 
-@admin.register(Sector)
 class SectorAdmin(admin.ModelAdmin):
     form = SectorAdminForm
     list_display = ('name', 'weight', 'enabled', 'get_functions_count')
@@ -77,20 +76,6 @@ class SectorAdmin(admin.ModelAdmin):
         return obj.functions.count()
     get_functions_count.short_description = 'Functions'
 
-@admin.register(Sector)
-class SectorAdmin(admin.ModelAdmin):
-    form = SectorAdminForm
-    list_display = ('name', 'weight', 'enabled', 'get_functions_count')
-    search_fields = ('name', 'functions__name')
-    list_filter = ('weight', 'enabled')
-    ordering = ('name',)
-    list_per_page = 25
-
-    def get_functions_count(self, obj):
-        return obj.functions.count()
-    get_functions_count.short_description = 'Functions'
-
-@admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -98,7 +83,6 @@ class LocationAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(ContractType)
 class ContractTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -201,7 +185,6 @@ class FunctionAdminForm(forms.ModelForm):
                 raise
         return function
 
-@admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
     form = FunctionAdminForm
     list_display = ('name', 'weight', 'get_sectors', 'get_skills_count')
@@ -215,24 +198,6 @@ class FunctionAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         form.request = request
         return form
-
-    def get_sectors(self, obj):
-        return ", ".join([sector.name for sector in obj.sectors.all()])
-    get_sectors.short_description = 'Sectors'
-
-    def get_skills_count(self, obj):
-        return obj.skills.count()
-    get_skills_count.short_description = 'Skills'
-
-@admin.register(Function)
-class FunctionAdmin(admin.ModelAdmin):
-    form = FunctionAdminForm
-    list_display = ('name', 'weight', 'get_sectors', 'get_skills_count')
-    search_fields = ('name', 'sectors__name', 'skills__name')
-    list_filter = ('weight', 'sectors')
-    ordering = ('name',)
-    list_per_page = 25
-    change_form_template = 'admin/vacancies/function/change_form.html'
 
     def get_sectors(self, obj):
         return ", ".join([sector.name for sector in obj.sectors.all()])
@@ -333,7 +298,6 @@ class FunctionAdmin(admin.ModelAdmin):
             context,
         )
 
-@admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -341,7 +305,6 @@ class QuestionAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(Language)
 class LanguageAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -349,7 +312,6 @@ class LanguageAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
     list_display = ('name', 'category', 'get_functions_count')
     search_fields = ('name',)
@@ -361,14 +323,12 @@ class SkillAdmin(admin.ModelAdmin):
         return obj.functions.count()
     get_functions_count.short_description = 'Used in Functions'
 
-@admin.register(Weekday)
 class WeekdayAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(SalaryBenefit)
 class SalaryBenefitAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -376,7 +336,6 @@ class SalaryBenefitAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(ProfileInterest)
 class ProfileInterestAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -384,7 +343,6 @@ class ProfileInterestAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(JobListingPrompt)
 class JobListingPromptAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')
     search_fields = ('name',)
@@ -392,7 +350,6 @@ class JobListingPromptAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
-@admin.register(Vacancy)
 class VacancyAdmin(admin.ModelAdmin):
     list_display = ('title', 'company', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
     list_filter = (
@@ -415,3 +372,17 @@ class VacancyAdmin(admin.ModelAdmin):
     raw_id_fields = ('company', 'created_by')
     date_hierarchy = 'job_date'
     list_per_page = 25
+
+# Register all models
+admin.site.register(Sector, SectorAdmin)
+admin.site.register(Location, LocationAdmin)
+admin.site.register(ContractType, ContractTypeAdmin)
+admin.site.register(Function, FunctionAdmin)
+admin.site.register(Question, QuestionAdmin)
+admin.site.register(Language, LanguageAdmin)
+admin.site.register(Skill, SkillAdmin)
+admin.site.register(Weekday, WeekdayAdmin)
+admin.site.register(SalaryBenefit, SalaryBenefitAdmin)
+admin.site.register(ProfileInterest, ProfileInterestAdmin)
+admin.site.register(JobListingPrompt, JobListingPromptAdmin)
+admin.site.register(Vacancy, VacancyAdmin)

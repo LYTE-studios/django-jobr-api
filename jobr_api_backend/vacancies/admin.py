@@ -24,22 +24,18 @@ class SectorAdminForm(forms.ModelForm):
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(SectorAdminForm, self).__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['functions'].initial = self.instance.functions.all()
 
     def save(self, commit=True):
-        sector = super().save(commit=False)
+        sector = super(SectorAdminForm, self).save(commit=False)
         if commit:
             sector.save()
-            self._save_m2m()
+            self.save_m2m()
+            if 'functions' in self.cleaned_data:
+                sector.functions.set(self.cleaned_data['functions'])
         return sector
-
-    def _save_m2m(self):
-        super().save_m2m()  # Save the parent's m2m fields first
-        # Now handle the functions relationship
-        if 'functions' in self.cleaned_data:
-            self.instance.functions.set(self.cleaned_data['functions'])
 
 @admin.register(Sector)
 class SectorAdmin(admin.ModelAdmin):
@@ -90,48 +86,45 @@ class FunctionAdminForm(forms.ModelForm):
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(FunctionAdminForm, self).__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['sectors'].initial = self.instance.sectors.all()
             self.fields['all_skills'].initial = self.instance.skills.all()
 
     def save(self, commit=True):
-        function = super().save(commit=False)
+        function = super(FunctionAdminForm, self).save(commit=False)
         if commit:
             function.save()
-            self._save_m2m()
-        return function
-
-    def _save_m2m(self):
-        super().save_m2m()  # Save the parent's m2m fields first
-        
-        # Handle sectors relationship
-        if 'sectors' in self.cleaned_data:
-            self.instance.sectors.set(self.cleaned_data['sectors'])
-        
-        # Handle skills with weights
-        if 'all_skills' in self.cleaned_data:
-            selected_skills = self.cleaned_data['all_skills']
+            self.save_m2m()
             
-            # Preserve existing weights
-            existing_weights = {
-                fs.skill_id: fs.weight
-                for fs in FunctionSkill.objects.filter(function=self.instance)
-            }
+            # Handle sectors
+            if 'sectors' in self.cleaned_data:
+                function.sectors.set(self.cleaned_data['sectors'])
             
-            with transaction.atomic():
-                # Clear existing relationships
-                FunctionSkill.objects.filter(function=self.instance).delete()
+            # Handle skills with weights
+            if 'all_skills' in self.cleaned_data:
+                selected_skills = self.cleaned_data['all_skills']
                 
-                # Create new relationships with preserved or default weights
-                FunctionSkill.objects.bulk_create([
-                    FunctionSkill(
-                        function=self.instance,
-                        skill=skill,
-                        weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
-                    )
-                    for skill in selected_skills
-                ])
+                # Preserve existing weights
+                existing_weights = {
+                    fs.skill_id: fs.weight
+                    for fs in FunctionSkill.objects.filter(function=function)
+                }
+                
+                with transaction.atomic():
+                    # Clear existing relationships
+                    FunctionSkill.objects.filter(function=function).delete()
+                    
+                    # Create new relationships with preserved or default weights
+                    FunctionSkill.objects.bulk_create([
+                        FunctionSkill(
+                            function=function,
+                            skill=skill,
+                            weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
+                        )
+                        for skill in selected_skills
+                    ])
+        return function
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):
@@ -156,7 +149,7 @@ class FunctionAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path(
-                '<int:function_id>/edit-weights/',
+                '<int:function_id>/edit-weights/<str:skill_type>/',
                 self.admin_site.admin_view(self.edit_weights_view),
                 name='edit-function-skill-weights',
             ),
@@ -241,18 +234,6 @@ class FunctionAdmin(admin.ModelAdmin):
             'admin/vacancies/function/edit_weights.html',
             context,
         )
-
-    def get_urls(self):
-        from django.urls import path
-        urls = super().get_urls()
-        custom_urls = [
-            path(
-                '<int:function_id>/edit-weights/<str:skill_type>/',
-                self.admin_site.admin_view(self.edit_weights_view),
-                name='edit-function-skill-weights',
-            ),
-        ]
-        return custom_urls + urls
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):

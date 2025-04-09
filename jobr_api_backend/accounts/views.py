@@ -31,7 +31,7 @@ from .serializers import (
 )
 from .services import VATValidationService
 from django.core.cache import cache
-from rest_framework.exceptions import ValidationError, Throttled
+from rest_framework.exceptions import ValidationError, Throttled, PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
 
 class LoginView(generics.GenericAPIView):
@@ -164,10 +164,10 @@ class VATValidationView(generics.GenericAPIView):
             else:
                 ip = request.META.get('REMOTE_ADDR')
 
-            # Get employer if available
-            employer = None
-            if hasattr(request.user, 'employer_profile'):
-                employer = request.user.employer_profile
+            # Get selected company if available
+            company = None
+            if request.user.role == ProfileOption.EMPLOYER:
+                company = request.user.selected_company
 
             # Check cache first
             cache_key = f"vat_validation_{vat_number}"
@@ -176,7 +176,7 @@ class VATValidationView(generics.GenericAPIView):
                 return Response(cached_result)
 
             # Validate VAT number
-            result = VATValidationService.validate_vat(vat_number, ip, employer)
+            result = VATValidationService.validate_vat(vat_number, ip, company)
 
             # Cache the result
             cache.set(cache_key, result, timeout=86400)  # 24 hours
@@ -638,23 +638,23 @@ class EmployeeSearchView(generics.ListAPIView):
         return queryset
 
 class EmployerSearchView(generics.ListAPIView):
-    """Search for employers."""
-    serializer_class = UserSerializer
+    """Search for companies."""
+    serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
     pagination_class = None
 
     def get_queryset(self):
-        """Filter employers based on search term."""
-        queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYER)
+        """Filter companies based on search term."""
+        queryset = Company.objects.all()
         search = self.request.GET.get('search', None)
         if search:
             queryset = queryset.filter(
-                Q(username__icontains=search) |
-                Q(employer_profile__company_name__icontains=search) |
-                Q(employer_profile__biography__icontains=search) |
-                Q(employer_profile__city__icontains=search) |
-                Q(employer_profile__website__icontains=search) |
-                Q(employer_profile__vat_number__icontains=search)
+                Q(name__icontains=search) |
+                Q(description__icontains=search) |
+                Q(city__icontains=search) |
+                Q(website__icontains=search) |
+                Q(vat_number__icontains=search) |
+                Q(sector__name__icontains=search)
             ).distinct()
         return queryset
 
@@ -665,21 +665,28 @@ class LikedEmployeeView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Get liked employees for the current employer."""
-        if not hasattr(self.request.user, 'employer_profile'):
+        """Get liked employees for the current employer's company."""
+        if self.request.user.role != ProfileOption.EMPLOYER or not self.request.user.selected_company:
             return LikedEmployee.objects.none()
-        return LikedEmployee.objects.filter(employer=self.request.user.employer_profile)
+        return LikedEmployee.objects.filter(company=self.request.user.selected_company)
 
     def perform_create(self, serializer):
         """Create a new liked employee relationship."""
-        serializer.save(employer=self.request.user.employer_profile)
+        if not self.request.user.selected_company:
+            raise ValidationError("No company selected")
+        serializer.save(
+            company=self.request.user.selected_company,
+            liked_by=self.request.user
+        )
 
     @action(detail=True, methods=['delete'])
     def unlike(self, request, pk=None):
         """Remove a liked employee relationship."""
+        if not request.user.selected_company:
+            raise ValidationError("No company selected")
         liked = get_object_or_404(
             LikedEmployee,
-            employer=request.user.employer_profile,
+            company=request.user.selected_company,
             employee_id=pk
         )
         liked.delete()

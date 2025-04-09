@@ -115,14 +115,14 @@ class VATValidationService:
         cache.set(f"{cls.VAT_CACHE_PREFIX}{vat_number}", result, timeout=cls.VAT_CACHE_TIMEOUT)
 
     @classmethod
-    def validate_vat(cls, vat_number: str, ip_address: str, employer = None) -> Dict:
+    def validate_vat(cls, vat_number: str, ip_address: str, company = None) -> Dict:
         """
         Validate VAT number and retrieve company details using vatcheckapi.com.
         
         Args:
             vat_number: VAT number to validate (format: BE0123456789)
             ip_address: IP address of the requester for rate limiting
-            employer: Optional employer instance to link the validation result to
+            company: Optional company instance to link the validation result to
             
         Returns:
             Dict containing validation result and company details
@@ -155,22 +155,21 @@ class VATValidationService:
         # Check database first
         try:
             validation_result = VATValidationResult.objects.get(vat_number=vat_number)
-            # If employer exists and is linked to this validation, use their details
+            # If company exists and is linked to this validation, use its details
             if validation_result.company:
-                employer = validation_result.company
                 return {
                     "is_valid": validation_result.is_valid,
                     "company_details": {
-                        "name": employer.name,
-                        "street_name": employer.street_name,
-                        "house_number": employer.house_number,
-                        "city": employer.city,
-                        "postal_code": employer.postal_code,
+                        "name": validation_result.company.name,
+                        "street_name": validation_result.company.street_name,
+                        "house_number": validation_result.company.house_number,
+                        "city": validation_result.company.city,
+                        "postal_code": validation_result.company.postal_code,
                         "country": "Belgium"
                     }
                 }
             else:
-                # Fall back to parsing stored address if no employer is linked
+                # Fall back to parsing stored address if no company is linked
                 address_parts = cls._parse_address(validation_result.company_address)
                 return {
                     "is_valid": validation_result.is_valid,
@@ -205,7 +204,7 @@ class VATValidationService:
                 VATValidationResult.objects.create(
                     vat_number=vat_number,
                     is_valid=False,
-                    employer=employer
+                    company=company
                 )
                 raise ValidationError({
                     "error": "VAT_NOT_FOUND",
@@ -225,7 +224,7 @@ class VATValidationService:
                 VATValidationResult.objects.create(
                     vat_number=vat_number,
                     is_valid=False,
-                    employer=employer
+                    company=company
                 )
                 raise ValidationError({
                     "error": "VAT_NOT_FOUND",
@@ -235,23 +234,23 @@ class VATValidationService:
             # Parse the address from the API response
             address_parts = cls._parse_address(data.get("address", ""))
 
-            # Store valid result in database and update employer details
+            # Store valid result in database and update company details
             validation_result = VATValidationResult.objects.create(
                 vat_number=vat_number,
                 is_valid=True,
                 company_name=data.get("name", ""),
                 company_address=data.get("address", ""),
-                employer=employer
+                company=company
             )
 
-            # Update employer details if provided
-            if employer:
-                employer.company_name = data.get("name", "")
-                employer.street_name = address_parts["street_name"]
-                employer.house_number = address_parts["house_number"]
-                employer.city = address_parts["city"]
-                employer.postal_code = address_parts["postal_code"]
-                employer.save()
+            # Update company details if provided
+            if company:
+                company.name = data.get("name", "")
+                company.street_name = address_parts["street_name"]
+                company.house_number = address_parts["house_number"]
+                company.city = address_parts["city"]
+                company.postal_code = address_parts["postal_code"]
+                company.save()
 
             # Format the response according to requirements
             result = {

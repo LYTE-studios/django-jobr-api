@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from accounts.models import ProfileOption
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
@@ -12,7 +13,9 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
 
         # Write permissions are only allowed to the owner of the object.
-        return obj.employee == request.user.employee_profile
+        if request.user.role != ProfileOption.EMPLOYEE:
+            return False
+        return hasattr(request.user, 'employee_profile') and obj.employee == request.user.employee_profile
 
 class IsEmployeeUser(permissions.BasePermission):
     """
@@ -20,7 +23,7 @@ class IsEmployeeUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and hasattr(request.user, 'employee_profile'))
+        return bool(request.user and request.user.is_authenticated and request.user.role == ProfileOption.EMPLOYEE)
 
 class IsEmployerUser(permissions.BasePermission):
     """
@@ -28,4 +31,4 @@ class IsEmployerUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and hasattr(request.user, 'employer_profile'))
+        return bool(request.user and request.user.is_authenticated and request.user.role == ProfileOption.EMPLOYER)

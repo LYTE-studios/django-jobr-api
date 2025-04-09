@@ -24,6 +24,7 @@ class SectorAdminForm(forms.ModelForm):
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
         super(SectorAdminForm, self).__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['functions'].initial = self.instance.functions.all()
@@ -31,11 +32,50 @@ class SectorAdminForm(forms.ModelForm):
     def save(self, commit=True):
         sector = super(SectorAdminForm, self).save(commit=False)
         if commit:
-            sector.save()
-            self.save_m2m()
-            if 'functions' in self.cleaned_data:
-                sector.functions.set(self.cleaned_data['functions'])
+            try:
+                with transaction.atomic():
+                    sector.save()
+                    self.save_m2m()
+                    if 'functions' in self.cleaned_data:
+                        selected_functions = list(self.cleaned_data['functions'])
+                        sector.functions.set(selected_functions)
+                        
+                        # Verify the save was successful
+                        saved_functions = list(sector.functions.all())
+                        if set(f.id for f in saved_functions) != set(f.id for f in selected_functions):
+                            error_msg = (
+                                f"Functions were not saved correctly. "
+                                f"Expected: {[f.name for f in selected_functions]}, "
+                                f"Got: {[f.name for f in saved_functions]}"
+                            )
+                            if self.request:
+                                from django.contrib import messages
+                                messages.error(self.request, error_msg)
+                            raise ValueError(error_msg)
+            except Exception as e:
+                if self.request:
+                    from django.contrib import messages
+                    messages.error(self.request, f"Error saving functions: {str(e)}")
+                raise
         return sector
+
+@admin.register(Sector)
+class SectorAdmin(admin.ModelAdmin):
+    form = SectorAdminForm
+    list_display = ('name', 'weight', 'enabled', 'get_functions_count')
+    search_fields = ('name', 'functions__name')
+    list_filter = ('weight', 'enabled')
+    ordering = ('name',)
+    list_per_page = 25
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.request = request
+        return form
+
+    def get_functions_count(self, obj):
+        return obj.functions.count()
+    get_functions_count.short_description = 'Functions'
 
 @admin.register(Sector)
 class SectorAdmin(admin.ModelAdmin):

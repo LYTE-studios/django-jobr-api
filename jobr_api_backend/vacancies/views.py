@@ -118,6 +118,22 @@ class VacancyViewSet(viewsets.ModelViewSet):
             return Vacancy.objects.filter(company__in=user.companies.all())
         return Vacancy.objects.all()
     
+    def update(self, request, *args, **kwargs):
+        """Handle PUT requests for vacancy updates."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Handle PATCH requests for vacancy updates."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     def perform_update(self, serializer):
         """Update a vacancy with proper permission checks."""
         user = self.request.user

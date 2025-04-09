@@ -28,6 +28,9 @@ class Sector(models.Model):
         help_text="Sector's icon (max 5MB, jpg, jpeg, png, gif, svg)"
     )
 
+    class Meta:
+        ordering = ['weight']
+
     def __str__(self):
         return self.name
 

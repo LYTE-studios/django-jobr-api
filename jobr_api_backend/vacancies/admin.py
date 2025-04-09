@@ -29,22 +29,17 @@ class SectorAdminForm(forms.ModelForm):
             self.fields['functions'].initial = self.instance.functions.all()
 
     def save(self, commit=True):
-        instance = super().save(commit=False)
+        sector = super().save(commit=False)
         if commit:
-            instance.save()
-            # Store the original save_m2m
-            original_save_m2m = self.save_m2m
-            
-            def combined_save_m2m():
-                # Clear existing relationships
-                instance.functions.clear()
-                # Add selected functions
-                if self.cleaned_data.get('functions'):
-                    instance.functions.add(*self.cleaned_data['functions'])
-            
-            # Replace save_m2m with our combined version
-            self.save_m2m = combined_save_m2m
-        return instance
+            sector.save()
+            self._save_m2m()
+        return sector
+
+    def _save_m2m(self):
+        super().save_m2m()  # Save the parent's m2m fields first
+        # Now handle the functions relationship
+        if 'functions' in self.cleaned_data:
+            self.instance.functions.set(self.cleaned_data['functions'])
 
 @admin.register(Sector)
 class SectorAdmin(admin.ModelAdmin):
@@ -101,42 +96,42 @@ class FunctionAdminForm(forms.ModelForm):
             self.fields['all_skills'].initial = self.instance.skills.all()
 
     def save(self, commit=True):
-        instance = super().save(commit=False)
+        function = super().save(commit=False)
         if commit:
-            instance.save()
+            function.save()
+            self._save_m2m()
+        return function
+
+    def _save_m2m(self):
+        super().save_m2m()  # Save the parent's m2m fields first
+        
+        # Handle sectors relationship
+        if 'sectors' in self.cleaned_data:
+            self.instance.sectors.set(self.cleaned_data['sectors'])
+        
+        # Handle skills with weights
+        if 'all_skills' in self.cleaned_data:
+            selected_skills = self.cleaned_data['all_skills']
             
-            def combined_save_m2m():
-                # Handle sectors
-                instance.sectors.clear()
-                if self.cleaned_data.get('sectors'):
-                    instance.sectors.add(*self.cleaned_data['sectors'])
-                
-                # Handle skills with weights
-                selected_skills = self.cleaned_data.get('all_skills', [])
-                
-                # Clear existing relationships but preserve weights
-                existing_weights = {
-                    fs.skill_id: fs.weight
-                    for fs in FunctionSkill.objects.filter(function=instance)
-                }
-                
-                # Use transaction to ensure atomicity
-                with transaction.atomic():
-                    FunctionSkill.objects.filter(function=instance).delete()
-                    
-                    # Create new relationships with preserved or default weights
-                    FunctionSkill.objects.bulk_create([
-                        FunctionSkill(
-                            function=instance,
-                            skill=skill,
-                            weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
-                        )
-                        for skill in selected_skills
-                    ])
+            # Preserve existing weights
+            existing_weights = {
+                fs.skill_id: fs.weight
+                for fs in FunctionSkill.objects.filter(function=self.instance)
+            }
             
-            # Replace save_m2m with our combined version
-            self.save_m2m = combined_save_m2m
-        return instance
+            with transaction.atomic():
+                # Clear existing relationships
+                FunctionSkill.objects.filter(function=self.instance).delete()
+                
+                # Create new relationships with preserved or default weights
+                FunctionSkill.objects.bulk_create([
+                    FunctionSkill(
+                        function=self.instance,
+                        skill=skill,
+                        weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
+                    )
+                    for skill in selected_skills
+                ])
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):

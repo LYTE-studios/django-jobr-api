@@ -328,22 +328,41 @@ class VacancySerializer(serializers.ModelSerializer):
         return self._handle_relationships(instance, validated_data)
 
 class ApplySerializer(serializers.ModelSerializer):
-    employee = serializers.PrimaryKeyRelatedField(
+    # Write operations (when creating/updating applications)
+    employee_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role=ProfileOption.EMPLOYEE),
-        many=False
+        source='employee',
+        write_only=True
     )
-    vacancy = serializers.PrimaryKeyRelatedField(
+    vacancy_id = serializers.PrimaryKeyRelatedField(
         queryset=Vacancy.objects.all(),
-        many=False
+        source='vacancy',
+        write_only=True
     )
+    
+    # Read operations (when fetching applications)
+    employee = serializers.SerializerMethodField(read_only=True)
+    vacancy = VacancySerializer(read_only=True)
     status = serializers.ChoiceField(choices=ApplicationStatus.choices, read_only=True)
     applied_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = ApplyVacancy
-        fields = ["id", "employee", "vacancy", "status", "notes", "applied_at", "updated_at"]
-        read_only_fields = ["status", "applied_at", "updated_at"]
+        fields = [
+            "id",
+            "employee", "employee_id",
+            "vacancy", "vacancy_id",
+            "status",
+            "notes",
+            "applied_at",
+            "updated_at"
+        ]
+        read_only_fields = ["status", "applied_at", "updated_at", "employee", "vacancy"]
+
+    def get_employee(self, obj):
+        from accounts.serializers import UserSerializer
+        return UserSerializer(obj.employee.user).data
 
 class FavoriteVacancySerializer(serializers.ModelSerializer):
     vacancy = VacancySerializer(read_only=True)

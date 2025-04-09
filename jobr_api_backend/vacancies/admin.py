@@ -4,12 +4,15 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django import forms
 from django.db import transaction
+import logging
 from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
     VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday, Sector,
     FunctionSkill
 )
+
+logger = logging.getLogger(__name__)
 
 class SectorAdminForm(forms.ModelForm):
     functions = forms.ModelMultipleChoiceField(
@@ -25,37 +28,58 @@ class SectorAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None)
-        super(SectorAdminForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['functions'].initial = self.instance.functions.all()
 
     def save(self, commit=True):
-        sector = super(SectorAdminForm, self).save(commit=False)
+        sector = super().save(commit=False)
         if commit:
             try:
                 with transaction.atomic():
                     sector.save()
-                    self.save_m2m()
+                    
+                    # Handle functions relationship
                     if 'functions' in self.cleaned_data:
-                        selected_functions = list(self.cleaned_data['functions'])
-                        sector.functions.set(selected_functions)
+                        current_functions = set(sector.functions.values_list('id', flat=True))
+                        new_functions = set(f.id for f in self.cleaned_data['functions'])
                         
-                        # Verify the save was successful
-                        saved_functions = list(sector.functions.all())
-                        if set(f.id for f in saved_functions) != set(f.id for f in selected_functions):
+                        # Log current state
+                        logger.info(f"Current functions for sector {sector.pk}: {current_functions}")
+                        logger.info(f"New functions for sector {sector.pk}: {new_functions}")
+                        
+                        # Remove functions that are no longer selected
+                        to_remove = current_functions - new_functions
+                        if to_remove:
+                            logger.info(f"Removing functions from sector {sector.pk}: {to_remove}")
+                            sector.functions.remove(*to_remove)
+                        
+                        # Add newly selected functions
+                        to_add = new_functions - current_functions
+                        if to_add:
+                            logger.info(f"Adding functions to sector {sector.pk}: {to_add}")
+                            sector.functions.add(*to_add)
+                        
+                        # Verify changes
+                        final_functions = set(sector.functions.values_list('id', flat=True))
+                        logger.info(f"Final functions for sector {sector.pk}: {final_functions}")
+                        
+                        if final_functions != new_functions:
                             error_msg = (
                                 f"Functions were not saved correctly. "
-                                f"Expected: {[f.name for f in selected_functions]}, "
-                                f"Got: {[f.name for f in saved_functions]}"
+                                f"Expected: {new_functions}, "
+                                f"Got: {final_functions}"
                             )
                             if self.request:
                                 from django.contrib import messages
                                 messages.error(self.request, error_msg)
                             raise ValueError(error_msg)
+                            
             except Exception as e:
+                logger.error(f"Error saving sector {sector.pk}: {str(e)}")
                 if self.request:
                     from django.contrib import messages
-                    messages.error(self.request, f"Error saving functions: {str(e)}")
+                    messages.error(self.request, f"Error saving sector: {str(e)}")
                 raise
         return sector
 
@@ -75,20 +99,6 @@ class SectorAdmin(admin.ModelAdmin):
     def get_functions_count(self, obj):
         return obj.functions.count()
     get_functions_count.short_description = 'Functions'
-
-class LocationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'weight')
-    search_fields = ('name',)
-    list_filter = ('weight',)
-    ordering = ('name',)
-    list_per_page = 25
-
-class ContractTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'weight')
-    search_fields = ('name',)
-    list_filter = ('weight',)
-    ordering = ('name',)
-    list_per_page = 25
 
 class FunctionAdminForm(forms.ModelForm):
     all_skills = forms.ModelMultipleChoiceField(
@@ -111,40 +121,62 @@ class FunctionAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None)
-        super(FunctionAdminForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['sectors'].initial = self.instance.sectors.all()
             self.fields['all_skills'].initial = self.instance.skills.all()
 
     def save(self, commit=True):
-        function = super(FunctionAdminForm, self).save(commit=False)
+        function = super().save(commit=False)
         if commit:
             try:
                 with transaction.atomic():
                     function.save()
-                    self.save_m2m()
                     
-                    # Handle sectors
+                    # Handle sectors relationship
                     if 'sectors' in self.cleaned_data:
-                        selected_sectors = list(self.cleaned_data['sectors'])
-                        function.sectors.set(selected_sectors)
+                        current_sectors = set(function.sectors.values_list('id', flat=True))
+                        new_sectors = set(s.id for s in self.cleaned_data['sectors'])
                         
-                        # Verify sectors were saved correctly
-                        saved_sectors = list(function.sectors.all())
-                        if set(s.id for s in saved_sectors) != set(s.id for s in selected_sectors):
+                        # Log current state
+                        logger.info(f"Current sectors for function {function.pk}: {current_sectors}")
+                        logger.info(f"New sectors for function {function.pk}: {new_sectors}")
+                        
+                        # Remove sectors that are no longer selected
+                        to_remove = current_sectors - new_sectors
+                        if to_remove:
+                            logger.info(f"Removing sectors from function {function.pk}: {to_remove}")
+                            function.sectors.remove(*to_remove)
+                        
+                        # Add newly selected sectors
+                        to_add = new_sectors - current_sectors
+                        if to_add:
+                            logger.info(f"Adding sectors to function {function.pk}: {to_add}")
+                            function.sectors.add(*to_add)
+                        
+                        # Verify changes
+                        final_sectors = set(function.sectors.values_list('id', flat=True))
+                        logger.info(f"Final sectors for function {function.pk}: {final_sectors}")
+                        
+                        if final_sectors != new_sectors:
                             error_msg = (
                                 f"Sectors were not saved correctly. "
-                                f"Expected: {[s.name for s in selected_sectors]}, "
-                                f"Got: {[s.name for s in saved_sectors]}"
+                                f"Expected: {new_sectors}, "
+                                f"Got: {final_sectors}"
                             )
                             if self.request:
                                 from django.contrib import messages
                                 messages.error(self.request, error_msg)
                             raise ValueError(error_msg)
                     
-                    # Handle skills with weights
+                    # Handle skills relationship
                     if 'all_skills' in self.cleaned_data:
-                        selected_skills = list(self.cleaned_data['all_skills'])
+                        current_skills = set(function.skills.values_list('id', flat=True))
+                        new_skills = set(s.id for s in self.cleaned_data['all_skills'])
+                        
+                        # Log current state
+                        logger.info(f"Current skills for function {function.pk}: {current_skills}")
+                        logger.info(f"New skills for function {function.pk}: {new_skills}")
                         
                         # Preserve existing weights
                         existing_weights = {
@@ -152,26 +184,29 @@ class FunctionAdminForm(forms.ModelForm):
                             for fs in FunctionSkill.objects.filter(function=function)
                         }
                         
-                        # Clear existing relationships
-                        FunctionSkill.objects.filter(function=function).delete()
+                        # Remove skills that are no longer selected
+                        FunctionSkill.objects.filter(
+                            function=function,
+                            skill_id__in=current_skills - new_skills
+                        ).delete()
                         
-                        # Create new relationships with preserved or default weights
-                        FunctionSkill.objects.bulk_create([
-                            FunctionSkill(
+                        # Add or update selected skills
+                        for skill_id in new_skills:
+                            FunctionSkill.objects.update_or_create(
                                 function=function,
-                                skill=skill,
-                                weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
+                                skill_id=skill_id,
+                                defaults={'weight': existing_weights.get(skill_id, 1)}
                             )
-                            for skill in selected_skills
-                        ])
                         
-                        # Verify skills were saved correctly
-                        saved_skills = list(function.skills.all())
-                        if set(s.id for s in saved_skills) != set(s.id for s in selected_skills):
+                        # Verify changes
+                        final_skills = set(function.skills.values_list('id', flat=True))
+                        logger.info(f"Final skills for function {function.pk}: {final_skills}")
+                        
+                        if final_skills != new_skills:
                             error_msg = (
                                 f"Skills were not saved correctly. "
-                                f"Expected: {[s.name for s in selected_skills]}, "
-                                f"Got: {[s.name for s in saved_skills]}"
+                                f"Expected: {new_skills}, "
+                                f"Got: {final_skills}"
                             )
                             if self.request:
                                 from django.contrib import messages
@@ -179,9 +214,10 @@ class FunctionAdminForm(forms.ModelForm):
                             raise ValueError(error_msg)
                             
             except Exception as e:
+                logger.error(f"Error saving function {function.pk}: {str(e)}")
                 if self.request:
                     from django.contrib import messages
-                    messages.error(self.request, f"Error saving function relationships: {str(e)}")
+                    messages.error(self.request, f"Error saving function: {str(e)}")
                 raise
         return function
 
@@ -231,7 +267,6 @@ class FunctionAdmin(admin.ModelAdmin):
         class SkillWeightForm(forms.Form):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
-                # Get skills ordered by their current weights
                 function_skills = FunctionSkill.objects.filter(
                     function=function,
                     skill__category=skill_type
@@ -246,7 +281,6 @@ class FunctionAdmin(admin.ModelAdmin):
                     )
 
         if request.method == 'POST':
-            # Create a dictionary of field names and values from POST data
             post_data = {
                 f'weight_{key.split("_")[-1]}': value
                 for key, value in request.POST.items()
@@ -255,21 +289,17 @@ class FunctionAdmin(admin.ModelAdmin):
             
             form = SkillWeightForm(post_data)
             if form.is_valid():
-                # Update all weights in a single transaction
                 with transaction.atomic():
-                    # Get all skills for this function of the specified type
                     function_skills = FunctionSkill.objects.filter(
                         function=function,
                         skill__category=skill_type
                     ).select_related('skill')
                     
-                    # Create a mapping of skill_id to weight from the form data
                     new_weights = {
                         int(key.split('_')[1]): value
                         for key, value in form.cleaned_data.items()
                     }
                     
-                    # Update each function_skill with its new weight
                     for function_skill in function_skills:
                         if function_skill.skill.id in new_weights:
                             function_skill.weight = new_weights[function_skill.skill.id]
@@ -297,6 +327,20 @@ class FunctionAdmin(admin.ModelAdmin):
             'admin/vacancies/function/edit_weights.html',
             context,
         )
+
+class LocationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
+    list_filter = ('weight',)
+    ordering = ('name',)
+    list_per_page = 25
+
+class ContractTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'weight')
+    search_fields = ('name',)
+    list_filter = ('weight',)
+    ordering = ('name',)
+    list_per_page = 25
 
 class QuestionAdmin(admin.ModelAdmin):
     list_display = ('name', 'weight')

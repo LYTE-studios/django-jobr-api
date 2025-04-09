@@ -258,7 +258,7 @@ class CustomUser(AbstractUser):
 
             # Create new profile based on role
             if self.role == ProfileOption.EMPLOYEE:
-                Employee.objects.create(user=self)
+                Employee.objects.get_or_create(user=self)
             elif self.role == ProfileOption.EMPLOYER:
                 # Create a default company for new employer users
                 if is_new:

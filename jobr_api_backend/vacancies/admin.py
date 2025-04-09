@@ -126,6 +126,7 @@ class FunctionAdminForm(forms.ModelForm):
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
         super(FunctionAdminForm, self).__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['sectors'].initial = self.instance.sectors.all()
@@ -134,37 +135,94 @@ class FunctionAdminForm(forms.ModelForm):
     def save(self, commit=True):
         function = super(FunctionAdminForm, self).save(commit=False)
         if commit:
-            function.save()
-            self.save_m2m()
-            
-            # Handle sectors
-            if 'sectors' in self.cleaned_data:
-                function.sectors.set(self.cleaned_data['sectors'])
-            
-            # Handle skills with weights
-            if 'all_skills' in self.cleaned_data:
-                selected_skills = self.cleaned_data['all_skills']
-                
-                # Preserve existing weights
-                existing_weights = {
-                    fs.skill_id: fs.weight
-                    for fs in FunctionSkill.objects.filter(function=function)
-                }
-                
+            try:
                 with transaction.atomic():
-                    # Clear existing relationships
-                    FunctionSkill.objects.filter(function=function).delete()
+                    function.save()
+                    self.save_m2m()
                     
-                    # Create new relationships with preserved or default weights
-                    FunctionSkill.objects.bulk_create([
-                        FunctionSkill(
-                            function=function,
-                            skill=skill,
-                            weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
-                        )
-                        for skill in selected_skills
-                    ])
+                    # Handle sectors
+                    if 'sectors' in self.cleaned_data:
+                        selected_sectors = list(self.cleaned_data['sectors'])
+                        function.sectors.set(selected_sectors)
+                        
+                        # Verify sectors were saved correctly
+                        saved_sectors = list(function.sectors.all())
+                        if set(s.id for s in saved_sectors) != set(s.id for s in selected_sectors):
+                            error_msg = (
+                                f"Sectors were not saved correctly. "
+                                f"Expected: {[s.name for s in selected_sectors]}, "
+                                f"Got: {[s.name for s in saved_sectors]}"
+                            )
+                            if self.request:
+                                from django.contrib import messages
+                                messages.error(self.request, error_msg)
+                            raise ValueError(error_msg)
+                    
+                    # Handle skills with weights
+                    if 'all_skills' in self.cleaned_data:
+                        selected_skills = list(self.cleaned_data['all_skills'])
+                        
+                        # Preserve existing weights
+                        existing_weights = {
+                            fs.skill_id: fs.weight
+                            for fs in FunctionSkill.objects.filter(function=function)
+                        }
+                        
+                        # Clear existing relationships
+                        FunctionSkill.objects.filter(function=function).delete()
+                        
+                        # Create new relationships with preserved or default weights
+                        FunctionSkill.objects.bulk_create([
+                            FunctionSkill(
+                                function=function,
+                                skill=skill,
+                                weight=existing_weights.get(skill.id, 1)  # Use existing weight or default to 1
+                            )
+                            for skill in selected_skills
+                        ])
+                        
+                        # Verify skills were saved correctly
+                        saved_skills = list(function.skills.all())
+                        if set(s.id for s in saved_skills) != set(s.id for s in selected_skills):
+                            error_msg = (
+                                f"Skills were not saved correctly. "
+                                f"Expected: {[s.name for s in selected_skills]}, "
+                                f"Got: {[s.name for s in saved_skills]}"
+                            )
+                            if self.request:
+                                from django.contrib import messages
+                                messages.error(self.request, error_msg)
+                            raise ValueError(error_msg)
+                            
+            except Exception as e:
+                if self.request:
+                    from django.contrib import messages
+                    messages.error(self.request, f"Error saving function relationships: {str(e)}")
+                raise
         return function
+
+@admin.register(Function)
+class FunctionAdmin(admin.ModelAdmin):
+    form = FunctionAdminForm
+    list_display = ('name', 'weight', 'get_sectors', 'get_skills_count')
+    search_fields = ('name', 'sectors__name', 'skills__name')
+    list_filter = ('weight', 'sectors')
+    ordering = ('name',)
+    list_per_page = 25
+    change_form_template = 'admin/vacancies/function/change_form.html'
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.request = request
+        return form
+
+    def get_sectors(self, obj):
+        return ", ".join([sector.name for sector in obj.sectors.all()])
+    get_sectors.short_description = 'Sectors'
+
+    def get_skills_count(self, obj):
+        return obj.skills.count()
+    get_skills_count.short_description = 'Skills'
 
 @admin.register(Function)
 class FunctionAdmin(admin.ModelAdmin):

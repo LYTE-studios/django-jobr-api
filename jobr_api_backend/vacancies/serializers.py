@@ -19,7 +19,8 @@ from .models import (
     FunctionSkill,
     Sector,
     ApplicationStatus,
-    FavoriteVacancy
+    FavoriteVacancy,
+    VacancyDateTime
 )
 from accounts.models import ProfileOption, Employee
 
@@ -118,9 +119,15 @@ class VacancySalaryBenefitSerializer(serializers.ModelSerializer):
         model = SalaryBenefit
         fields = ["id", "name"]
 
+class VacancyDateTimeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VacancyDateTime
+        fields = ['id', 'date', 'start_time', 'end_time']
+
 class VacancySerializer(serializers.ModelSerializer):
     company = serializers.SerializerMethodField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
+    date_times = VacancyDateTimeSerializer(many=True, read_only=True)
 
     def get_company(self, obj):
         from accounts.serializers import CompanySerializer
@@ -170,6 +177,11 @@ class VacancySerializer(serializers.ModelSerializer):
         required=False,
         source='salary_benefits'
     )
+    date_times_data = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        required=False
+    )
     applicant_count = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
     application_status = serializers.SerializerMethodField()
@@ -185,7 +197,7 @@ class VacancySerializer(serializers.ModelSerializer):
             "location", "location_id",
             "function", "function_id",
             "week_day",
-            "job_date",
+            "date_times", "date_times_data",
             "salary",
             "languages",
             "descriptions",
@@ -269,6 +281,20 @@ class VacancySerializer(serializers.ModelSerializer):
         """
         Handle all relationships for vacancy creation/update
         """
+        # Handle date_times
+        date_times_data = self.initial_data.get('date_times_data', [])
+        if date_times_data:
+            # Clear existing date_times
+            vacancy.date_times.all().delete()
+            # Create new date_times
+            for dt_data in date_times_data:
+                VacancyDateTime.objects.create(
+                    vacancy=vacancy,
+                    date=dt_data['date'],
+                    start_time=dt_data['start_time'],
+                    end_time=dt_data['end_time']
+                )
+
         # Handle one-to-one relationships using write-only fields
         if 'function' in validated_data:
             vacancy.function = validated_data['function']

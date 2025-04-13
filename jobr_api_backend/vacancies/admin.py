@@ -10,7 +10,7 @@ from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
     VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday, Sector,
-    FunctionSkill
+    FunctionSkill, VacancyDateTime
 )
 
 logger = logging.getLogger(__name__)
@@ -385,15 +385,18 @@ class JobListingPromptAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
 
+class VacancyDateTimeInline(admin.TabularInline):
+    model = VacancyDateTime
+    extra = 1
+
 class VacancyAdmin(admin.ModelAdmin):
-    list_display = ('title', 'company', 'function', 'location', 'job_date', 'salary', 'expected_mastery')
+    list_display = ('title', 'company', 'function', 'location', 'salary', 'expected_mastery')
     list_filter = (
         'expected_mastery',
         'contract_type',
         'location',
         'function',
         'week_day',
-        'job_date',
     )
     search_fields = (
         'title',
@@ -405,7 +408,7 @@ class VacancyAdmin(admin.ModelAdmin):
     )
     filter_horizontal = ('contract_type', 'week_day', 'languages', 'descriptions', 'questions', 'skill')
     raw_id_fields = ('company', 'created_by')
-    date_hierarchy = 'job_date'
+    inlines = [VacancyDateTimeInline]
     list_per_page = 25
 
 # Register all models

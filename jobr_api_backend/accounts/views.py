@@ -675,13 +675,14 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         if not self.request.user.selected_company:
             raise ValidationError("No company selected")
         
-        # Get employee_id from URL kwargs
-        employee_id = self.kwargs.get('employee_id')
-        if not employee_id:
-            raise ValidationError("Employee ID is required")
+        # Get user_id from URL kwargs
+        user_id = self.kwargs.get('employee_id')  # keeping the URL param name for backwards compatibility
+        if not user_id:
+            raise ValidationError("User ID is required")
             
-        # Get the employee instance
-        employee = get_object_or_404(Employee, id=employee_id)
+        # Get the employee instance through the CustomUser
+        user = get_object_or_404(CustomUser, id=user_id, role=ProfileOption.EMPLOYEE)
+        employee = user.employee_profile
         
         serializer.save(
             company=self.request.user.selected_company,
@@ -694,10 +695,12 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         """Remove a liked employee relationship."""
         if not request.user.selected_company:
             raise ValidationError("No company selected")
+        # Get the employee through CustomUser
+        user = get_object_or_404(CustomUser, id=pk, role=ProfileOption.EMPLOYEE)
         liked = get_object_or_404(
             LikedEmployee,
             company=request.user.selected_company,
-            employee_id=pk
+            employee=user.employee_profile
         )
         liked.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

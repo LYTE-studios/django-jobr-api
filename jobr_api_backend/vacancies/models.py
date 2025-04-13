@@ -216,6 +216,23 @@ class VacancyQuestion(models.Model):
         return self.question
 
 
+class VacancyDateTime(models.Model):
+    """
+    Represents a specific date and time slot for a vacancy.
+    A vacancy can have multiple date-time slots.
+    """
+    vacancy = models.ForeignKey('Vacancy', on_delete=models.CASCADE, related_name='date_times')
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        ordering = ['date', 'start_time']
+
+    def __str__(self):
+        return f"{self.date} ({self.start_time} - {self.end_time})"
+
+
 class Vacancy(models.Model):
     """
     Represents a job vacancy posted by a company.
@@ -235,7 +252,6 @@ class Vacancy(models.Model):
         Function, on_delete=models.CASCADE, blank=True, null=True
     )
     week_day = models.ManyToManyField(Weekday, blank=True)
-    job_date = models.DateField(null=True)
     salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     languages = models.ManyToManyField(
         VacancyLanguage, related_name="vacancy_languages"

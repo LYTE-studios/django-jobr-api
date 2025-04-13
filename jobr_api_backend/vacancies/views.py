@@ -8,7 +8,7 @@ from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
     SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
-    ApplicationStatus
+    ApplicationStatus, VacancyDateTime
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
@@ -177,6 +177,20 @@ class VacancyFilterView(generics.ListAPIView):
     def get_queryset(self):
         """Filter and sort vacancies based on query parameters."""
         queryset = Vacancy.objects.all()
+
+        # Filter by date
+        date = self.request.query_params.get('date', None)
+        if date:
+            queryset = queryset.filter(date_times__date=date)
+
+        # Filter by time range
+        start_time = self.request.query_params.get('start_time', None)
+        end_time = self.request.query_params.get('end_time', None)
+        if start_time and end_time:
+            queryset = queryset.filter(
+                date_times__start_time__lte=end_time,
+                date_times__end_time__gte=start_time
+            )
 
         # Filter by sector
         sector = self.request.query_params.get('sector', None)

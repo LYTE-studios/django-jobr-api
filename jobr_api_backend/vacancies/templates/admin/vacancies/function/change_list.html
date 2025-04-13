@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+    {% if show_sort_weights_button %}
+    <li>
+        <a href="{% url 'admin:sort-function-weights' %}" class="addlink">
+            Sort Weights
+        </a>
+    </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

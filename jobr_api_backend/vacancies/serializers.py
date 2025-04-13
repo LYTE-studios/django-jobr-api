@@ -68,7 +68,7 @@ class FunctionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Function
-        fields = ["id", "name", "skills", "function_skills"]
+        fields = ["id", "name", "weight", "skills", "function_skills"]
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:

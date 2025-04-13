@@ -111,6 +111,7 @@ class FunctionAdmin(admin.ModelAdmin):
     ordering = ('name',)
     list_per_page = 25
     change_form_template = 'admin/vacancies/function/change_form.html'
+    change_list_template = 'admin/vacancies/function/change_list.html'
 
     def save_model(self, request, obj, form, change):
         try:
@@ -205,8 +206,45 @@ class FunctionAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.edit_weights_view),
                 name='edit-function-skill-weights',
             ),
+            path(
+                'sort-weights/',
+                self.admin_site.admin_view(self.sort_weights_view),
+                name='sort-function-weights',
+            ),
         ]
         return custom_urls + urls
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['show_sort_weights_button'] = True
+        return super().changelist_view(request, extra_context)
+
+    def sort_weights_view(self, request):
+        if request.method == 'POST':
+            try:
+                with transaction.atomic():
+                    for key, value in request.POST.items():
+                        if key.startswith('function_'):
+                            function_id = int(key.split('_')[1])
+                            weight = int(value)
+                            Function.objects.filter(id=function_id).update(weight=weight)
+                self.message_user(request, "Function weights updated successfully.")
+                return HttpResponseRedirect(reverse('admin:vacancies_function_changelist'))
+            except Exception as e:
+                self.message_user(request, f"Error updating weights: {str(e)}", level='ERROR')
+                
+        functions = Function.objects.all().order_by('-weight', 'name')
+        context = {
+            'title': 'Sort Functions',
+            'functions': functions,
+            'opts': self.model._meta,
+            'media': self.media,
+        }
+        return TemplateResponse(
+            request,
+            'admin/vacancies/function/sort_weights.html',
+            context,
+        )
 
     def edit_weights_view(self, request, function_id, skill_type=None):
         function = self.get_object(request, function_id)

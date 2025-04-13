@@ -125,6 +125,7 @@ class VacancySerializer(serializers.ModelSerializer):
     def get_company(self, obj):
         from accounts.serializers import CompanySerializer
         return CompanySerializer(obj.company).data if obj.company else None
+    # Read-only nested serializers for detailed representation
     contract_type = ContractTypeSerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, read_only=True)
     location = LocationSerializer(allow_null=True, read_only=True)
@@ -134,6 +135,41 @@ class VacancySerializer(serializers.ModelSerializer):
     questions = VacancyQuestionSerializer(many=True, read_only=True)
     week_day = WeekdaySerializer(many=True, read_only=True)
     salary_benefits = VacancySalaryBenefitSerializer(many=True, read_only=True)
+
+    # Write fields for updates
+    contract_type_ids = serializers.PrimaryKeyRelatedField(
+        queryset=ContractType.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+        source='contract_type'
+    )
+    function_id = serializers.PrimaryKeyRelatedField(
+        queryset=Function.objects.all(),
+        write_only=True,
+        required=False,
+        source='function'
+    )
+    location_id = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(),
+        write_only=True,
+        required=False,
+        source='location'
+    )
+    skill_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Skill.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+        source='skill'
+    )
+    salary_benefit_ids = serializers.PrimaryKeyRelatedField(
+        queryset=SalaryBenefit.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+        source='salary_benefits'
+    )
     applicant_count = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
     application_status = serializers.SerializerMethodField()
@@ -145,22 +181,29 @@ class VacancySerializer(serializers.ModelSerializer):
             "company",
             "created_by",
             "expected_mastery",
-            "contract_type",
-            "location",
-            "function",
+            "contract_type", "contract_type_ids",
+            "location", "location_id",
+            "function", "function_id",
             "week_day",
             "job_date",
             "salary",
             "languages",
             "descriptions",
             "questions",
-            "skill",
-            "salary_benefits",
+            "skill", "skill_ids",
+            "salary_benefits", "salary_benefit_ids",
             "applicant_count",
             "is_favorited",
             "application_status",
             "latitude",
             "longitude",
+        ]
+        read_only_fields = [
+            "company",
+            "created_by",
+            "applicant_count",
+            "is_favorited",
+            "application_status"
         ]
 
     def get_is_favorited(self, obj):
@@ -209,11 +252,13 @@ class VacancySerializer(serializers.ModelSerializer):
         if not self.initial_data.get('expected_mastery'):
             errors['expected_mastery'] = 'This field is required.'
         
-        if not self.initial_data.get('location'):
-            errors['location'] = 'This field is required.'
+        # Check location (either location or location_id must be provided)
+        if not (self.initial_data.get('location') or self.initial_data.get('location_id')):
+            errors['location'] = 'Location is required.'
         
-        if not self.initial_data.get('function'):
-            errors['function'] = 'This field is required.'
+        # Check function (either function or function_id must be provided)
+        if not (self.initial_data.get('function') or self.initial_data.get('function_id')):
+            errors['function'] = 'Function is required.'
 
         if errors:
             raise serializers.ValidationError(errors)
@@ -224,27 +269,22 @@ class VacancySerializer(serializers.ModelSerializer):
         """
         Handle all relationships for vacancy creation/update
         """
-        # Handle one-to-one relationships
-        function_data = self.initial_data.get("function", {})
-        if function_data and 'id' in function_data:
-            vacancy.function = Function.objects.get(id=function_data['id'])
+        # Handle one-to-one relationships using write-only fields
+        if 'function' in validated_data:
+            vacancy.function = validated_data['function']
 
-        location_data = self.initial_data.get("location", {})
-        if location_data and 'id' in location_data:
-            vacancy.location = Location.objects.get(id=location_data['id'])
+        if 'location' in validated_data:
+            vacancy.location = validated_data['location']
 
-        # Handle many-to-many relationships
-        contract_type_data = self.initial_data.get("contract_type", [])
-        if contract_type_data:
-            contract_type_ids = [ct.get('id') for ct in contract_type_data if 'id' in ct]
-            contract_types = ContractType.objects.filter(id__in=contract_type_ids)
-            vacancy.contract_type.set(contract_types)
+        # Handle many-to-many relationships using write-only fields
+        if 'contract_type' in validated_data:
+            vacancy.contract_type.set(validated_data['contract_type'])
 
-        skill_data = self.initial_data.get("skill", [])
-        if skill_data:
-            skill_ids = [skill.get('id') for skill in skill_data if 'id' in skill]
-            skills = Skill.objects.filter(id__in=skill_ids)
-            vacancy.skill.set(skills)
+        if 'skill' in validated_data:
+            vacancy.skill.set(validated_data['skill'])
+
+        if 'salary_benefits' in validated_data:
+            vacancy.salary_benefits.set(validated_data['salary_benefits'])
 
         language_data = self.initial_data.get("languages", [])
         if language_data:

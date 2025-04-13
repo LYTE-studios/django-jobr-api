@@ -110,6 +110,9 @@ class Company(models.Model):
     city = models.CharField(max_length=100, null=True, blank=True)
     postal_code = models.CharField(max_length=20, null=True, blank=True)
     website = models.URLField(blank=True, null=True)
+    instagram_url = models.URLField(blank=True, null=True, help_text="Link to company's Instagram profile")
+    tiktok_url = models.URLField(blank=True, null=True, help_text="Link to company's TikTok profile")
+    facebook_url = models.URLField(blank=True, null=True, help_text="Link to company's Facebook profile")
     description = models.TextField(blank=True, null=True)
     employee_count = models.CharField(
         max_length=50,

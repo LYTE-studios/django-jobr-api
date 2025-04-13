@@ -674,9 +674,19 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         """Create a new liked employee relationship."""
         if not self.request.user.selected_company:
             raise ValidationError("No company selected")
+        
+        # Get employee_id from URL kwargs
+        employee_id = self.kwargs.get('employee_id')
+        if not employee_id:
+            raise ValidationError("Employee ID is required")
+            
+        # Get the employee instance
+        employee = get_object_or_404(Employee, id=employee_id)
+        
         serializer.save(
             company=self.request.user.selected_company,
-            liked_by=self.request.user
+            liked_by=self.request.user,
+            employee=employee
         )
 
     @action(detail=True, methods=['delete'])

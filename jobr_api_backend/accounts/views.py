@@ -745,6 +745,71 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         liked.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class EmployeeFilterView(generics.ListAPIView):
+    """Filter employees based on various criteria."""
+    serializer_class = EmployeeSearchSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        """Filter employees based on query parameters."""
+        queryset = CustomUser.objects.filter(role=ProfileOption.EMPLOYEE)
+        
+        # Filter by distance to company
+        if self.request.user.role == ProfileOption.EMPLOYER and self.request.user.selected_company:
+            company = self.request.user.selected_company
+            if company.latitude and company.longitude:
+                max_distance = float(self.request.query_params.get('max_distance', 50))  # Default 50km
+                queryset = queryset.filter(
+                    employee_profile__latitude__isnull=False,
+                    employee_profile__longitude__isnull=False
+                ).extra(
+                    where=[
+                        """
+                        ST_Distance_Sphere(
+                            point(employee_profile.longitude, employee_profile.latitude),
+                            point(%s, %s)
+                        ) <= %s * 1000
+                        """
+                    ],
+                    params=[company.longitude, company.latitude, max_distance]
+                )
+
+        # Filter by age range
+        min_age = self.request.query_params.get('min_age')
+        max_age = self.request.query_params.get('max_age')
+        if min_age or max_age:
+            from datetime import date, timedelta
+            today = date.today()
+            if min_age:
+                max_date = today - timedelta(days=int(min_age) * 365)
+                queryset = queryset.filter(employee_profile__date_of_birth__lte=max_date)
+            if max_age:
+                min_date = today - timedelta(days=int(max_age) * 365)
+                queryset = queryset.filter(employee_profile__date_of_birth__gte=min_date)
+
+        # Filter by gender
+        gender = self.request.query_params.get('gender')
+        if gender:
+            queryset = queryset.filter(employee_profile__gender=gender)
+
+        # Filter by languages
+        languages = self.request.query_params.getlist('languages')
+        if languages:
+            queryset = queryset.filter(employee_profile__language__id__in=languages)
+
+        # Filter by skills
+        skills = self.request.query_params.getlist('skills')
+        if skills:
+            queryset = queryset.filter(employee_profile__skill__id__in=skills)
+
+        # Filter by contract type
+        contract_type = self.request.query_params.get('contract_type')
+        if contract_type:
+            queryset = queryset.filter(employee_profile__contract_type_id=contract_type)
+
+        return queryset.distinct()
+
 class AISuggestionsView(generics.ListAPIView):
     """Get AI-powered employee suggestions."""
     serializer_class = EmployeeSearchSerializer

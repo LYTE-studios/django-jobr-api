@@ -13,7 +13,8 @@ from .views import (
     TestConnectionView,
     AISuggestionsView,
     PasswordResetRequestView,
-    PasswordResetConfirmView
+    PasswordResetConfirmView,
+    EmployeeFilterView
 )
 
 # Create router
@@ -77,8 +78,9 @@ urlpatterns = [
     # Validation endpoints
     path('validate-vat/', VATValidationView.as_view(), name='validate-vat'),
 
-    # Search endpoints
+    # Search and filter endpoints
     path('employees/search/', EmployeeSearchView.as_view(), name='employee-search'),
+    path('employees/filter/', EmployeeFilterView.as_view(), name='employee-filter'),
     path('employers/search/', EmployerSearchView.as_view(), name='employer-search'),
 
     # Employee interaction endpoints

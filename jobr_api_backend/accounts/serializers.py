@@ -46,8 +46,19 @@ from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, La
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
     skill = SkillSerializer(many=True, read_only=True)
     language = LanguageSerializer(many=True, read_only=True)
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user or request.user.role != ProfileOption.EMPLOYER or not request.user.selected_company:
+            return None
+        
+        return LikedEmployee.objects.filter(
+            company=request.user.selected_company,
+            employee=obj
+        ).exists()
     function = FunctionSerializer(allow_null=True, read_only=True)
     contract_type = ContractTypeSerializer(read_only=True, allow_null=True)
     availability_status = serializers.ChoiceField(
@@ -76,6 +87,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         exclude = ('user', 'profile_picture', 'profile_banner')
+        # Add is_liked to the fields that will be included in the serialized output
+        extra_fields = ('is_liked',)
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
             for field in Employee._meta.get_fields()
@@ -329,19 +342,26 @@ class EmployeeSerializer(serializers.ModelSerializer):
         fields = ('id', 'user', 'profile')
 
 class LikedEmployeeSerializer(serializers.ModelSerializer):
-    employee = serializers.SerializerMethodField()
-    user = UserSerializer(source='employee.user', read_only=True)
+    employee_details = serializers.SerializerMethodField()
 
     class Meta:
         model = LikedEmployee
-        fields = ('id', 'employee', 'user', 'created_at')
+        fields = ('id', 'employee_details', 'created_at')
 
-    def get_employee(self, obj):
-        employee_user = obj.employee.user
+    def get_employee_details(self, obj):
+        if isinstance(obj, dict):
+            # Handle dictionary case (during creation)
+            return None
         return {
-            'id': employee_user.id,
-            'username': employee_user.username,
-            'email': employee_user.email,
+            'id': obj.employee.user.id,
+            'username': obj.employee.user.username,
+            'email': obj.employee.user.email,
+            'profile': {
+                'city': obj.employee.city_name,
+                'biography': obj.employee.biography,
+                'profile_picture_url': obj.employee.profile_picture.url if obj.employee.profile_picture else None,
+                'profile_banner_url': obj.employee.profile_banner.url if obj.employee.profile_banner else None
+            }
         }
 
 class EmployeeSearchSerializer(serializers.ModelSerializer):

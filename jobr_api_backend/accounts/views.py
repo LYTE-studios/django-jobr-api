@@ -462,6 +462,32 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         company = serializer.save()
 
+        # Handle profile picture URL if present
+        profile_picture_url = request.data.get('profile_picture_url')
+        if profile_picture_url:
+            # Extract relative path from full URL
+            relative_path = profile_picture_url.split('/media/')[-1]
+            company.profile_picture = relative_path
+        
+        # Handle profile banner URL if present
+        profile_banner_url = request.data.get('profile_banner_url')
+        if profile_banner_url:
+            relative_path = profile_banner_url.split('/media/')[-1]
+            company.profile_banner = relative_path
+        
+        # Save company with images
+        company.save()
+
+        # Handle gallery images if present
+        gallery_data = request.data.get('company_gallery', [])
+        for gallery_item in gallery_data:
+            if gallery_url := gallery_item.get('gallery_url'):
+                relative_path = gallery_url.split('/media/')[-1]
+                CompanyGallery.objects.create(
+                    company=company,
+                    gallery=relative_path
+                )
+
         # Create CompanyUser relationship with 'owner' role
         CompanyUser.objects.create(
             company=company,
@@ -473,7 +499,9 @@ class UserViewSet(viewsets.ModelViewSet):
         request.user.selected_company = company
         request.user.save()
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Return updated company data with image URLs
+        updated_serializer = CompanySerializer(company)
+        return Response(updated_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'])
     def add_company(self, request):

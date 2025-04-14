@@ -754,7 +754,7 @@ class LikedEmployeeView(generics.GenericAPIView):
 
 class EmployeeFilterView(generics.ListAPIView):
     """Filter employees based on various criteria."""
-    serializer_class = EmployeeSearchSerializer
+    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = None
 
@@ -805,7 +805,7 @@ class EmployeeFilterView(generics.ListAPIView):
 
 class AISuggestionsView(generics.ListAPIView):
     """Get AI-powered employee suggestions."""
-    serializer_class = EmployeeSearchSerializer
+    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = None
 

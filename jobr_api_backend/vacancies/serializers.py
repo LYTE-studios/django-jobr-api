@@ -326,14 +326,14 @@ class VacancySerializer(serializers.ModelSerializer):
         # Handle languages
         languages_data = self.initial_data.get('languages', [])
         if languages_data:
-            vacancy.languages.all().delete()  # Clear existing languages
+            vacancy.languages.clear()  # Clear existing languages
             for lang_data in languages_data:
                 if 'language' in lang_data and 'mastery' in lang_data:
-                    VacancyLanguage.objects.create(
-                        vacancy=vacancy,
+                    lang = VacancyLanguage.objects.create(
                         language_id=lang_data['language'],
                         mastery=lang_data['mastery']
                     )
+                    vacancy.languages.add(lang)
 
         # Handle descriptions
         descriptions_data = self.initial_data.get('descriptions', [])

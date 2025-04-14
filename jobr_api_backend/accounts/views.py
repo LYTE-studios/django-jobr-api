@@ -689,14 +689,19 @@ class EmployerSearchView(generics.ListAPIView):
 
 class LikedEmployeeView(generics.ListCreateAPIView):
     """Handle liked employee operations."""
-    serializer_class = LikedEmployeeSerializer
+    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Get liked employees for the current employer's company."""
         if self.request.user.role != ProfileOption.EMPLOYER or not self.request.user.selected_company:
-            return LikedEmployee.objects.none()
-        return LikedEmployee.objects.filter(company=self.request.user.selected_company)
+            return CustomUser.objects.none()
+        
+        # Get the users of liked employees
+        liked_employee_users = CustomUser.objects.filter(
+            employee_profile__liked_by_companies__company=self.request.user.selected_company
+        )
+        return liked_employee_users
 
     def perform_create(self, serializer):
         """Toggle like status for an employee."""

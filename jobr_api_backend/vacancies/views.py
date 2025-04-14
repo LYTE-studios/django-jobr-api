@@ -115,7 +115,7 @@ class VacancyViewSet(viewsets.ModelViewSet):
         """Filter vacancies based on user role."""
         user = self.request.user
         if user.role == ProfileOption.EMPLOYER:
-            return Vacancy.objects.filter(company__in=user.companies.all())
+            return Vacancy.objects.filter(company=user.selected_company)
         return Vacancy.objects.all()
     
     def update(self, request, *args, **kwargs):

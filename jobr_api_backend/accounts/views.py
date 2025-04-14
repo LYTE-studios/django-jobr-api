@@ -687,23 +687,22 @@ class EmployerSearchView(generics.ListAPIView):
         return queryset
 
 
-class LikedEmployeeView(generics.ListCreateAPIView):
+class LikedEmployeeView(generics.GenericAPIView):
     """Handle liked employee operations."""
-    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def get(self, request, *args, **kwargs):
         """Get liked employees for the current employer's company."""
-        if self.request.user.role != ProfileOption.EMPLOYER or not self.request.user.selected_company:
-            return CustomUser.objects.none()
+        if request.user.role != ProfileOption.EMPLOYER or not request.user.selected_company:
+            return Response([])
         
         # Get the users of liked employees
         liked_employee_users = CustomUser.objects.filter(
-            employee_profile__liked_by_companies__company=self.request.user.selected_company
+            employee_profile__liked_by_companies__company=request.user.selected_company
         )
-        return liked_employee_users
+        return Response(UserSerializer(liked_employee_users, many=True).data)
 
-    def perform_create(self, serializer):
+    def post(self, request, *args, **kwargs):
         """Toggle like status for an employee."""
         if not self.request.user.selected_company:
             raise ValidationError("No company selected")
@@ -729,11 +728,14 @@ class LikedEmployeeView(generics.ListCreateAPIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         
         # Like if not already liked
-        serializer.save(
-            company=self.request.user.selected_company,
-            liked_by=self.request.user,
+        LikedEmployee.objects.create(
+            company=request.user.selected_company,
+            liked_by=request.user,
             employee=employee
         )
+        
+        # Return the updated user data
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['delete'])
     def unlike(self, request, pk=None):

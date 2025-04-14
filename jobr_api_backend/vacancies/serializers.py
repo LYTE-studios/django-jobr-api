@@ -284,26 +284,19 @@ class VacancySerializer(serializers.ModelSerializer):
         """
         Handle all relationships for vacancy creation/update
         """
-        # Handle date_times
-        date_times_data = self.initial_data.get('date_times_data', [])
-        if date_times_data:
-            # Clear existing date_times
-            vacancy.date_times.all().delete()
-            # Create new date_times
-            for dt_data in date_times_data:
-                VacancyDateTime.objects.create(
-                    vacancy=vacancy,
-                    date=dt_data['date'],
-                    start_time=dt_data['start_time'],
-                    end_time=dt_data['end_time']
-                )
+        # Handle basic fields
+        for field in ['title', 'description', 'internal_function_title', 'expected_mastery', 'salary']:
+            if field in self.initial_data:
+                setattr(vacancy, field, self.initial_data[field])
 
-        # Handle one-to-one relationships using write-only fields
-        if 'function' in validated_data:
-            vacancy.function = validated_data['function']
+        # Handle one-to-one relationships
+        function_data = self.initial_data.get('function')
+        if function_data and 'id' in function_data:
+            vacancy.function = Function.objects.get(id=function_data['id'])
 
-        if 'location' in validated_data:
-            vacancy.location = validated_data['location']
+        location_data = self.initial_data.get('location')
+        if location_data and 'id' in location_data:
+            vacancy.location = Location.objects.get(id=location_data['id'])
 
         # Handle many-to-many relationships
         # Handle contract types
@@ -324,57 +317,44 @@ class VacancySerializer(serializers.ModelSerializer):
             salary_benefit_ids = [sb['id'] for sb in salary_benefits_data if 'id' in sb]
             vacancy.salary_benefits.set(salary_benefit_ids)
 
-        language_data = self.initial_data.get("languages", [])
-        if language_data:
-            languages = []
-            for lang_data in language_data:
-                if 'language' in lang_data and 'mastery' in lang_data:
-                    language = Language.objects.get(id=lang_data['language'])
-                    languages.append(
-                        VacancyLanguage.objects.create(
-                            language=language,
-                            mastery=lang_data['mastery']
-                        )
-                    )
-            vacancy.languages.set(languages)
-
-        description_data = self.initial_data.get("descriptions", [])
-        if description_data:
-            descriptions = []
-            for desc_data in description_data:
-                question = None
-                if 'question' in desc_data and desc_data['question']:
-                    question = Question.objects.get(id=desc_data['question'])
-                descriptions.append(
-                    VacancyDescription.objects.create(
-                        question=question,
-                        description=desc_data.get('description', '')
-                    )
-                )
-            vacancy.descriptions.set(descriptions)
-
-        question_data = self.initial_data.get("questions", [])
-        if question_data:
-            questions = [
-                VacancyQuestion.objects.create(question=q.get('question'))
-                for q in question_data if 'question' in q
-            ]
-            vacancy.questions.set(questions)
-
-        week_day_data = self.initial_data.get("week_day", [])
+        # Handle week days
+        week_day_data = self.initial_data.get('week_day', [])
         if week_day_data:
-            week_days = [
-                Weekday.objects.get(name=day.get('name'))
-                for day in week_day_data if 'name' in day
-            ]
-            vacancy.week_day.set(week_days)
+            week_day_ids = [wd['id'] for wd in week_day_data if 'id' in wd]
+            vacancy.week_day.set(week_day_ids)
 
-        # Handle salary benefits
-        salary_benefits_data = self.initial_data.get("salary_benefits", [])
-        if salary_benefits_data:
-            salary_benefit_ids = [sb.get('id') for sb in salary_benefits_data if 'id' in sb]
-            salary_benefits = SalaryBenefit.objects.filter(id__in=salary_benefit_ids)
-            vacancy.salary_benefits.set(salary_benefits)
+        # Handle languages
+        languages_data = self.initial_data.get('languages', [])
+        if languages_data:
+            vacancy.languages.all().delete()  # Clear existing languages
+            for lang_data in languages_data:
+                if 'language' in lang_data and 'mastery' in lang_data:
+                    VacancyLanguage.objects.create(
+                        vacancy=vacancy,
+                        language_id=lang_data['language'],
+                        mastery=lang_data['mastery']
+                    )
+
+        # Handle descriptions
+        descriptions_data = self.initial_data.get('descriptions', [])
+        if descriptions_data:
+            vacancy.descriptions.all().delete()  # Clear existing descriptions
+            for desc_data in descriptions_data:
+                VacancyDescription.objects.create(
+                    vacancy=vacancy,
+                    question_id=desc_data.get('question'),
+                    description=desc_data.get('description', '')
+                )
+
+        # Handle questions
+        questions_data = self.initial_data.get('questions', [])
+        if questions_data:
+            vacancy.questions.all().delete()  # Clear existing questions
+            for q_data in questions_data:
+                VacancyQuestion.objects.create(
+                    vacancy=vacancy,
+                    question=q_data.get('question', '')
+                )
 
         vacancy.save()
         return vacancy
@@ -398,9 +378,13 @@ class VacancySerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request:
             raise serializers.ValidationError("Request context is required")
+
+        # Update basic fields from validated_data
+        for field in validated_data:
+            if hasattr(instance, field):
+                setattr(instance, field, validated_data[field])
         
-        Vacancy.objects.update(**validated_data)
-        
+        # Handle all relationships and save
         return self._handle_relationships(instance, validated_data)
 
 class ApplySerializer(serializers.ModelSerializer):

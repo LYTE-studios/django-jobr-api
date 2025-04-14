@@ -341,8 +341,10 @@ class VacancySerializer(serializers.ModelSerializer):
         if descriptions_data:
             vacancy.descriptions.clear()  # Clear existing descriptions
             for desc_data in descriptions_data:
+                question_id = desc_data.get('question')
+                question = Question.objects.get(id=question_id) if question_id else None
                 description = VacancyDescription.objects.create(
-                    question=None,  # Make question optional
+                    question=question,
                     description=desc_data.get('description', '')
                 )
                 vacancy.descriptions.add(description)

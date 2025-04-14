@@ -671,7 +671,7 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         return LikedEmployee.objects.filter(company=self.request.user.selected_company)
 
     def perform_create(self, serializer):
-        """Create a new liked employee relationship."""
+        """Toggle like status for an employee."""
         if not self.request.user.selected_company:
             raise ValidationError("No company selected")
         
@@ -684,6 +684,18 @@ class LikedEmployeeView(generics.ListCreateAPIView):
         user = get_object_or_404(CustomUser, id=user_id, role=ProfileOption.EMPLOYEE)
         employee = user.employee_profile
         
+        # Check if the like already exists
+        existing_like = LikedEmployee.objects.filter(
+            company=self.request.user.selected_company,
+            employee=employee
+        ).first()
+        
+        if existing_like:
+            # Unlike if already liked
+            existing_like.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        # Like if not already liked
         serializer.save(
             company=self.request.user.selected_company,
             liked_by=self.request.user,

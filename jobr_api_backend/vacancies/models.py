@@ -241,6 +241,12 @@ class Vacancy(models.Model):
     created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, related_name='created_vacancies')
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
+    internal_function_title = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='Internal title used for the function'
+    )
     expected_mastery = models.CharField(
         max_length=255, choices=MasteryOption.choices, null=True
     )

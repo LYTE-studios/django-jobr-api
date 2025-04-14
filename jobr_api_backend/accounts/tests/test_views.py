@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from unittest.mock import patch, Mock
 from django.core.exceptions import ValidationError
 
-from ..models import ProfileOption, Employee, Employer
+from ..models import ProfileOption, Employee, Employer, Company, CompanyUser, LikedEmployee
 from ..services import VATValidationService
 
 User = get_user_model()
@@ -242,3 +242,90 @@ class EmployerSearchViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['company_name'], 'Test Company')
+
+class LikedEmployeeViewTests(APITestCase):
+    def setUp(self):
+        """Set up test data."""
+        # Create employer user
+        self.employer = User.objects.create_user(
+            username='employer@test.com',
+            email='employer@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYER
+        )
+        
+        # Create company and link it to employer
+        self.company = Company.objects.create(name='Test Company')
+        CompanyUser.objects.create(
+            company=self.company,
+            user=self.employer,
+            role='owner'
+        )
+        self.employer.selected_company = self.company
+        self.employer.save()
+
+        # Create employee user
+        self.employee = User.objects.create_user(
+            username='employee@test.com',
+            email='employee@test.com',
+            password='testpass123',
+            role=ProfileOption.EMPLOYEE
+        )
+
+        self.client.force_authenticate(user=self.employer)
+        self.like_url = reverse('employee-like', kwargs={'employee_id': self.employee.id})
+
+    def test_like_employee(self):
+        """Test liking an employee."""
+        response = self.client.post(self.like_url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            LikedEmployee.objects.filter(
+                company=self.company,
+                employee=self.employee.employee_profile
+            ).exists()
+        )
+
+    def test_like_employee_toggle(self):
+        """Test toggling like status for an employee."""
+        # First like
+        response = self.client.post(self.like_url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            LikedEmployee.objects.filter(
+                company=self.company,
+                employee=self.employee.employee_profile
+            ).exists()
+        )
+        
+        # Unlike by posting again
+        response = self.client.post(self.like_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            LikedEmployee.objects.filter(
+                company=self.company,
+                employee=self.employee.employee_profile
+            ).exists()
+        )
+        
+        # Like again
+        response = self.client.post(self.like_url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            LikedEmployee.objects.filter(
+                company=self.company,
+                employee=self.employee.employee_profile
+            ).exists()
+        )
+
+    def test_like_employee_no_company_selected(self):
+        """Test liking an employee without a selected company."""
+        self.employer.selected_company = None
+        self.employer.save()
+        
+        response = self.client.post(self.like_url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['detail'],
+            "No company selected"
+        )

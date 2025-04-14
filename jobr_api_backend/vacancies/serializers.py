@@ -305,15 +305,24 @@ class VacancySerializer(serializers.ModelSerializer):
         if 'location' in validated_data:
             vacancy.location = validated_data['location']
 
-        # Handle many-to-many relationships using write-only fields
-        if 'contract_type' in validated_data:
-            vacancy.contract_type.set(validated_data['contract_type'])
+        # Handle many-to-many relationships
+        # Handle contract types
+        contract_type_data = self.initial_data.get('contract_type', [])
+        if contract_type_data:
+            contract_type_ids = [ct['id'] for ct in contract_type_data if 'id' in ct]
+            vacancy.contract_type.set(contract_type_ids)
 
-        if 'skill' in validated_data:
-            vacancy.skill.set(validated_data['skill'])
+        # Handle skills
+        skill_data = self.initial_data.get('skill', [])
+        if skill_data:
+            skill_ids = [skill['id'] for skill in skill_data if 'id' in skill]
+            vacancy.skill.set(skill_ids)
 
-        if 'salary_benefits' in validated_data:
-            vacancy.salary_benefits.set(validated_data['salary_benefits'])
+        # Handle salary benefits
+        salary_benefits_data = self.initial_data.get('salary_benefits', [])
+        if salary_benefits_data:
+            salary_benefit_ids = [sb['id'] for sb in salary_benefits_data if 'id' in sb]
+            vacancy.salary_benefits.set(salary_benefit_ids)
 
         language_data = self.initial_data.get("languages", [])
         if language_data:

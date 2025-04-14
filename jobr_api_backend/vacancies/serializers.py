@@ -389,10 +389,8 @@ class VacancySerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request:
             raise serializers.ValidationError("Request context is required")
-
-        # Update simple fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        
+        Vacancy.objects.update(**validated_data)
         
         return self._handle_relationships(instance, validated_data)
 

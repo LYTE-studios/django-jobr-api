@@ -117,14 +117,6 @@ class VacancyViewSet(viewsets.ModelViewSet):
         if user.role == ProfileOption.EMPLOYER:
             return Vacancy.objects.filter(company=user.selected_company)
         return Vacancy.objects.all()
-    
-    def update(self, request, *args, **kwargs):
-        """Handle PUT requests for vacancy updates."""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=False)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
         """Handle PATCH requests for vacancy updates."""
@@ -151,12 +143,6 @@ class VacancyViewSet(viewsets.ModelViewSet):
         
         if vacancy.company != user.selected_company:
             raise ValidationError("You can only update vacancies for your selected company")
-
-        # Validate min_salary is not greater than max_salary if both are provided
-        min_salary = serializer.validated_data.get('min_salary')
-        max_salary = serializer.validated_data.get('max_salary')
-        if min_salary and max_salary and min_salary > max_salary:
-            raise ValidationError("Minimum salary cannot be greater than maximum salary")
 
         serializer.save()
 

@@ -765,11 +765,8 @@ class EmployeeFilterView(generics.ListAPIView):
         # Filter by distance to company
         max_distance = self.request.query_params.get('max_distance')
         if max_distance and self.request.user.role == ProfileOption.EMPLOYER and self.request.user.selected_company:
-            company = self.request.user.selected_company
-            if hasattr(company, 'street_name') and company.street_name and company.city:
-                # Here you would use a geocoding service to get coordinates
-                # For now, we'll skip distance filtering if coordinates aren't available
-                pass
+            # Skip distance filtering if coordinates aren't available
+            pass
 
         # Filter by age range
         min_age = self.request.query_params.get('min_age')

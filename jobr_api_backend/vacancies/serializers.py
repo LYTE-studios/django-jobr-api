@@ -207,6 +207,7 @@ class VacancySerializer(serializers.ModelSerializer):
             "questions",
             "skill", "skill_ids",
             "salary_benefits", "salary_benefit_ids",
+            "responsibilities",
             "applicant_count",
             "is_favorited",
             "application_status",
@@ -285,7 +286,7 @@ class VacancySerializer(serializers.ModelSerializer):
         Handle all relationships for vacancy creation/update
         """
         # Handle basic fields
-        for field in ['title', 'description', 'internal_function_title', 'expected_mastery', 'salary']:
+        for field in ['title', 'description', 'internal_function_title', 'expected_mastery', 'salary', 'responsibilities']:
             if field in self.initial_data:
                 setattr(vacancy, field, self.initial_data[field])
 

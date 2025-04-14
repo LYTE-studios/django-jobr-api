@@ -266,6 +266,7 @@ class Vacancy(models.Model):
     questions = models.ManyToManyField(VacancyQuestion)
     skill = models.ManyToManyField(Skill)
     salary_benefits = models.ManyToManyField(SalaryBenefit, blank=True)
+    responsibilities = models.JSONField(default=list, blank=True, help_text="List of responsibilities for this vacancy")
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 

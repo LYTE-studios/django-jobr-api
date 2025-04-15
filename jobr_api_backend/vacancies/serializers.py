@@ -119,6 +119,11 @@ class VacancySalaryBenefitSerializer(serializers.ModelSerializer):
         model = SalaryBenefit
         fields = ["id", "name"]
 
+class JobListingPromptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobListingPrompt
+        fields = ['id', 'name', 'weight']
+
 class VacancyDateTimeSerializer(serializers.ModelSerializer):
     class Meta:
         model = VacancyDateTime

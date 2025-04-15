@@ -8,7 +8,7 @@ from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
     SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
-    ApplicationStatus, VacancyDateTime
+    ApplicationStatus, VacancyDateTime, JobListingPrompt
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
@@ -16,7 +16,8 @@ from .serializers import (
     QuestionSerializer, SkillSerializer,
     VacancySerializer, FunctionSkillSerializer,
     SalaryBenefitSerializer, SectorSerializer,
-    ApplySerializer, FavoriteVacancySerializer
+    ApplySerializer, FavoriteVacancySerializer,
+    JobListingPromptSerializer
 )
 
 class SectorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -154,6 +155,13 @@ class VacancyViewSet(viewsets.ModelViewSet):
         if not user.selected_company:
             raise ValidationError("Please select a company before creating a vacancy")
         serializer.save(company=user.selected_company, created_by=user)
+
+class JobListingPromptViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing job listing prompts."""
+    queryset = JobListingPrompt.objects.all().order_by('weight')
+    serializer_class = JobListingPromptSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
 
 class VacancyFilterView(generics.ListAPIView):
     """View for filtering and sorting vacancies."""

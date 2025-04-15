@@ -15,7 +15,8 @@ from .views import (
     SectorViewSet,
     JobApplicationViewSet,
     FavoriteVacancyViewSet,
-    AIVacancySuggestionsView
+    AIVacancySuggestionsView,
+    JobListingPromptViewSet
 )
 
 # Create a router and register our viewsets with it
@@ -32,6 +33,7 @@ router.register(r'vacancies', VacancyViewSet, basename='vacancy')
 router.register(r'salary-benefits', SalaryBenefitViewSet, basename='salary-benefit')
 router.register(r'applications', JobApplicationViewSet, basename='application')
 router.register(r'favorites', FavoriteVacancyViewSet, basename='favorite')
+router.register(r'job-listing-prompts', JobListingPromptViewSet, basename='job-listing-prompt')
 
 urlpatterns = [
     # Include router URLs

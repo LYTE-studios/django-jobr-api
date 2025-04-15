@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
 
 from .models import Employee, CompanyGallery, ProfileOption, LikedEmployee, Review, Company, CompanyUser
+from vacancies.models import Sector
 
 User = get_user_model()
 
@@ -126,7 +127,12 @@ class CompanyBasicSerializer(serializers.ModelSerializer):
 class CompanySerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
-    sector = serializers.SerializerMethodField()
+    sector = serializers.PrimaryKeyRelatedField(
+        queryset=Sector.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    sector_details = serializers.SerializerMethodField(read_only=True)
     company_gallery = CompanyGallerySerializer(many=True, read_only=True)
     companies = serializers.SerializerMethodField()
 
@@ -138,10 +144,8 @@ class CompanySerializer(serializers.ModelSerializer):
                 if field not in self.Meta.read_only_fields:
                     self.fields[field].required = False
 
-    def get_sector(self, obj):
+    def get_sector_details(self, obj):
         if obj.sector:
-            # Import here to avoid circular import
-            from vacancies.serializers import SectorSerializer
             return {
                 'id': obj.sector.id,
                 'name': obj.sector.name,
@@ -154,7 +158,7 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = ('id', 'name', 'vat_number', 'street_name', 'house_number',
                  'city', 'postal_code', 'website', 'description', 'employee_count',
-                'created_at', 'updated_at', 'sector',
+                'created_at', 'updated_at', 'sector', 'sector_details',
                  'profile_picture_url', 'profile_banner_url', 'company_gallery',
                  'companies')
         read_only_fields = ('created_at', 'updated_at', 'users', 'profile_picture_url', 'profile_banner_url', 'companies')

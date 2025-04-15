@@ -199,7 +199,7 @@ class VacancyDescription(models.Model):
     """
     Represents a description for a vacancy.
     """
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True)
+    prompt = models.ForeignKey(JobListingPrompt, on_delete=models.CASCADE, null=True)
     description = models.TextField()
 
     def __str__(self):

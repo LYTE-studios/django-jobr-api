@@ -99,11 +99,11 @@ class VacancyLanguageSerializer(serializers.ModelSerializer):
         return value.capitalize() if value else value
 
 class VacancyDescriptionSerializer(serializers.ModelSerializer):
-    question = QuestionSerializer()
+    prompt = JobListingPromptSerializer()
     
     class Meta:
         model = VacancyDescription
-        fields = ["question", "description"]
+        fields = ["prompt", "description"]
 
 class VacancyQuestionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -347,10 +347,10 @@ class VacancySerializer(serializers.ModelSerializer):
         if descriptions_data:
             vacancy.descriptions.clear()  # Clear existing descriptions
             for desc_data in descriptions_data:
-                question_id = desc_data.get('question')
-                question = Question.objects.get(id=question_id) if question_id else None
+                prompt_id = desc_data.get('prompt')
+                prompt = JobListingPrompt.objects.get(id=prompt_id) if prompt_id else None
                 description = VacancyDescription.objects.create(
-                    question=question,
+                    prompt=prompt,
                     description=desc_data.get('description', '')
                 )
                 vacancy.descriptions.add(description)

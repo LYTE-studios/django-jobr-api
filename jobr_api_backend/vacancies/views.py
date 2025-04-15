@@ -38,11 +38,25 @@ class ContractTypeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ContractType.objects.all()
     serializer_class = ContractTypeSerializer
     permission_classes = [IsAuthenticated]
-
 class FunctionViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing functions."""
-    queryset = Function.objects.all()
     serializer_class = FunctionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        # If user is not an employer, return all functions
+        if not hasattr(user, 'selected_company'):
+            return Function.objects.all()
+
+        # Get selected company's sector
+        company = user.selected_company
+        if not company or not company.sector:
+            return Function.objects.all()
+
+        # Return functions for the company's sector
+        return Function.objects.filter(sectors=company.sector)
     permission_classes = [IsAuthenticated]
 
 class LanguageViewSet(viewsets.ReadOnlyModelViewSet):

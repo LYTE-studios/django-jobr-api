@@ -119,11 +119,17 @@ class JobListingPromptSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'weight']
 
 class VacancyDescriptionSerializer(serializers.ModelSerializer):
-    prompt = JobListingPromptSerializer()
+    prompt = JobListingPromptSerializer(read_only=True)
+    prompt_id = serializers.PrimaryKeyRelatedField(
+        queryset=JobListingPrompt.objects.all(),
+        source='prompt',
+        write_only=True,
+        required=False
+    )
     
     class Meta:
         model = VacancyDescription
-        fields = ["prompt", "description"]
+        fields = ["prompt", "prompt_id", "description"]
 
 class VacancyDateTimeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -347,12 +353,12 @@ class VacancySerializer(serializers.ModelSerializer):
         if descriptions_data:
             vacancy.descriptions.clear()  # Clear existing descriptions
             for desc_data in descriptions_data:
-                prompt_id = desc_data.get('prompt')
-                prompt = JobListingPrompt.objects.get(id=prompt_id) if prompt_id else None
                 description = VacancyDescription.objects.create(
-                    prompt=prompt,
                     description=desc_data.get('description', '')
                 )
+                if 'prompt' in desc_data:
+                    description.prompt_id = desc_data['prompt']
+                    description.save()
                 vacancy.descriptions.add(description)
         # Handle questions
         questions_data = self.initial_data.get('questions', [])

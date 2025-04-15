@@ -9,12 +9,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameField(
+        migrations.RemoveField(
             model_name='vacancydescription',
-            old_name='question',
-            new_name='prompt',
+            name='question',
         ),
-        migrations.AlterField(
+        migrations.AddField(
             model_name='vacancydescription',
             name='prompt',
             field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='vacancies.joblistingprompt'),

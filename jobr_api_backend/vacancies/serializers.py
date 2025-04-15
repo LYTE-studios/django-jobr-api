@@ -98,13 +98,6 @@ class VacancyLanguageSerializer(serializers.ModelSerializer):
         """Capitalize the mastery value before validation."""
         return value.capitalize() if value else value
 
-class VacancyDescriptionSerializer(serializers.ModelSerializer):
-    prompt = JobListingPromptSerializer()
-    
-    class Meta:
-        model = VacancyDescription
-        fields = ["prompt", "description"]
-
 class VacancyQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = VacancyQuestion
@@ -124,6 +117,13 @@ class JobListingPromptSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobListingPrompt
         fields = ['id', 'name', 'weight']
+
+class VacancyDescriptionSerializer(serializers.ModelSerializer):
+    prompt = JobListingPromptSerializer()
+    
+    class Meta:
+        model = VacancyDescription
+        fields = ["prompt", "description"]
 
 class VacancyDateTimeSerializer(serializers.ModelSerializer):
     class Meta:

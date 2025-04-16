@@ -362,23 +362,24 @@ class UserSerializer(serializers.ModelSerializer):
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')
                 if gallery_data is not None:
-                    # Delete existing gallery items not in the update
-                    existing_ids = [item.get('id') for item in gallery_data if item.get('id')]
-                    employee_profile.employee_gallery.exclude(id__in=existing_ids or []).delete()
-
-                    # Update or create gallery items
+                    # Get IDs from the request
+                    requested_ids = [item.get('id') for item in gallery_data if item.get('id')]
+                    
+                    # Delete all gallery items not in the request
+                    EmployeeGallery.objects.filter(employee=employee_profile).exclude(id__in=requested_ids).delete()
+                    
+                    # Update existing or create new gallery items
                     for gallery_item in gallery_data:
-                        if 'id' in gallery_item:
-                            # Update existing
-                            gallery = EmployeeGallery.objects.get(id=gallery_item['id'])
-                            if 'gallery_url' in gallery_item:
-                                relative_path = gallery_item['gallery_url'].split('/media/')[-1]
-                                gallery.gallery = relative_path
-                                gallery.save()
-                        else:
-                            # Create new
-                            if 'gallery_url' in gallery_item:
-                                relative_path = gallery_item['gallery_url'].split('/media/')[-1]
+                        if 'gallery_url' in gallery_item:
+                            relative_path = gallery_item['gallery_url'].split('/media/')[-1]
+                            if 'id' in gallery_item:
+                                # Update existing
+                                EmployeeGallery.objects.filter(
+                                    id=gallery_item['id'],
+                                    employee=employee_profile
+                                ).update(gallery=relative_path)
+                            else:
+                                # Create new
                                 EmployeeGallery.objects.create(
                                     employee=employee_profile,
                                     gallery=relative_path

@@ -421,3 +421,53 @@ class VATValidationResult(models.Model):
 
     def __str__(self):
         return f"{self.vat_number} - {'Valid' if self.is_valid else 'Invalid'}"
+
+class EmployeeGallery(models.Model):
+    """Employee gallery for uploading images."""
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="employee_gallery"
+    )
+    gallery = models.ImageField(
+        upload_to="employee_galleries/",
+        blank=False,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="Employee gallery image (max 5MB, jpg, jpeg, png, gif)"
+    )
+
+    class Meta:
+        verbose_name = 'Employee Gallery'
+        verbose_name_plural = 'Employee Galleries'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"Gallery image for {self.employee.user.username}"
+
+class EmployeeGallery(models.Model):
+    """Employee gallery for uploading images."""
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="employee_gallery"
+    )
+    gallery = models.ImageField(
+        upload_to="employee_galleries/",
+        blank=False,
+        validators=[
+            FileExtensionValidator(['jpg', 'jpeg', 'png', 'gif']),
+            validate_image_size
+        ],
+        help_text="Employee gallery image (max 5MB, jpg, jpeg, png, gif)"
+    )
+
+    class Meta:
+        verbose_name = 'Employee Gallery'
+        verbose_name_plural = 'Employee Galleries'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"Gallery image for {self.employee.user.username}"

@@ -2,7 +2,10 @@ from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
 
-from .models import Employee, CompanyGallery, ProfileOption, LikedEmployee, Review, Company, CompanyUser
+from .models import (
+    Employee, CompanyGallery, ProfileOption, LikedEmployee, Review,
+    Company, CompanyUser, EmployeeGallery
+)
 from vacancies.models import Sector
 
 User = get_user_model()
@@ -44,12 +47,24 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
 # Import serializers from vacancies app using absolute imports
 from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
 
+class EmployeeGallerySerializer(serializers.ModelSerializer):
+    gallery_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EmployeeGallery
+        fields = ('id', 'employee', 'gallery_url')
+        read_only_fields = ('gallery_url',)
+
+    def get_gallery_url(self, obj):
+        return obj.gallery.url if obj.gallery else None
+
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     skill = SkillSerializer(many=True, read_only=True)
     language = LanguageSerializer(many=True, read_only=True)
+    employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
 
     def get_is_liked(self, obj):
         request = self.context.get('request')

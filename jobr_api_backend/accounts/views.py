@@ -394,53 +394,83 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='gallery')
     def add_gallery_image(self, request):
-        """Add an image to company's gallery."""
-        if request.user.role != ProfileOption.EMPLOYER:
-            return Response(
-                {"error": "Only employers can add gallery images"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        if not request.user.selected_company:
-            return Response(
-                {"error": "No company selected"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+        """Add an image to company's or employee's gallery."""
         if 'image' not in request.FILES:
             return Response(
                 {"error": "No image provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        if request.user.role == ProfileOption.EMPLOYER:
+            if not request.user.selected_company:
+                return Response(
+                    {"error": "No company selected"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            gallery = CompanyGallery.objects.create(
+                company=request.user.selected_company,
+                gallery=request.FILES['image']
+            )
+            
+            from .serializers import CompanySerializer
+            return Response(CompanySerializer(request.user.selected_company).data)
         
-        gallery = CompanyGallery.objects.create(
-            company=request.user.selected_company,
-            gallery=request.FILES['image']
+        elif request.user.role == ProfileOption.EMPLOYEE:
+            if not hasattr(request.user, 'employee_profile'):
+                return Response(
+                    {"error": "Employee profile not found"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            gallery = EmployeeGallery.objects.create(
+                employee=request.user.employee_profile,
+                gallery=request.FILES['image']
+            )
+            
+            from .serializers import UserSerializer
+            return Response(UserSerializer(request.user).data)
+        
+        return Response(
+            {"error": "Invalid user role for gallery upload"},
+            status=status.HTTP_403_FORBIDDEN
         )
-        
-        from .serializers import CompanySerializer
-        return Response(CompanySerializer(request.user.selected_company).data)
 
     @action(detail=True, methods=['delete'], url_path='gallery')
     def delete_gallery_image(self, request, pk=None):
-        """Delete an image from company's gallery."""
-        if request.user.role != ProfileOption.EMPLOYER:
+        """Delete an image from company's or employee's gallery."""
+        if request.user.role == ProfileOption.EMPLOYER:
+            if not request.user.selected_company:
+                return Response(
+                    {"error": "No company selected"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            gallery = get_object_or_404(
+                CompanyGallery,
+                pk=pk,
+                company=request.user.selected_company
+            )
+            
+        elif request.user.role == ProfileOption.EMPLOYEE:
+            if not hasattr(request.user, 'employee_profile'):
+                return Response(
+                    {"error": "Employee profile not found"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            gallery = get_object_or_404(
+                EmployeeGallery,
+                pk=pk,
+                employee=request.user.employee_profile
+            )
+            
+        else:
             return Response(
-                {"error": "Only employers can delete gallery images"},
+                {"error": "Invalid user role for gallery deletion"},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
-        if not request.user.selected_company:
-            return Response(
-                {"error": "No company selected"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
-        gallery = get_object_or_404(
-            CompanyGallery,
-            pk=pk,
-            company=request.user.selected_company
-        )
         # Delete the file first
         if gallery.gallery:
             gallery.gallery.delete()
@@ -604,8 +634,12 @@ class UserViewSet(viewsets.ModelViewSet):
         if 'employee_profile' in self.request.data and user.role == 'employee':
             profile_data = self.request.data['employee_profile']
             
-            # Get or create the employee profile
-            employee_profile, created = Employee.objects.get_or_create(user=user)
+            # Get the employee profile - it should already exist
+            try:
+                employee_profile = Employee.objects.get(user=user)
+            except Employee.DoesNotExist:
+                # If it doesn't exist (which shouldn't happen), create it
+                employee_profile = Employee.objects.create(user=user)
             
             # First handle all non-many-to-many and non-OneToOne fields
             m2m_fields = {}

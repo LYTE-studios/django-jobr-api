@@ -359,44 +359,7 @@ class AIVacancySuggestionsView(generics.ListAPIView):
         if user.role != ProfileOption.EMPLOYEE or not hasattr(user, 'employee_profile'):
             return Vacancy.objects.none()
 
-        employee = user.employee_profile
-        
         # Base query for active vacancies
         queryset = Vacancy.objects.all()
-
-        # Match by function if available
-        if employee.function:
-            queryset = queryset.filter(function=employee.function)
-
-        # Match by skills
-        if employee.skill.exists():
-            queryset = queryset.filter(skill__in=employee.skill.all())
-
-        # Match by languages
-        if employee.language.exists():
-            queryset = queryset.filter(languages__language__in=employee.language.all())
-
-        # Filter by location if available
-        if employee.latitude and employee.longitude:
-            queryset = queryset.filter(
-                latitude__isnull=False,
-                longitude__isnull=False
-            ).extra(
-                where=[
-                    """
-                    ST_Distance_Sphere(
-                        point(longitude, latitude),
-                        point(%s, %s)
-                    ) <= %s * 1000
-                    """
-                ],
-                params=[employee.longitude, employee.latitude, 50]  # 50km radius
-            )
-
-        # Order by relevance (number of matching criteria)
-        queryset = queryset.annotate(
-            relevance_score=Count('skill', filter=Q(skill__in=employee.skill.all())) +
-            Count('languages__language', filter=Q(languages__language__in=employee.language.all()))
-        ).order_by('-relevance_score')
 
         return queryset[:10]  # Return top 10 matches

@@ -56,10 +56,19 @@ class EmployeeGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeGallery
         fields = ('id', 'employee', 'gallery_url')
-        read_only_fields = ('gallery_url',)
+        read_only_fields = ('gallery_url', 'employee')
 
     def get_gallery_url(self, obj):
         return obj.gallery.url if obj.gallery else None
+
+    def create(self, validated_data):
+        if 'gallery_url' in validated_data:
+            gallery_url = validated_data.pop('gallery_url')
+            if gallery_url:
+                # Extract relative path from full URL
+                relative_path = gallery_url.split('/media/')[-1]
+                validated_data['gallery'] = relative_path
+        return super().create(validated_data)
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
@@ -349,6 +358,31 @@ class UserSerializer(serializers.ModelSerializer):
                     employee_profile.language.set(language_data)
                 if skill_data is not None:
                     employee_profile.skill.set(skill_data)
+
+                # Handle gallery updates if present in the data
+                gallery_data = employee_profile_data.get('employee_gallery')
+                if gallery_data is not None:
+                    # Delete existing gallery items not in the update
+                    existing_ids = [item.get('id') for item in gallery_data if item.get('id')]
+                    employee_profile.employee_gallery.exclude(id__in=existing_ids or []).delete()
+
+                    # Update or create gallery items
+                    for gallery_item in gallery_data:
+                        if 'id' in gallery_item:
+                            # Update existing
+                            gallery = EmployeeGallery.objects.get(id=gallery_item['id'])
+                            if 'gallery_url' in gallery_item:
+                                relative_path = gallery_item['gallery_url'].split('/media/')[-1]
+                                gallery.gallery = relative_path
+                                gallery.save()
+                        else:
+                            # Create new
+                            if 'gallery_url' in gallery_item:
+                                relative_path = gallery_item['gallery_url'].split('/media/')[-1]
+                                EmployeeGallery.objects.create(
+                                    employee=employee_profile,
+                                    gallery=relative_path
+                                )
 
             # Update company profile for employers
             elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:

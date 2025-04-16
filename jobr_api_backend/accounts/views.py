@@ -634,47 +634,8 @@ class UserViewSet(viewsets.ModelViewSet):
         if 'employee_profile' in self.request.data and user.role == 'employee':
             profile_data = self.request.data['employee_profile']
             
-            # Get the employee profile - it should already exist
-            try:
-                employee_profile = Employee.objects.get(user=user)
-            except Employee.DoesNotExist:
-                # If it doesn't exist (which shouldn't happen), create it
-                employee_profile = Employee.objects.create(user=user)
-            
-            # First handle all non-many-to-many and non-OneToOne fields
-            m2m_fields = {}
-            one_to_one_fields = {}
-            for key, value in profile_data.items():
-                if key in ['skill', 'language']:
-                    m2m_fields[key] = value
-                elif key in ['function']:
-                    one_to_one_fields[key] = value
-                else:
-                    setattr(employee_profile, key, value)
-            
-            # Handle OneToOne fields before saving
-            for key, value in one_to_one_fields.items():
-                if value is not None:
-                    setattr(employee_profile, key, value)
-                else:
-                    # If value is None, clear the relationship
-                    setattr(employee_profile, key, None)
-            
-            # Save the profile with all updates
-            employee_profile.save()
-            
-            # Now handle many-to-many fields
-            for key, value in m2m_fields.items():
-                if value is not None:
-                    related_manager = getattr(employee_profile, key)
-                    try:
-                        related_manager.set(value)
-                    except Exception as e:
-                        print(f"Error setting {key}: {str(e)}")
-                else:
-                    # If value is None, clear the relationship
-                    related_manager = getattr(employee_profile, key)
-                    related_manager.clear()
+            # Let the serializer handle all profile updates
+            pass
 
 class EmployeeSearchView(generics.ListAPIView):
     """Search for employees."""

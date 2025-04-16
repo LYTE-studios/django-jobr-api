@@ -306,43 +306,48 @@ class UserSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
-        # Handle profile updates
-        employee_profile_data = validated_data.pop('employee_profile', None)
+        from django.db import transaction
 
-        # Update user fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
+        with transaction.atomic():
+            # Handle profile updates
+            employee_profile_data = validated_data.pop('employee_profile', None)
 
-        # Update employee profile
-        if employee_profile_data and instance.role == ProfileOption.EMPLOYEE:
-            if not hasattr(instance, 'employee_profile'):
-                instance.employee_profile = Employee.objects.create(user=instance)
-            # Handle many-to-many fields separately
-            language_data = employee_profile_data.pop('language', None)
-            skill_data = employee_profile_data.pop('skill', None)
+            # Update user fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
 
-            # Update regular fields
-            for attr, value in employee_profile_data.items():
-                setattr(instance.employee_profile, attr, value)
-            instance.employee_profile.save()
+            # Update employee profile
+            if employee_profile_data and instance.role == ProfileOption.EMPLOYEE:
+                # Get or create employee profile in a transaction-safe way
+                employee_profile, _ = Employee.objects.select_for_update().get_or_create(user=instance)
+                
+                # Handle many-to-many fields separately
+                language_data = employee_profile_data.pop('language', None)
+                skill_data = employee_profile_data.pop('skill', None)
 
-            # Update many-to-many fields using set()
-            if language_data is not None:
-                instance.employee_profile.language.set(language_data)
-            if skill_data is not None:
-                instance.employee_profile.skill.set(skill_data)
-        # Update company profile for employers
-        elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:
-            company_data = self.context['request'].data.get('company', {})
-            if company_data:
-                company_serializer = CompanySerializer(
-                    instance.selected_company,
-                    data=company_data,
-                    partial=True
-                )
-                company_serializer.is_valid(raise_exception=True)
-                company_serializer.save()
+                # Update regular fields
+                for attr, value in employee_profile_data.items():
+                    setattr(employee_profile, attr, value)
+                employee_profile.save()
+
+                # Update many-to-many fields using set()
+                if language_data is not None:
+                    employee_profile.language.set(language_data)
+                if skill_data is not None:
+                    employee_profile.skill.set(skill_data)
+
+            # Update company profile for employers
+            elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:
+                company_data = self.context['request'].data.get('company', {})
+                if company_data:
+                    company_serializer = CompanySerializer(
+                        instance.selected_company,
+                        data=company_data,
+                        partial=True
+                    )
+                    company_serializer.is_valid(raise_exception=True)
+                    company_serializer.save()
 
         return instance
 

@@ -12,7 +12,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import (
     Company, CompanyUser, CustomUser, Employee, LikedEmployee,
-    ProfileOption, Review, CompanyGallery
+    ProfileOption, Review, CompanyGallery, EmployeeGallery
 )
 from .serializers import (
     CompanySerializer,

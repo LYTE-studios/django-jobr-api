@@ -62,9 +62,19 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
+    chat_requests = serializers.SerializerMethodField()
+    applications = serializers.SerializerMethodField()
     skill = SkillSerializer(many=True, read_only=True)
     language = LanguageSerializer(many=True, read_only=True)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
+
+    def get_chat_requests(self, obj):
+        from chat.models import ChatRoom
+        return ChatRoom.objects.filter(users=obj.user).count()
+
+    def get_applications(self, obj):
+        from vacancies.models import ApplyVacancy
+        return ApplyVacancy.objects.filter(employee=obj).count()
 
     def get_is_liked(self, obj):
         request = self.context.get('request')

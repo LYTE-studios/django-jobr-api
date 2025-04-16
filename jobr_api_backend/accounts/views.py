@@ -603,8 +603,9 @@ class UserViewSet(viewsets.ModelViewSet):
         # Handle employee profile updates
         if 'employee_profile' in self.request.data and user.role == 'employee':
             profile_data = self.request.data['employee_profile']
-            # Get the existing employee profile
-            employee_profile = user.employee_profile
+            
+            # Get or create the employee profile
+            employee_profile, created = Employee.objects.get_or_create(user=user)
             
             # First handle all non-many-to-many and non-OneToOne fields
             m2m_fields = {}
@@ -617,10 +618,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 else:
                     setattr(employee_profile, key, value)
             
-            # Save the profile first
-            employee_profile.save()
-            
-            # Handle OneToOne fields
+            # Handle OneToOne fields before saving
             for key, value in one_to_one_fields.items():
                 if value is not None:
                     setattr(employee_profile, key, value)
@@ -628,7 +626,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     # If value is None, clear the relationship
                     setattr(employee_profile, key, None)
             
-            # Save again after OneToOne fields are set
+            # Save the profile with all updates
             employee_profile.save()
             
             # Now handle many-to-many fields

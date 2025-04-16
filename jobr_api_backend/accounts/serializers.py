@@ -1,11 +1,14 @@
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
+from django.db import models
 
 from .models import (
     Employee, CompanyGallery, ProfileOption, LikedEmployee, Review,
     Company, CompanyUser, EmployeeGallery
 )
+from chat.models import ChatRoom
+from vacancies.models import ApplyVacancy
 from vacancies.models import Sector
 
 User = get_user_model()
@@ -69,11 +72,11 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
 
     def get_chat_requests(self, obj):
-        from chat.models import ChatRoom
-        return ChatRoom.objects.filter(users=obj.user).count()
+        return ChatRoom.objects.filter(
+            models.Q(employee=obj.user) | models.Q(employer=obj.user)
+        ).count()
 
     def get_applications(self, obj):
-        from vacancies.models import ApplyVacancy
         return ApplyVacancy.objects.filter(employee=obj).count()
 
     def get_is_liked(self, obj):

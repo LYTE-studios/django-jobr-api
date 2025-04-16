@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db.models import Q, Count
 from accounts.models import ProfileOption
+from common.pagination import NoLimitPagination
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
@@ -42,6 +43,7 @@ class FunctionViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing functions."""
     serializer_class = FunctionSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = NoLimitPagination  # Use custom pagination that returns all items
 
     def get_queryset(self):
         user = self.request.user

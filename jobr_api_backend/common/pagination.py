@@ -1,11 +1,10 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from collections import OrderedDict
-from drf_yasg import openapi
 
-class BasePageNumberPagination(PageNumberPagination):
+class NoLimitPagination(PageNumberPagination):
     """
-    Base pagination class with Swagger documentation.
+    Custom pagination class that returns all items in a single page
+    while maintaining the standard pagination response structure.
     """
     page_size = 10
     page_size_query_param = 'page_size'
@@ -124,26 +123,29 @@ class CursorPaginationWithCount(PageNumberPagination):
     cursor_query_param = 'cursor'
 
     def get_paginated_response(self, data):
-        """
-        Return paginated response with cursor and count.
-        """
-        return Response(OrderedDict([
-            ('count', self.page.paginator.count),
-            ('next_cursor', self.get_next_link()),
-            ('previous_cursor', self.get_previous_link()),
-            ('results', data)
-        ]))
+        return Response({
+            'count': len(data),
+            'next': None,
+            'previous': None,
+            'results': data
+        })
 
     def get_paginated_response_schema(self, schema):
-        """
-        Return schema for cursor paginated response.
-        """
-        return openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties=OrderedDict([
-                ('count', openapi.Schema(type=openapi.TYPE_INTEGER)),
-                ('next_cursor', openapi.Schema(type=openapi.TYPE_STRING, nullable=True)),
-                ('previous_cursor', openapi.Schema(type=openapi.TYPE_STRING, nullable=True)),
-                ('results', schema),
-            ])
-        )
+        return {
+            'type': 'object',
+            'properties': {
+                'count': {
+                    'type': 'integer',
+                    'example': 123,
+                },
+                'next': {
+                    'type': 'string',
+                    'nullable': True,
+                },
+                'previous': {
+                    'type': 'string',
+                    'nullable': True,
+                },
+                'results': schema,
+            },
+        }

@@ -8,9 +8,13 @@ class NoLimitPagination(PageNumberPagination):
     """
     page_size = None  # No limit on page size
 
+    def paginate_queryset(self, queryset, request, view=None):
+        self.count = queryset.count()
+        return list(queryset)
+
     def get_paginated_response(self, data):
         return Response({
-            'count': len(data),
+            'count': self.count,
             'next': None,
             'previous': None,
             'results': data

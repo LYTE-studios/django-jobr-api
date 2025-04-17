@@ -149,13 +149,17 @@ class PasswordResetConfirmView(generics.GenericAPIView):
 class VATValidationView(generics.GenericAPIView):
     """Validate VAT numbers and retrieve company details."""
     permission_classes = [IsAuthenticated]
-    serializer_class = VATValidationSerializer
 
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        vat_number = serializer.validated_data['vat_number']
-
+    def get(self, request, *args, **kwargs):
+        vat_number = request.GET.get('vat_number')
+        if not vat_number:
+            return Response(
+                {
+                    "error": "MISSING_PARAMETER",
+                    "message": "vat_number parameter is required"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             # Get client IP for rate limiting
             x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

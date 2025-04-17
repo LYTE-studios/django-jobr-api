@@ -76,7 +76,7 @@ urlpatterns = [
     path('users/<int:pk>/', UserViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='user-detail'),
     
     # Validation endpoints
-    path('validate-vat/', VATValidationView.as_view(), name='validate-vat'),
+    path('vat-validate/', VATValidationView.as_view(), name='validate-vat'),
 
     # Search and filter endpoints
     path('employees/search/', EmployeeSearchView.as_view(), name='employee-search'),

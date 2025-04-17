@@ -160,6 +160,9 @@ class VATValidationView(generics.GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        # Remove spaces and '+' characters from the VAT number
+        vat_number = vat_number.replace(' ', '').replace('+', '')
         try:
             # Get client IP for rate limiting
             x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

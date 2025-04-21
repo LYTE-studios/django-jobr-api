@@ -27,7 +27,9 @@ from .serializers import (
     VATValidationSerializer,
     ReviewSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    GoogleAuthSerializer,
+    AppleAuthSerializer
 )
 from .services import VATValidationService
 from django.core.cache import cache

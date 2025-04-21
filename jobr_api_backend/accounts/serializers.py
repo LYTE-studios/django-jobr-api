@@ -76,8 +76,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
-    skill = SkillSerializer(many=True, read_only=True)
-    language = LanguageSerializer(many=True, read_only=True)
+    skill = serializers.PrimaryKeyRelatedField(many=True, queryset=Skill.objects.all(), required=False)
+    language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
 
     def get_chat_requests(self, obj):

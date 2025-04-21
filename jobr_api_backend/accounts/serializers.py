@@ -576,6 +576,26 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         return value
 
+class GoogleAuthSerializer(serializers.Serializer):
+    """Serializer for Google authentication."""
+    id_token = serializers.CharField()
+    role = serializers.ChoiceField(choices=ProfileOption.choices, required=True)
+
+    def validate_id_token(self, value):
+        if not value:
+            raise serializers.ValidationError("Google ID token is required")
+        return value
+
+class AppleAuthSerializer(serializers.Serializer):
+    """Serializer for Apple authentication."""
+    id_token = serializers.CharField()
+    role = serializers.ChoiceField(choices=ProfileOption.choices, required=True)
+
+    def validate_id_token(self, value):
+        if not value:
+            raise serializers.ValidationError("Apple ID token is required")
+        return value
+
 class VATValidationSerializer(serializers.Serializer):
     vat_number = serializers.CharField(max_length=12)
 

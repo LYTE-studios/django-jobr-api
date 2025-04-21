@@ -14,7 +14,9 @@ from .views import (
     AISuggestionsView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
-    EmployeeFilterView
+    EmployeeFilterView,
+    GoogleLoginView,
+    AppleLoginView
 )
 
 # Create router
@@ -65,6 +67,8 @@ urlpatterns = [
 
     # Authentication endpoints
     path('login/', LoginView.as_view(), name='login'),
+    path('login/google/', GoogleLoginView.as_view(), name='google-login'),
+    path('login/apple/', AppleLoginView.as_view(), name='apple-login'),
     path('register/', RegisterView.as_view(), name='register'),
     path('test-connection/', TestConnectionView.as_view(), name='test-connection'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),

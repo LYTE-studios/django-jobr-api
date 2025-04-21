@@ -34,6 +34,114 @@ from django.core.cache import cache
 from rest_framework.exceptions import ValidationError, Throttled, PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import jwt
+from django.conf import settings
+
+class GoogleLoginView(generics.GenericAPIView):
+    """Handle Google Sign-In."""
+    permission_classes = [AllowAny]
+    serializer_class = GoogleAuthSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Verify the Google ID token
+            idinfo = id_token.verify_oauth2_token(
+                serializer.validated_data['id_token'],
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID
+            )
+
+            # Get or create user
+            try:
+                user = CustomUser.objects.get(email=idinfo['email'])
+                # Update user's role if not set
+                if not user.role:
+                    user.role = serializer.validated_data['role']
+                    user.save()
+            except CustomUser.DoesNotExist:
+                # Create new user
+                user = CustomUser.objects.create_user(
+                    username=idinfo['email'],
+                    email=idinfo['email'],
+                    first_name=idinfo.get('given_name', ''),
+                    last_name=idinfo.get('family_name', ''),
+                    role=serializer.validated_data['role']
+                )
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': UserSerializer(user).data
+            })
+
+        except ValueError:
+            return Response(
+                {'error': 'Invalid Google ID token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class AppleLoginView(generics.GenericAPIView):
+    """Handle Apple Sign-In."""
+    permission_classes = [AllowAny]
+    serializer_class = AppleAuthSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Verify the Apple ID token
+            decoded_token = jwt.decode(
+                serializer.validated_data['id_token'],
+                settings.APPLE_PUBLIC_KEY,
+                algorithms=['RS256'],
+                audience=settings.APPLE_BUNDLE_ID
+            )
+
+            # Get the email from the token
+            email = decoded_token.get('email')
+            if not email:
+                return Response(
+                    {'error': 'Email not found in Apple ID token'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Get or create user
+            try:
+                user = CustomUser.objects.get(email=email)
+                # Update user's role if not set
+                if not user.role:
+                    user.role = serializer.validated_data['role']
+                    user.save()
+            except CustomUser.DoesNotExist:
+                # Create new user
+                user = CustomUser.objects.create_user(
+                    username=email,
+                    email=email,
+                    role=serializer.validated_data['role']
+                )
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': UserSerializer(user).data
+            })
+
+        except jwt.InvalidTokenError:
+            return Response(
+                {'error': 'Invalid Apple ID token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 class LoginView(generics.GenericAPIView):
     """Handle user login."""
     permission_classes = [AllowAny]

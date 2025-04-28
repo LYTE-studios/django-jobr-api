@@ -6,12 +6,13 @@ WORKDIR /app
 COPY Pipfile Pipfile.lock ./
 
 # Install dependencies in a separate layer
-RUN pip install pipenv && pipenv sync
+RUN pip install pipenv && \
+    PIPENV_VENV_IN_PROJECT=1 pipenv sync
 
 # Copy the rest of the application
 COPY . .
 
 EXPOSE 8000
 
-# Command to run the Python script
-CMD ["pipenv", "run", "gunicorn", "-b", "0.0.0.0:8000", "jobr_api_backend.wsgi:application"]
+# Use shell form to ensure proper environment activation
+CMD pipenv run gunicorn -b 0.0.0.0:8000 jobr_api_backend.wsgi:application

@@ -12,7 +12,10 @@ RUN pip install pipenv && \
 # Copy the rest of the application
 COPY . .
 
+# Make entrypoint script executable
+RUN chmod +x entrypoint.sh
+
 EXPOSE 8000
 
-# Use pipenv run with shell form to ensure proper environment
-CMD pipenv run python manage.py runserver 0.0.0.0:8000
+# Use entrypoint script
+CMD ["./entrypoint.sh"]

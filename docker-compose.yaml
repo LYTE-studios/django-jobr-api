@@ -1,9 +1,13 @@
 services:
   api:
     network_mode: "host"
-    build: jobr_api_backend
+    build: 
+      context: jobr_api_backend
+      dockerfile: Dockerfile
     restart: on-failure
     volumes:
       - ./jobr_api_backend:/app
+      # Don't override the virtualenv directory to preserve installed packages
+      - /app/.venv/
     ports:
       - "8000:8000"

@@ -2,14 +2,17 @@ FROM python:3.12-bullseye
 
 WORKDIR /app
 
-# Copy only requirements first to leverage Docker cache
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Copy only Pipfile files first
+COPY Pipfile Pipfile.lock ./
+
+# Install pipenv and dependencies
+RUN pip install pipenv && \
+    PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy --ignore-pipfile
 
 # Copy the rest of the application
 COPY . .
 
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "jobr_api_backend.wsgi:application"]
+# Use pipenv run with shell form to ensure proper environment
+CMD pipenv run python manage.py runserver 0.0.0.0:8000

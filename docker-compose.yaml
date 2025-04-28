@@ -7,5 +7,6 @@ services:
     restart: on-failure
     volumes:
       - ./jobr_api_backend:/app
+      - /app/.venv/
     ports:
       - "8000:8000"

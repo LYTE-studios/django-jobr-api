@@ -7,7 +7,7 @@ COPY Pipfile Pipfile.lock ./
 
 # Install pipenv and dependencies
 RUN pip install pipenv && \
-    PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy --ignore-pipfile
+    PIPENV_VENV_IN_PROJECT=1 pipenv install --ignore-pipfile
 
 # Copy the rest of the application
 COPY . .

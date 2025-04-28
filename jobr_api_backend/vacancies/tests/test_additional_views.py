@@ -86,25 +86,55 @@ class VacancyFilterViewTests(TestCase):
         self.function = Function.objects.create(function='Developer')
         self.skill = Skill.objects.create(skill='Python', category='hard')
 
-        # Create vacancies with different salaries and locations
-        self.vacancy1 = Vacancy.objects.create(
-            employer=self.employer,
-            salary=Decimal('50000.00'),
-            latitude=50.8503,  # Brussels
+        # Create company with address
+        from accounts.models import Company, Address
+        self.company = Company.objects.create(name="Test Company")
+        self.brussels_address = Address.objects.create(
+            street="Rue de la Loi",
+            number="1",
+            city="Brussels",
+            postal_code="1000",
+            country="Belgium",
+            latitude=50.8503,
             longitude=4.3517
         )
-        self.vacancy2 = Vacancy.objects.create(
-            employer=self.employer,
-            salary=Decimal('60000.00'),
-            latitude=51.2194,  # Antwerp (about 51km from Brussels)
+        self.antwerp_address = Address.objects.create(
+            street="Meir",
+            number="1",
+            city="Antwerp",
+            postal_code="2000",
+            country="Belgium",
+            latitude=51.2194,
             longitude=4.4025
         )
+        
+        # Create vacancies with different salaries and locations
+        self.vacancy1 = Vacancy.objects.create(
+            company=self.company,
+            salary=Decimal('50000.00')
+        )
+        self.vacancy2 = Vacancy.objects.create(
+            company=self.company,
+            salary=Decimal('60000.00')
+        )
+        
+        # Set company addresses
+        self.company.address = self.brussels_address
+        self.company.save()
 
-        # Set up user with employee profile and location
+        # Set up user with employee profile and address
         self.user.role = ProfileOption.EMPLOYEE
         self.user.save()
-        self.user.employee_profile.latitude = 50.8503  # Brussels
-        self.user.employee_profile.longitude = 4.3517
+        self.employee_address = Address.objects.create(
+            street="Rue de la Loi",
+            number="1",
+            city="Brussels",
+            postal_code="1000",
+            country="Belgium",
+            latitude=50.8503,
+            longitude=4.3517
+        )
+        self.user.employee_profile.address = self.employee_address
         self.user.employee_profile.save()
 
         self.vacancy1.contract_type.add(self.contract_type)
@@ -143,16 +173,9 @@ class VacancyFilterViewTests(TestCase):
 
     def test_filter_by_distance(self):
         """Test filtering vacancies by distance"""
-        # Create an employee with location in Brussels
-        self.user.role = ProfileOption.EMPLOYEE
-        self.user.save()  # This creates the employee profile
-        self.user.employee_profile.latitude = 50.8503  # Brussels
-        self.user.employee_profile.longitude = 4.3517
-        self.user.employee_profile.save()
-
         url = reverse('vacancy-filter')
-        # Set distance to 25km to only get the Brussels vacancy
-        response = self.client.get(f"{url}?employee_id={self.user.employee_profile.id}&distance=25")
+        # Set max_distance to 25km to only get the Brussels vacancy
+        response = self.client.get(f"{url}?max_distance=25")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)  # Should only return vacancy1 (Brussels)
 
@@ -211,17 +234,43 @@ class ApplyForJobViewTests(TestCase):
             password='testpass123',
             role=ProfileOption.EMPLOYEE
         )
-        # Save to trigger profile creation and set location
+        # Save to trigger profile creation and set address
         self.employee.save()
-        self.employee.employee_profile.latitude = 50.8503  # Brussels
-        self.employee.employee_profile.longitude = 4.3517
+        
+        # Create and set employee address
+        from accounts.models import Address
+        self.employee_address = Address.objects.create(
+            street="Rue de la Loi",
+            number="1",
+            city="Brussels",
+            postal_code="1000",
+            country="Belgium",
+            latitude=50.8503,
+            longitude=4.3517
+        )
+        self.employee.employee_profile.address = self.employee_address
         self.employee.employee_profile.save()
-        # Ensure employee profile is created and saved first
+        
+        # Authenticate as employee
         self.client.force_authenticate(user=self.employee)
-        self.employee.save()  # This triggers the profile creation
+
+        # Create company with address
+        from accounts.models import Company
+        self.company = Company.objects.create(name="Test Company")
+        self.company_address = Address.objects.create(
+            street="Meir",
+            number="1",
+            city="Antwerp",
+            postal_code="2000",
+            country="Belgium",
+            latitude=51.2194,
+            longitude=4.4025
+        )
+        self.company.address = self.company_address
+        self.company.save()
 
         # Then create the vacancy
-        self.vacancy = Vacancy.objects.create(employer=self.employer)
+        self.vacancy = Vacancy.objects.create(company=self.company)
 
     def test_apply_for_job(self):
         """Test successfully applying for a job"""

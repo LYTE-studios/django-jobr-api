@@ -231,24 +231,26 @@ class VacancyFilterView(generics.ListAPIView):
             queryset = queryset.filter(salary__lte=float(max_salary))
 
         # Filter by distance if user has location
-        if hasattr(self.request.user, 'employee_profile'):
-            employee = self.request.user.employee_profile
-            if employee and employee.latitude and employee.longitude:
-                max_distance = float(self.request.query_params.get('max_distance', 50))  # Default 50km
-                queryset = queryset.filter(
-                    latitude__isnull=False,
-                    longitude__isnull=False
-                ).extra(
-                    where=[
-                        """
-                        ST_Distance_Sphere(
-                            point(longitude, latitude),
-                            point(%s, %s)
-                        ) <= %s * 1000
-                        """
-                    ],
-                    params=[employee.longitude, employee.latitude, max_distance]
-                )
+        # if hasattr(self.request.user, 'employee_profile'):
+        #     employee = self.request.user.employee_profile
+        #     # Get employee's location from their address
+        #     address = employee.address if hasattr(employee, 'address') else None
+        #     if address and address.latitude and address.longitude:
+        #         max_distance = float(self.request.query_params.get('max_distance', 50))  # Default 50km
+        #         queryset = queryset.filter(
+        #             company__address__latitude__isnull=False,
+        #             company__address__longitude__isnull=False
+        #         ).extra(
+        #             where=[
+        #                 """
+        #                 ST_Distance_Sphere(
+        #                     point(company_address.longitude, company_address.latitude),
+        #                     point(%s, %s)
+        #                 ) <= %s * 1000
+        #                 """
+        #             ],
+        #             params=[address.longitude, address.latitude, max_distance]
+        #         )
 
         # Sort by salary
         sort_by_salary = self.request.query_params.get('sort_by_salary', None)

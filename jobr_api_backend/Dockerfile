@@ -12,10 +12,11 @@ RUN pip install pipenv && \
 # Copy the rest of the application
 COPY . .
 
-# Make entrypoint script executable
-RUN chmod +x entrypoint.sh
+# Fix line endings and make entrypoint executable
+RUN sed -i 's/\r$//' entrypoint.sh && \
+    chmod +x entrypoint.sh
 
 EXPOSE 8000
 
 # Use entrypoint script
-CMD ["./entrypoint.sh"]
+CMD ["/bin/bash", "./entrypoint.sh"]

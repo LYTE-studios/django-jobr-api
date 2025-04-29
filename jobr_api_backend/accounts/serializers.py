@@ -1,3 +1,4 @@
+from vacancies.models import Function
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
@@ -76,9 +77,36 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
-    skill = SkillSerializer(many=True, required=False, read_only=True)
+    skill = SkillSerializer(many=True, required=False)
+    contract_type = ContractTypeSerializer(allow_null=True)
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
+    function = FunctionSerializer(allow_null=True, required=False)
+
+    def to_internal_value(self, data):
+        # Handle skill data that might be a list of IDs
+        if 'skill' in data and isinstance(data['skill'], list):
+            skill_data = []
+            for item in data['skill']:
+                if isinstance(item, dict):
+                    skill_data.append(item)
+                else:
+                    try:
+                        skill = Skill.objects.get(id=item)
+                        skill_data.append({'id': skill.id, 'name': skill.name, 'category': skill.category})
+                    except Skill.DoesNotExist:
+                        continue
+            data['skill'] = skill_data
+
+        # Handle function data that might be just an ID
+        if 'function' in data and not isinstance(data['function'], dict):
+            try:
+                function = Function.objects.get(id=data['function'])
+                data['function'] = {'id': function.id, 'name': function.name}
+            except Function.DoesNotExist:
+                data['function'] = None
+
+        return super().to_internal_value(data)
 
     def get_chat_requests(self, obj):
         return ChatRoom.objects.filter(
@@ -97,30 +125,6 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             company=request.user.selected_company,
             employee=obj
         ).exists()
-    function = FunctionSerializer(allow_null=True, read_only=True)
-    contract_type = ContractTypeSerializer(read_only=True, allow_null=True)
-    availability_status = serializers.ChoiceField(
-        choices=[
-            ('immediately', 'Immediately Available'),
-            ('two_weeks', 'Available in 2 Weeks'),
-            ('one_month', 'Available in 1 Month'),
-            ('three_months', 'Available in 3 Months'),
-            ('unavailable', 'Not Available')
-        ],
-        required=False,
-        allow_null=True
-    )
-    employment_type = serializers.ChoiceField(
-        choices=[
-            ('full_time', 'Full Time'),
-            ('part_time', 'Part Time'),
-            ('contract', 'Contract'),
-            ('temporary', 'Temporary'),
-            ('internship', 'Internship')
-        ],
-        required=False,
-        allow_null=True
-    )
 
     class Meta:
         model = Employee
@@ -132,17 +136,6 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             for field in Employee._meta.get_fields()
             if field.name not in ['user', 'profile_picture', 'profile_banner']
         }
-
-    def patch(self, obj, data):
-        # Handle skill updates
-        skill_data = data.get('skill', [])
-        if skill_data:
-            skill_ids = [skill['id'] for skill in skill_data if 'id' in skill]
-            obj.skill.set(skill_ids)
-
-        obj.save()
-
-        return super().patch(obj, data)
 
     def get_profile_picture_url(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None
@@ -354,20 +347,44 @@ class UserSerializer(serializers.ModelSerializer):
             if employee_profile_data and instance.role == ProfileOption.EMPLOYEE:
                 # Get or create employee profile in a transaction-safe way
                 employee_profile, _ = Employee.objects.select_for_update().get_or_create(user=instance)
-                
-                # Handle many-to-many fields separately
+
+                # Handle many-to-many and foreign key fields separately
                 language_data = employee_profile_data.pop('language', None)
-                skill_data = employee_profile_data.pop('skill', None)
+                skill_data = employee_profile_data.pop('skill', [])
+                function_data = employee_profile_data.pop('function', None)
+
+                # Process skill data
+                if isinstance(skill_data, list):
+                    # If skill_data is a list of dictionaries, extract the skill objects
+                    skill_objects = []
+                    for skill_dict in skill_data:
+                        skill_id = skill_dict.get('id') if isinstance(skill_dict, dict) else skill_dict
+                        try:
+                            skill = Skill.objects.get(id=skill_id)
+                            skill_objects.append(skill)
+                        except Skill.DoesNotExist:
+                            continue
+                    skill_data = skill_objects
+
+                # Process function data
+                if function_data:
+                    function_id = function_data.get('id') if isinstance(function_data, dict) else function_data
+                    try:
+                        function = Function.objects.get(id=function_id)
+                        employee_profile_data['function'] = function
+                    except Function.DoesNotExist:
+                        employee_profile_data['function'] = None
 
                 # Update regular fields
                 for attr, value in employee_profile_data.items():
-                    setattr(employee_profile, attr, value)
+                    if value is not None:  # Only update non-None values
+                        setattr(employee_profile, attr, value)
                 employee_profile.save()
 
                 # Update many-to-many fields using set()
                 if language_data is not None:
                     employee_profile.language.set(language_data)
-                if skill_data is not None:
+                if skill_data:
                     employee_profile.skill.set(skill_data)
 
                 # Handle gallery updates if present in the data

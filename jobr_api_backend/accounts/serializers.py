@@ -389,8 +389,23 @@ class UserSerializer(serializers.ModelSerializer):
                 # Process contract_type data
                 if contract_type_data is not None:
                     if isinstance(contract_type_data, dict) and 'id' in contract_type_data:
-                        contract_type_data = contract_type_data['id']
-                    employee_profile_data['contract_type'] = contract_type_data
+                        contract_type_id = contract_type_data['id']
+                    elif isinstance(contract_type_data, (int, str)):
+                        contract_type_id = contract_type_data
+                    else:
+                        contract_type_id = None
+
+                    if contract_type_id:
+                        try:
+                            # First, remove any existing contract_type association
+                            Employee.objects.filter(contract_type_id=contract_type_id).update(contract_type=None)
+                            # Then set the new contract_type
+                            contract_type = ContractType.objects.get(id=contract_type_id)
+                            employee_profile_data['contract_type'] = contract_type
+                        except ContractType.DoesNotExist:
+                            employee_profile_data['contract_type'] = None
+                    else:
+                        employee_profile_data['contract_type'] = None
 
                 # Update regular fields
                 for attr, value in employee_profile_data.items():

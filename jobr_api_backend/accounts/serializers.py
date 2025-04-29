@@ -10,7 +10,7 @@ from .models import (
 )
 from chat.models import ChatRoom
 from vacancies.models import ApplyVacancy
-from vacancies.models import Sector, Skill, Language
+from vacancies.models import Sector, Skill, Language, ContractType, Function
 
 User = get_user_model()
 

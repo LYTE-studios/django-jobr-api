@@ -78,7 +78,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
     skill = SkillSerializer(many=True, required=False, allow_null=True)
-    contract_type = ContractTypeSerializer(allow_null=True, required=False)
+    contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True, required=False)
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
@@ -101,24 +101,9 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                             continue
                 data['skill'] = skill_data
 
-        # Handle contract_type data that might be just an ID or dict
-        if 'contract_type' in data:
-            if data['contract_type'] is None:
-                data['contract_type'] = None
-            elif isinstance(data['contract_type'], dict) and 'id' in data['contract_type']:
-                try:
-                    contract_type = ContractType.objects.get(id=data['contract_type']['id'])
-                    data['contract_type'] = {'id': contract_type.id, 'contract_type': contract_type.name}
-                except ContractType.DoesNotExist:
-                    data['contract_type'] = None
-            elif isinstance(data['contract_type'], (int, str)):
-                try:
-                    contract_type = ContractType.objects.get(id=data['contract_type'])
-                    data['contract_type'] = {'id': contract_type.id, 'contract_type': contract_type.name}
-                except ContractType.DoesNotExist:
-                    data['contract_type'] = None
-            else:
-                data['contract_type'] = None
+        # Handle contract_type data
+        if 'contract_type' in data and isinstance(data['contract_type'], dict) and 'id' in data['contract_type']:
+            data['contract_type'] = data['contract_type']['id']
 
         # Handle function data that might be just an ID
         if 'function' in data and not isinstance(data['function'], dict):
@@ -399,21 +384,10 @@ class UserSerializer(serializers.ModelSerializer):
                         employee_profile_data['function'] = None
 
                 # Process contract_type data
-                if contract_type_data is not None:  # Changed from if contract_type_data to handle empty dict
+                if contract_type_data is not None:
                     if isinstance(contract_type_data, dict) and 'id' in contract_type_data:
-                        try:
-                            contract_type = ContractType.objects.get(id=contract_type_data['id'])
-                            employee_profile_data['contract_type'] = contract_type
-                        except ContractType.DoesNotExist:
-                            employee_profile_data['contract_type'] = None
-                    elif isinstance(contract_type_data, (int, str)):
-                        try:
-                            contract_type = ContractType.objects.get(id=contract_type_data)
-                            employee_profile_data['contract_type'] = contract_type
-                        except ContractType.DoesNotExist:
-                            employee_profile_data['contract_type'] = None
-                    else:
-                        employee_profile_data['contract_type'] = None
+                        contract_type_data = contract_type_data['id']
+                    employee_profile_data['contract_type'] = contract_type_data
 
                 # Update regular fields
                 for attr, value in employee_profile_data.items():

@@ -76,7 +76,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
-    skill = SkillSerializer(many=True, required=False)
+    skill = SkillSerializer(many=True, required=False, read_only=True)
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
 
@@ -132,6 +132,15 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             for field in Employee._meta.get_fields()
             if field.name not in ['user', 'profile_picture', 'profile_banner']
         }
+
+    def patch(self, obj, data):
+        # Handle skill updates
+        skill_data = data.get('skill', [])
+        if skill_data:
+            skill_ids = [skill['id'] for skill in skill_data if 'id' in skill]
+            obj.skill.set(skill_ids)
+
+        return super().patch(obj, data)
 
     def get_profile_picture_url(self, obj):
         return obj.profile_picture.url if obj.profile_picture else None

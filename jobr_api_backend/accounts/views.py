@@ -782,8 +782,8 @@ class EmployerSearchView(generics.ListAPIView):
     pagination_class = None
 
     def get_queryset(self):
-        """Filter companies based on search term."""
-        queryset = Company.objects.all()
+        """Filter companies based on search term and having visible vacancies."""
+        queryset = Company.objects.filter(vacancies__isnull=False).distinct()
         search = self.request.GET.get('search', None)
         if search:
             queryset = queryset.filter(

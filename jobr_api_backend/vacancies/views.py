@@ -352,6 +352,16 @@ class FavoriteVacancyViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You can only remove your own favorites")
         return super().destroy(request, *args, **kwargs)
 
+class CompanyVacanciesView(generics.ListAPIView):
+    """View for listing all vacancies of a specific company."""
+    serializer_class = VacancySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Get all vacancies for the specified company."""
+        company_id = self.kwargs.get('company_id')
+        return Vacancy.objects.filter(company_id=company_id)
+
 class AIVacancySuggestionsView(generics.ListAPIView):
     """View for AI-powered vacancy suggestions."""
     serializer_class = VacancySerializer

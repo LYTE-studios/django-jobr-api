@@ -16,7 +16,8 @@ from .views import (
     JobApplicationViewSet,
     FavoriteVacancyViewSet,
     AIVacancySuggestionsView,
-    JobListingPromptViewSet
+    JobListingPromptViewSet,
+    CompanyVacanciesView
 )
 
 # Create a router and register our viewsets with it
@@ -42,4 +43,5 @@ urlpatterns = [
     # Additional endpoints
     path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),
     path('suggestions/', AIVacancySuggestionsView.as_view(), name='vacancy-suggestions'),
+    path('company/<int:company_id>/vacancies/', CompanyVacanciesView.as_view(), name='company-vacancies'),
 ]

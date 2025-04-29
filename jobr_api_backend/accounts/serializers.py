@@ -80,14 +80,6 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
 
-    def patch(self, obj, data):
-        # Handle skill updates 
-        skill_data = data.get('skill', [])
-        if skill_data:
-            obj.skill.set(skill_data)
-
-        return obj
-
     def get_chat_requests(self, obj):
         return ChatRoom.objects.filter(
             models.Q(employee=obj.user) | models.Q(employer=obj.user)

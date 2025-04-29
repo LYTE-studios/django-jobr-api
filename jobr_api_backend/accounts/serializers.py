@@ -136,9 +136,11 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        exclude = ('user', 'profile_picture', 'profile_banner', 'contract_type')
-        # Add is_liked to the fields that will be included in the serialized output
-        extra_fields = ('is_liked',)
+        fields = ('id', 'date_of_birth', 'gender', 'phone_number', 'city_name', 'biography',
+                 'phone_session_counts', 'availability_date', 'availability_status',
+                 'experience_description', 'employment_type', 'skill', 'language',
+                 'function', 'contract_type_details', 'profile_picture_url', 'profile_banner_url',
+                 'is_liked', 'chat_requests', 'applications', 'employee_gallery')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
             for field in Employee._meta.get_fields()

@@ -78,7 +78,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
     skill = SkillSerializer(many=True, required=False, allow_null=True)
-    contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True, required=False)
+    contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True, required=False, write_only=True)
+    contract_type_details = ContractTypeSerializer(source='contract_type', read_only=True)
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
@@ -135,7 +136,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Employee
-        exclude = ('user', 'profile_picture', 'profile_banner')
+        exclude = ('user', 'profile_picture', 'profile_banner', 'contract_type')
         # Add is_liked to the fields that will be included in the serialized output
         extra_fields = ('is_liked',)
         extra_kwargs = {

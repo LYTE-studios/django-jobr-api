@@ -77,26 +77,29 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
-    skill = SkillSerializer(many=True, required=False)
+    skill = SkillSerializer(many=True, required=False, allow_null=True)
     contract_type = ContractTypeSerializer(allow_null=True)
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
 
     def to_internal_value(self, data):
-        # Handle skill data that might be a list of IDs
-        if 'skill' in data and isinstance(data['skill'], list):
-            skill_data = []
-            for item in data['skill']:
-                if isinstance(item, dict):
-                    skill_data.append(item)
-                else:
-                    try:
-                        skill = Skill.objects.get(id=item)
-                        skill_data.append({'id': skill.id, 'name': skill.name, 'category': skill.category})
-                    except Skill.DoesNotExist:
-                        continue
-            data['skill'] = skill_data
+        # Handle skill data that might be a list of IDs or null
+        if 'skill' in data:
+            if data['skill'] is None:
+                data['skill'] = []
+            elif isinstance(data['skill'], list):
+                skill_data = []
+                for item in data['skill']:
+                    if isinstance(item, dict):
+                        skill_data.append(item)
+                    else:
+                        try:
+                            skill = Skill.objects.get(id=item)
+                            skill_data.append({'id': skill.id, 'name': skill.name, 'category': skill.category})
+                        except Skill.DoesNotExist:
+                            continue
+                data['skill'] = skill_data
 
         # Handle function data that might be just an ID
         if 'function' in data and not isinstance(data['function'], dict):

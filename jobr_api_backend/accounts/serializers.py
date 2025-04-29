@@ -140,6 +140,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             skill_ids = [skill['id'] for skill in skill_data if 'id' in skill]
             obj.skill.set(skill_ids)
 
+        obj.save()
+
         return super().patch(obj, data)
 
     def get_profile_picture_url(self, obj):

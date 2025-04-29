@@ -76,9 +76,17 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
-    skill = serializers.PrimaryKeyRelatedField(many=True, queryset=Skill.objects.all(), required=False)
+    skill = SkillSerializer(many=True, required=False)
     language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
+
+    def patch(self, obj, data):
+        # Handle skill updates 
+        skill_data = data.get('skill', [])
+        if skill_data:
+            obj.skill.set(skill_data)
+
+        return obj
 
     def get_chat_requests(self, obj):
         return ChatRoom.objects.filter(

@@ -105,12 +105,20 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         if 'contract_type' in data:
             if data['contract_type'] is None:
                 data['contract_type'] = None
-            elif not isinstance(data['contract_type'], dict):
+            elif isinstance(data['contract_type'], dict) and 'id' in data['contract_type']:
                 try:
-                    contract_type = ContractType.objects.get(id=data['contract_type'])
-                    data['contract_type'] = {'id': contract_type.id, 'name': contract_type.name}
+                    contract_type = ContractType.objects.get(id=data['contract_type']['id'])
+                    data['contract_type'] = {'id': contract_type.id, 'contract_type': contract_type.name}
                 except ContractType.DoesNotExist:
                     data['contract_type'] = None
+            elif isinstance(data['contract_type'], (int, str)):
+                try:
+                    contract_type = ContractType.objects.get(id=data['contract_type'])
+                    data['contract_type'] = {'id': contract_type.id, 'contract_type': contract_type.name}
+                except ContractType.DoesNotExist:
+                    data['contract_type'] = None
+            else:
+                data['contract_type'] = None
 
         # Handle function data that might be just an ID
         if 'function' in data and not isinstance(data['function'], dict):
@@ -391,12 +399,20 @@ class UserSerializer(serializers.ModelSerializer):
                         employee_profile_data['function'] = None
 
                 # Process contract_type data
-                if contract_type_data:
-                    contract_type_id = contract_type_data.get('id') if isinstance(contract_type_data, dict) else contract_type_data
-                    try:
-                        contract_type = ContractType.objects.get(id=contract_type_id)
-                        employee_profile_data['contract_type'] = contract_type
-                    except ContractType.DoesNotExist:
+                if contract_type_data is not None:  # Changed from if contract_type_data to handle empty dict
+                    if isinstance(contract_type_data, dict) and 'id' in contract_type_data:
+                        try:
+                            contract_type = ContractType.objects.get(id=contract_type_data['id'])
+                            employee_profile_data['contract_type'] = contract_type
+                        except ContractType.DoesNotExist:
+                            employee_profile_data['contract_type'] = None
+                    elif isinstance(contract_type_data, (int, str)):
+                        try:
+                            contract_type = ContractType.objects.get(id=contract_type_data)
+                            employee_profile_data['contract_type'] = contract_type
+                        except ContractType.DoesNotExist:
+                            employee_profile_data['contract_type'] = None
+                    else:
                         employee_profile_data['contract_type'] = None
 
                 # Update regular fields

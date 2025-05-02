@@ -109,9 +109,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     skill_details = SkillSerializer(source='skill', many=True, read_only=True)
     contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True, required=False, write_only=True)
     contract_type_details = ContractTypeSerializer(source='contract_type', read_only=True)
-    language = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Language.objects.all(),
+    language = serializers.ListField(
+        child=serializers.DictField(),
         required=False,
         allow_null=True,
         write_only=True
@@ -463,14 +462,21 @@ class UserSerializer(serializers.ModelSerializer):
                 if language_data is not None:
                     # Create a list of EmployeeLanguage instances
                     employee_languages = []
-                    for language in language_data:
-                        employee_languages.append(
-                            EmployeeLanguage(
-                                employee=employee_profile,
-                                language=language,
-                                mastery='beginner'  # Default mastery level
+                    for lang_data in language_data:
+                        try:
+                            language_id = lang_data.get('language')
+                            mastery = lang_data.get('mastery', 'beginner')
+                            language = Language.objects.get(id=language_id)
+                            employee_languages.append(
+                                EmployeeLanguage(
+                                    employee=employee_profile,
+                                    language=language,
+                                    mastery=mastery
+                                )
                             )
-                        )
+                        except Language.DoesNotExist:
+                            print(f"Language with ID {language_id} not found")
+                            continue
                     
                     # Clear existing and bulk create new
                     with transaction.atomic():

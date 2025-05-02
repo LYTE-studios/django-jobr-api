@@ -99,10 +99,24 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
-    skill = SkillSerializer(many=True, required=False, allow_null=True)
+    skill = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Skill.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+    skill_details = SkillSerializer(source='skill', many=True, read_only=True)
     contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True, required=False, write_only=True)
     contract_type_details = ContractTypeSerializer(source='contract_type', read_only=True)
-    language = EmployeeLanguageSerializer(source='employeelanguage_set', many=True, required=False)
+    language = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Language.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+    language_details = EmployeeLanguageSerializer(source='employeelanguage_set', many=True, read_only=True)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
 
@@ -175,7 +189,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         model = Employee
         fields = ('id', 'date_of_birth', 'gender', 'phone_number', 'city_name', 'biography',
                  'phone_session_counts', 'availability_date', 'availability_status',
-                 'experience_description', 'employment_type', 'skill', 'language',
+                 'experience_description', 'employment_type', 'skill', 'skill_details', 'language', 'language_details',
                  'function', 'contract_type', 'contract_type_details', 'profile_picture_url',
                  'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery')
         extra_kwargs = {
@@ -403,18 +417,8 @@ class UserSerializer(serializers.ModelSerializer):
 
                 # Process skill data
                 if isinstance(skill_data, list):
-                    # Extract skill IDs from the data
-                    skill_ids = []
-                    for skill_dict in skill_data:
-                        skill_id = skill_dict.get('id') if isinstance(skill_dict, dict) else skill_dict
-                        if skill_id:
-                            skill_ids.append(skill_id)
-                    
-                    # Set the skills using the IDs
-                    if skill_ids:
-                        employee_profile.skill.set(skill_ids)
-                    else:
-                        employee_profile.skill.clear()
+                    # Set the skills directly using the IDs
+                    employee_profile.skill.set(skill_data)
                 elif skill_data is None:
                     employee_profile.skill.clear()
 
@@ -451,7 +455,8 @@ class UserSerializer(serializers.ModelSerializer):
                 # Update regular fields
                 for attr, value in employee_profile_data.items():
                     if value is not None:  # Only update non-None values
-                        setattr(employee_profile, attr, value)
+                        if attr not in ['skill', 'language', 'function', 'contract_type']:
+                            setattr(employee_profile, attr, value)
                 employee_profile.save()
 
                 # Handle language data
@@ -459,21 +464,13 @@ class UserSerializer(serializers.ModelSerializer):
                     # Clear existing language associations
                     EmployeeLanguage.objects.filter(employee=employee_profile).delete()
                     
-                    # Create new language associations with mastery levels
-                    for lang_data in language_data:
-                        if isinstance(lang_data, dict):
-                            language_id = lang_data.get('language')
-                            mastery = lang_data.get('mastery', 'beginner')
-                            try:
-                                language = Language.objects.get(id=language_id)
-                                EmployeeLanguage.objects.create(
-                                    employee=employee_profile,
-                                    language=language,
-                                    mastery=mastery
-                                )
-                            except Language.DoesNotExist:
-                                print(f"Language with ID {language_id} not found")
-                                continue
+                    # Create new language associations with default mastery level
+                    for language in language_data:
+                        EmployeeLanguage.objects.create(
+                            employee=employee_profile,
+                            language=language,
+                            mastery='beginner'  # Default mastery level
+                        )
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

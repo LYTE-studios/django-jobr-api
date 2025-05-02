@@ -369,13 +369,20 @@ class UserSerializer(serializers.ModelSerializer):
                     # If skill_data is a list of dictionaries, extract the skill objects
                     skill_objects = []
                     for skill_dict in skill_data:
+                        # Handle both dictionary and direct ID cases
                         skill_id = skill_dict.get('id') if isinstance(skill_dict, dict) else skill_dict
                         try:
                             skill = Skill.objects.get(id=skill_id)
                             skill_objects.append(skill)
                         except Skill.DoesNotExist:
+                            # Log the error or handle invalid skill IDs
+                            print(f"Skill with ID {skill_id} not found")
                             continue
-                    skill_data = skill_objects
+                    # Always use the processed skill objects
+                    employee_profile.skill.set(skill_objects)
+                elif skill_data is None:
+                    # Clear skills if None is provided
+                    employee_profile.skill.clear()
 
                 # Process function data
                 if function_data:
@@ -416,8 +423,6 @@ class UserSerializer(serializers.ModelSerializer):
                 # Update many-to-many fields using set()
                 if language_data is not None:
                     employee_profile.language.set(language_data)
-                if skill_data:
-                    employee_profile.skill.set(skill_data)
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

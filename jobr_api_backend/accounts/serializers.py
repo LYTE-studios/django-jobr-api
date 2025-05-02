@@ -6,7 +6,7 @@ from django.db import models
 
 from .models import (
     Employee, CompanyGallery, ProfileOption, LikedEmployee, Review,
-    Company, CompanyUser, EmployeeGallery
+    Company, CompanyUser, EmployeeGallery, EmployeeLanguage
 )
 from chat.models import ChatRoom
 from vacancies.models import ApplyVacancy
@@ -71,6 +71,28 @@ class EmployeeGallerySerializer(serializers.ModelSerializer):
                 validated_data['gallery'] = relative_path
         return super().create(validated_data)
 
+class EmployeeLanguageSerializer(serializers.ModelSerializer):
+    language = serializers.PrimaryKeyRelatedField(queryset=Language.objects.all())
+    language_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EmployeeLanguage
+        fields = ('language', 'mastery', 'language_details')
+
+    def get_language_details(self, obj):
+        return {
+            'id': obj.language.id,
+            'name': obj.language.name
+        }
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict) and 'language' in data:
+            if isinstance(data['language'], dict):
+                data['language'] = data['language']['id']
+            elif isinstance(data['language'], (int, str)):
+                data['language'] = int(data['language'])
+        return super().to_internal_value(data)
+
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
@@ -80,7 +102,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     skill = SkillSerializer(many=True, required=False, allow_null=True)
     contract_type = serializers.PrimaryKeyRelatedField(queryset=ContractType.objects.all(), allow_null=True, required=False, write_only=True)
     contract_type_details = ContractTypeSerializer(source='contract_type', read_only=True)
-    language = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all(), required=False)
+    language = EmployeeLanguageSerializer(source='employeelanguage_set', many=True, required=False)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
 
@@ -420,9 +442,26 @@ class UserSerializer(serializers.ModelSerializer):
                         setattr(employee_profile, attr, value)
                 employee_profile.save()
 
-                # Update many-to-many fields using set()
+                # Handle language data
                 if language_data is not None:
-                    employee_profile.language.set(language_data)
+                    # Clear existing language associations
+                    EmployeeLanguage.objects.filter(employee=employee_profile).delete()
+                    
+                    # Create new language associations with mastery levels
+                    for lang_data in language_data:
+                        if isinstance(lang_data, dict):
+                            language_id = lang_data.get('language')
+                            mastery = lang_data.get('mastery', 'beginner')
+                            try:
+                                language = Language.objects.get(id=language_id)
+                                EmployeeLanguage.objects.create(
+                                    employee=employee_profile,
+                                    language=language,
+                                    mastery=mastery
+                                )
+                            except Language.DoesNotExist:
+                                print(f"Language with ID {language_id} not found")
+                                continue
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')
@@ -533,7 +572,13 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
 
     def get_language(self, obj):
         if hasattr(obj, 'employee_profile') and obj.employee_profile:
-            return [{'id': l.id, 'name': l.name} for l in obj.employee_profile.language.all()]
+            return [{
+                'language': {
+                    'id': el.language.id,
+                    'name': el.language.name
+                },
+                'mastery': el.mastery
+            } for el in obj.employee_profile.employeelanguage_set.all()]
         return []
 
     def get_function(self, obj):

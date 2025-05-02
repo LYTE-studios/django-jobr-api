@@ -70,7 +70,12 @@ class Employee(models.Model):
         blank=True,
         help_text="Preferred type of employment"
     )
-    language = models.ManyToManyField(Language, blank=True)
+    language = models.ManyToManyField(
+        Language,
+        through='EmployeeLanguage',
+        blank=True,
+        related_name='employees'
+    )
     contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
     skill = models.ManyToManyField(Skill, blank=True)
@@ -303,6 +308,30 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+class EmployeeLanguage(models.Model):
+    """Through model for Employee-Language relationship with mastery level."""
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    language = models.ForeignKey(Language, on_delete=models.CASCADE)
+    mastery = models.CharField(
+        max_length=20,
+        choices=[
+            ('beginner', 'Beginner'),
+            ('intermediate', 'Intermediate'),
+            ('advanced', 'Advanced'),
+            ('native', 'Native')
+        ],
+        default='beginner'
+    )
+
+    class Meta:
+        unique_together = ('employee', 'language')
+        verbose_name = 'Employee Language'
+        verbose_name_plural = 'Employee Languages'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.employee.user.username} - {self.language.name} ({self.mastery})"
 
 class CompanyGallery(models.Model):
     """Company gallery for uploading images."""

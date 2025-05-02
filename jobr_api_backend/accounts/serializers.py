@@ -461,16 +461,22 @@ class UserSerializer(serializers.ModelSerializer):
 
                 # Handle language data
                 if language_data is not None:
-                    # Clear existing language associations
-                    EmployeeLanguage.objects.filter(employee=employee_profile).delete()
-                    
-                    # Create new language associations with default mastery level
+                    # Create a list of EmployeeLanguage instances
+                    employee_languages = []
                     for language in language_data:
-                        EmployeeLanguage.objects.create(
-                            employee=employee_profile,
-                            language=language,
-                            mastery='beginner'  # Default mastery level
+                        employee_languages.append(
+                            EmployeeLanguage(
+                                employee=employee_profile,
+                                language=language,
+                                mastery='beginner'  # Default mastery level
+                            )
                         )
+                    
+                    # Clear existing and bulk create new
+                    with transaction.atomic():
+                        EmployeeLanguage.objects.filter(employee=employee_profile).delete()
+                        if employee_languages:
+                            EmployeeLanguage.objects.bulk_create(employee_languages)
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

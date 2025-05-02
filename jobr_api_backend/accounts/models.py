@@ -73,6 +73,7 @@ class Employee(models.Model):
     language = models.ManyToManyField(
         Language,
         through='EmployeeLanguage',
+        through_fields=('employee', 'language'),
         blank=True,
         related_name='employees'
     )

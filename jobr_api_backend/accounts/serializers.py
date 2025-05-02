@@ -124,6 +124,26 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                             continue
                 data['skill'] = skill_data
 
+        # Handle language data
+        if 'language' in data:
+            if data['language'] is None:
+                data['language'] = []
+            elif isinstance(data['language'], list):
+                language_data = []
+                for item in data['language']:
+                    if isinstance(item, dict):
+                        # Ensure the language exists
+                        try:
+                            language_id = item.get('language')
+                            Language.objects.get(id=language_id)
+                            language_data.append({
+                                'language': language_id,
+                                'mastery': item.get('mastery', 'beginner')
+                            })
+                        except Language.DoesNotExist:
+                            continue
+                data['language'] = language_data
+
         # Handle contract_type data
         if 'contract_type' in data and isinstance(data['contract_type'], dict) and 'id' in data['contract_type']:
             data['contract_type'] = data['contract_type']['id']

@@ -112,17 +112,12 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             if data['skill'] is None:
                 data['skill'] = []
             elif isinstance(data['skill'], list):
-                skill_data = []
+                skill_ids = []
                 for item in data['skill']:
-                    if isinstance(item, dict):
-                        skill_data.append(item)
-                    else:
-                        try:
-                            skill = Skill.objects.get(id=item)
-                            skill_data.append({'id': skill.id, 'name': skill.name, 'category': skill.category})
-                        except Skill.DoesNotExist:
-                            continue
-                data['skill'] = skill_data
+                    skill_id = item.get('id') if isinstance(item, dict) else item
+                    if skill_id:
+                        skill_ids.append(skill_id)
+                data['skill'] = skill_ids
 
         # Handle language data
         if 'language' in data:
@@ -408,22 +403,19 @@ class UserSerializer(serializers.ModelSerializer):
 
                 # Process skill data
                 if isinstance(skill_data, list):
-                    # If skill_data is a list of dictionaries, extract the skill objects
-                    skill_objects = []
+                    # Extract skill IDs from the data
+                    skill_ids = []
                     for skill_dict in skill_data:
-                        # Handle both dictionary and direct ID cases
                         skill_id = skill_dict.get('id') if isinstance(skill_dict, dict) else skill_dict
-                        try:
-                            skill = Skill.objects.get(id=skill_id)
-                            skill_objects.append(skill)
-                        except Skill.DoesNotExist:
-                            # Log the error or handle invalid skill IDs
-                            print(f"Skill with ID {skill_id} not found")
-                            continue
-                    # Always use the processed skill objects
-                    employee_profile.skill.set(skill_objects)
+                        if skill_id:
+                            skill_ids.append(skill_id)
+                    
+                    # Set the skills using the IDs
+                    if skill_ids:
+                        employee_profile.skill.set(skill_ids)
+                    else:
+                        employee_profile.skill.clear()
                 elif skill_data is None:
-                    # Clear skills if None is provided
                     employee_profile.skill.clear()
 
                 # Process function data

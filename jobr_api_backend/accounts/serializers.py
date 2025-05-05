@@ -433,6 +433,26 @@ class UserSerializer(serializers.ModelSerializer):
                 elif skill_data is None:
                     employee_profile.skill.clear()
 
+                                    # Handle prompts data
+                if prompts_data:
+                    
+                    current_prompts = employee_profile.prompts
+
+                    # Delete all prompts not in the request
+                    for prompt in current_prompts.all():
+                        if prompt.question.id not in [item.get("question").id for item in prompts_data]:
+                            prompt.delete()
+
+                    # Create or update new prompts
+                    for prompt_data in prompts_data:
+
+                        current_prompts.update_or_create(
+                            question = prompt_data.get('question'),
+                            defaults={
+                                'prompt': prompt_data.get('prompt')
+                                }
+                            )
+
                 # Process function data
                 if function_data:
                     function_id = function_data.get('id') if isinstance(function_data, dict) else function_data
@@ -495,24 +515,6 @@ class UserSerializer(serializers.ModelSerializer):
                         EmployeeLanguage.objects.filter(employee=employee_profile).delete()
                         if employee_languages:
                             EmployeeLanguage.objects.bulk_create(employee_languages)
-
-                # Handle prompts data
-                if prompts_data is not None:
-                    current_prompts = EmployeeQuestionPrompt.objects.filter(employee=employee_profile)
-                    # Delete all prompts not in the request
-                    for prompt in current_prompts:
-                        if prompt.question.id not in [item.get("question").id for item in prompts_data]:
-                            prompt.delete()
-
-                    # Create new prompts
-                    for prompt_data in prompts_data:
-                        EmployeeQuestionPrompt.objects.update_or_create(
-                                employee=employee_profile,
-                                defaults={
-                                    'question': prompt_data.get('question', None),
-                                    'prompt': prompt_data.get('prompt')
-                                }
-                            )
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

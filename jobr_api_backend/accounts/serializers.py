@@ -125,7 +125,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
-    prompts = EmployeeQuestionPromptSerializer(source='prompts', many=True, read_only=True)
+    prompts = EmployeeQuestionPromptSerializer(many=True, read_only=True)
     language_details = EmployeeLanguageSerializer(source='employeelanguage_set', many=True, read_only=True)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)

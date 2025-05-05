@@ -10,7 +10,7 @@ from .models import (
 )
 from chat.models import ChatRoom
 
-from vacancies.models import Sector, Skill, Language, ContractType, ApplyVacancy, Question, Function
+from vacancies.models import Sector, Skill, Language, ContractType, ApplyVacancy, Question, Function, ProfileInterest
 
 User = get_user_model()
 
@@ -49,7 +49,7 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         return user
 
 # Import serializers from vacancies app using absolute imports
-from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, QuestionSerializer
+from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, QuestionSerializer, ProfileInterestSerializer
 
 class EmployeeGallerySerializer(serializers.ModelSerializer):
     gallery_url = serializers.SerializerMethodField()
@@ -109,6 +109,16 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
+
+    interests = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=ProfileInterest.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+    interests_details = ProfileInterestSerializer(source='interests', many=True, read_only=True)
+
     skill = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Skill.objects.all(),
@@ -148,6 +158,18 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                                 'prompt': prompt_text
                             })
                 data['prompts'] = prompts_data
+
+        # Handle skill data that might be a list of IDs or null
+        if 'interests' in data:
+            if data['interests'] is None:
+                data['interests'] = []
+            elif isinstance(data['interests'], list):
+                interest_ids = []
+                for item in data['interests']:
+                    interest_id = item.get('id') if isinstance(item, dict) else item
+                    if interest_id:
+                        interest_ids.append(interest_id)
+                data['interests'] = interest_ids
 
         # Handle skill data that might be a list of IDs or null
         if 'skill' in data:
@@ -220,7 +242,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                  'experience_description', 'skill', 'skill_details', 'language', 'language_details',
                  'function', 'contract_type', 'contract_type_details', 'profile_picture_url',
                  'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery',
-                 'prompts', 'prompts_details')
+                 'prompts', 'prompts_details', 'interests', 'interests_details')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
             for field in Employee._meta.get_fields()
@@ -441,9 +463,17 @@ class UserSerializer(serializers.ModelSerializer):
                 # Handle many-to-many and foreign key fields separately
                 language_data = employee_profile_data.pop('language', None)
                 skill_data = employee_profile_data.pop('skill', [])
+                interests_data = employee_profile_data.pop('interests', [])
                 function_data = employee_profile_data.pop('function', None)
                 contract_type_data = employee_profile_data.pop('contract_type', None)
                 prompts_data = employee_profile_data.pop('prompts', None)
+
+                # Process interests data
+                if isinstance(interests_data, list):
+                    # Set the skills directly using the IDs
+                    employee_profile.interests.set(interests_data)
+                elif interests_data is None:
+                    employee_profile.skill.clear()
 
                 # Process skill data
                 if isinstance(skill_data, list):
@@ -451,6 +481,8 @@ class UserSerializer(serializers.ModelSerializer):
                     employee_profile.skill.set(skill_data)
                 elif skill_data is None:
                     employee_profile.skill.clear()
+
+
 
                 if prompts_data:
                     employee_profile.prompts.clear()  # Remove all existing

@@ -72,7 +72,7 @@ class WorkExperienceSerializer(serializers.ModelSerializer):
         swagger_schema_fields = {
             "title": "Work Experience",
             "description": "Work experience details",
-            "required": ["company_name", "position", "description", "start_date", "employment_type"]
+            "required": ["company_name", "position", "description", "start_date"]
         }
 
     def validate(self, data):

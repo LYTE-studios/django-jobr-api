@@ -68,7 +68,6 @@ class WorkExperienceModelTests(TestCase):
             'description': 'Test description',
             'start_date': timezone.now().date(),
             'end_date': timezone.now().date(),  # Add end date for non-current
-            'employment_type': 'FULL_TIME',
             'is_current_position': False
         }
 

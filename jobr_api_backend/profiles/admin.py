@@ -14,8 +14,8 @@ class EducationAdmin(admin.ModelAdmin):
 
 @admin.register(WorkExperience)
 class WorkExperienceAdmin(admin.ModelAdmin):
-    list_display = ('company_name', 'position', 'start_date', 'end_date', 'is_current_position', 'employment_type', 'employee', 'location')
-    list_filter = ('is_current_position', 'employment_type', 'start_date', 'end_date', 'location')
+    list_display = ('company_name', 'position', 'start_date', 'end_date', 'is_current_position', 'employee', 'location')
+    list_filter = ('is_current_position', 'start_date', 'end_date', 'location')
     search_fields = ('company_name', 'position', 'location', 'employee__user__username', 'description')
     ordering = ('-start_date',)
     raw_id_fields = ('employee',)

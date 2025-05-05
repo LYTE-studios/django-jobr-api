@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
-from vacancies.models import Language, ContractType, Function, Skill, Sector
+from vacancies.models import Language, ContractType, Function, Skill, Sector, Question
 
 from common.utils import validate_image_size
 
@@ -15,6 +15,21 @@ class ProfileOption(models.TextChoices):
     EMPLOYEE = "employee", "Employee"
     EMPLOYER = "employer", "Employer"
     ADMIN = "admin", "Admin"
+
+class EmployeeQuestionPrompt(models.Model):
+    """Prompt for an employee question."""
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    prompt = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Employee Question Prompt'
+        verbose_name_plural = 'Employee Question Prompts'
+
+    def __str__(self):
+        return f"{self.question.question} ({self.prompt})"
+
 
 class Employee(models.Model):
     """Employee profile model."""
@@ -57,19 +72,6 @@ class Employee(models.Model):
         null=True,
         help_text="Description of work experience"
     )
-    employment_type = models.CharField(
-        max_length=20,
-        choices=[
-            ('full_time', 'Full Time'),
-            ('part_time', 'Part Time'),
-            ('contract', 'Contract'),
-            ('temporary', 'Temporary'),
-            ('internship', 'Internship')
-        ],
-        null=True,
-        blank=True,
-        help_text="Preferred type of employment"
-    )
     language = models.ManyToManyField(
         Language,
         through='EmployeeLanguage',
@@ -80,6 +82,7 @@ class Employee(models.Model):
     contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
     skill = models.ManyToManyField(Skill, blank=True)
+    prompts = models.ManyToManyField(EmployeeQuestionPrompt, blank=True)
     profile_picture = models.ImageField(
         upload_to="profile_pictures/",
         blank=True,

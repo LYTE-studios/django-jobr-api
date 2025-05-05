@@ -76,18 +76,6 @@ class WorkExperience(models.Model):
     company_logo_url = models.URLField(null=True, blank=True)
     company_website = models.URLField(null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
-    employment_type = models.CharField(
-        max_length=50,
-        choices=[
-            ('FULL_TIME', 'Full Time'),
-            ('PART_TIME', 'Part Time'),
-            ('CONTRACT', 'Contract'),
-            ('FREELANCE', 'Freelance'),
-            ('INTERNSHIP', 'Internship'),
-        ],
-        null=True,
-        blank=True
-    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

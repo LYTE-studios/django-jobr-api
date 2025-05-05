@@ -1,4 +1,4 @@
-from vacancies.models import Function
+
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
@@ -6,11 +6,11 @@ from django.db import models
 
 from .models import (
     Employee, CompanyGallery, ProfileOption, LikedEmployee, Review,
-    Company, CompanyUser, EmployeeGallery, EmployeeLanguage
+    Company, CompanyUser, EmployeeGallery, EmployeeLanguage, EmployeeQuestionPrompt
 )
 from chat.models import ChatRoom
-from vacancies.models import ApplyVacancy
-from vacancies.models import Sector, Skill, Language, ContractType, Function
+
+from vacancies.models import Sector, Skill, Language, ContractType, ApplyVacancy, Question, Function
 
 User = get_user_model()
 
@@ -49,7 +49,7 @@ class UserAuthenticationSerializer(serializers.ModelSerializer):
         return user
 
 # Import serializers from vacancies app using absolute imports
-from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer
+from vacancies.serializers import ContractTypeSerializer, FunctionSerializer, LanguageSerializer, SkillSerializer, QuestionSerializer
 
 class EmployeeGallerySerializer(serializers.ModelSerializer):
     gallery_url = serializers.SerializerMethodField()
@@ -93,6 +93,16 @@ class EmployeeLanguageSerializer(serializers.ModelSerializer):
                 data['language'] = int(data['language'])
         return super().to_internal_value(data)
 
+class EmployeeQuestionPromptSerializer(serializers.ModelSerializer):
+    question_details = QuestionSerializer(source='question', read_only=True)
+    question = serializers.PrimaryKeyRelatedField(queryset=Question.objects.all(), required=False)
+
+    class Meta:
+        model = EmployeeQuestionPrompt
+        fields = ('id', 'question', 'prompt', 'created_at')
+        read_only_fields = ('created_at',)
+        
+
 class EmployeeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     profile_banner_url = serializers.SerializerMethodField()
@@ -115,6 +125,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
+    prompts = EmployeeQuestionPromptSerializer(source='prompts', many=True, read_only=True)
     language_details = EmployeeLanguageSerializer(source='employeelanguage_set', many=True, read_only=True)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
@@ -188,9 +199,9 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         model = Employee
         fields = ('id', 'date_of_birth', 'gender', 'phone_number', 'city_name', 'biography',
                  'phone_session_counts', 'availability_date', 'availability_status',
-                 'experience_description', 'employment_type', 'skill', 'skill_details', 'language', 'language_details',
+                 'experience_description', 'skill', 'skill_details', 'language', 'language_details',
                  'function', 'contract_type', 'contract_type_details', 'profile_picture_url',
-                 'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery')
+                 'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery', 'prompts')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
             for field in Employee._meta.get_fields()

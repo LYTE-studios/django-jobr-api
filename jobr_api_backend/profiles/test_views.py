@@ -94,7 +94,6 @@ class WorkExperienceViewSetTests(APITestCase):
             'description': 'Test description',
             'start_date': timezone.now().date().isoformat(),
             'end_date': timezone.now().date().isoformat(),
-            'employment_type': 'FULL_TIME',
             'is_current_position': False
         }
 

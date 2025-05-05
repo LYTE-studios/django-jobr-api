@@ -34,6 +34,39 @@ class Sector(models.Model):
     def __str__(self):
         return self.name
 
+class ExperienceCompany(models.Model):
+    name = models.CharField(max_length=255)
+    logo = models.ImageField(
+        upload_to='company_logos',
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif'])
+        ],
+        help_text="Company's logo (max 5MB, jpg, jpeg, png, gif)"
+    )
+    sector = models.ForeignKey(
+        Sector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='experience_companies',
+        help_text="The business sector this company belongs to"
+    )
+
+    def __str__(self):
+        return self.name
+    
+class ExperienceSchool(models.Model):
+    name = models.CharField(max_length=255)
+    logo = models.ImageField(
+        upload_to='company_logos',
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif'])
+        ],
+        help_text="Company's logo (max 5MB, jpg, jpeg, png, gif)"
+    )
+    
+    def __str__(self):
+        return self.name
 
 class Location(models.Model):
     """

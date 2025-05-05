@@ -10,6 +10,7 @@ from .models import (
     Question, Skill, Vacancy, FunctionSkill,
     SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
     ApplicationStatus, VacancyDateTime, JobListingPrompt, ProfileInterest,
+    ExperienceCompany, ExperienceSchool,
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
@@ -19,6 +20,7 @@ from .serializers import (
     SalaryBenefitSerializer, SectorSerializer,
     ApplySerializer, FavoriteVacancySerializer,
     JobListingPromptSerializer, ProfileInterestSerializer,
+    ExperienceCompanySerializer, ExperienceSchoolSerializer
 )
 
 class SectorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -267,6 +269,16 @@ class VacancyFilterView(generics.ListAPIView):
                 queryset = queryset.order_by('salary')
 
         return queryset.distinct()
+
+class ExperienceCompanyViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ExperienceCompanySerializer
+    permission_classes = [IsAuthenticated]
+    queryset = ExperienceCompany.objects.all()
+
+class ExperienceSchoolViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ExperienceSchoolSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = ExperienceSchool.objects.all()
 
 class FunctionSkillViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing function-skill relationships."""

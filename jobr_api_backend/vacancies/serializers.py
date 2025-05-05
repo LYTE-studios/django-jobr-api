@@ -21,7 +21,9 @@ from .models import (
     Sector,
     ApplicationStatus,
     FavoriteVacancy,
-    VacancyDateTime
+    VacancyDateTime,
+    ExperienceCompany,
+    ExperienceSchool
 )
 from accounts.models import ProfileOption, Employee
 
@@ -86,6 +88,45 @@ class WeekdaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Weekday
         fields = ["id", "name"]
+
+class ExperienceCompanySerializer(serializers.ModelSerializer):
+
+    sector = serializers.PrimaryKeyRelatedField(    
+        queryset=Sector.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
+    sector_details = serializers.SerializerMethodField(read_only=True)
+
+
+    def get_sector_details(self, obj):
+        if obj.sector:
+            return {
+                'id': obj.sector.id,
+                'name': obj.sector.name,
+                'enabled': obj.sector.enabled,
+                'icon': obj.sector.icon.url if obj.sector.icon else None
+            }
+        return None
+
+    def get_logo_url(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
+
+    class Meta:
+        model = ExperienceCompany
+        fields = ["id", "name", "sector", "sector_details", "logo"]
+        read_only_fields = ["logo_url"]
+
+class ExperienceSchoolSerializer(serializers.ModelSerializer):
+
+    def get_logo_url(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else None
+
+    class Meta:
+        model = ExperienceSchool
+        fields = ["id", "name", "logo"]
+        read_only_fields = ["logo_url"]
 
 class VacancyLanguageSerializer(serializers.ModelSerializer):
     language = LanguageSerializer()

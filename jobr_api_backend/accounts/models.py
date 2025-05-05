@@ -157,7 +157,7 @@ class Company(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='sector',
+        related_name='companies',
         help_text="The business sector this user belongs to"
     )
     profile_picture = models.ImageField(

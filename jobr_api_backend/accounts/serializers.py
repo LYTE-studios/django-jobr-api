@@ -511,19 +511,12 @@ class UserSerializer(serializers.ModelSerializer):
                             prompt_text = prompt_data.get('prompt')
                             if question and prompt_text:
                                 try:
-
-                                    # If the question is already used in one of the prompts, only update the prompt, not the question
-                                    # Otherwise, create a new prompt
-                                    if EmployeeQuestionPrompt.objects.filter(employee=employee_profile, question=question).exists():
-                                        instance = EmployeeQuestionPrompt.objects.get(employee=employee_profile, question=question)
-                                        instance.prompt = prompt_text
-                                        instance.save()
-   
-                                    else:
-                                        instance = EmployeeQuestionPrompt.objects.create(
+                                    EmployeeQuestionPrompt.objects.update_or_create(
                                             employee=employee_profile,
-                                            question=question,
-                                            prompt=prompt_text
+                                            defaults={
+                                                'question': question,
+                                                'prompt': prompt_text
+                                            }
                                         )
                                     
                                 except Question.DoesNotExist:

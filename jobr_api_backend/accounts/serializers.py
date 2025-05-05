@@ -498,29 +498,37 @@ class UserSerializer(serializers.ModelSerializer):
 
                 # Handle prompts data
                 if prompts_data is not None:
+                    current_prompts = EmployeeQuestionPrompt.objects.filter(employee=employee_profile)
+                    # Delete all prompts not in the request
+                    for prompt in current_prompts:
+                        if prompt.question.id not in [item.get("question").id for item in prompts_data]:
+                            prompt.delete()
+
                     # Create new prompts
-                    new_prompts = []
                     for prompt_data in prompts_data:
                         if isinstance(prompt_data, dict):
                             question = prompt_data.get('question', None)
                             prompt_text = prompt_data.get('prompt')
                             if question and prompt_text:
                                 try:
-                                    new_prompts.append(
-                                        EmployeeQuestionPrompt(
+
+                                    # If the question is already used in one of the prompts, only update the prompt, not the question
+                                    # Otherwise, create a new prompt
+                                    if EmployeeQuestionPrompt.objects.filter(employee=employee_profile, question=question).exists():
+                                        instance = EmployeeQuestionPrompt.objects.get(employee=employee_profile, question=question)
+                                        instance.prompt = prompt_text
+                                        instance.save()
+   
+                                    else:
+                                        instance = EmployeeQuestionPrompt.objects.create(
                                             employee=employee_profile,
                                             question=question,
                                             prompt=prompt_text
                                         )
-                                    )
+                                    
                                 except Question.DoesNotExist:
                                     continue
 
-                    # Clear existing prompts and create new ones
-                    with transaction.atomic():
-                        EmployeeQuestionPrompt.objects.filter(employee=employee_profile).delete()
-                        if new_prompts:
-                            EmployeeQuestionPrompt.objects.bulk_create(new_prompts)
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

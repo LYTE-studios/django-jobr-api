@@ -99,7 +99,7 @@ class EmployeeQuestionPromptSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmployeeQuestionPrompt
-        fields = ('id', 'question', 'prompt', 'created_at')
+        fields = ('id', 'question', 'question_details', 'prompt', 'created_at')
         read_only_fields = ('created_at',)
         
 

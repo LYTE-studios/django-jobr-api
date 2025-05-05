@@ -10,7 +10,7 @@ from .models import (
     Vacancy, Question, ContractType, Function, Language, Skill, Location,
     SalaryBenefit, ProfileInterest, JobListingPrompt, VacancyLanguage,
     VacancyDescription, VacancyQuestion, ApplyVacancy, Weekday, Sector,
-    FunctionSkill, VacancyDateTime
+    FunctionSkill, VacancyDateTime, ExperienceCompany, ExperienceSchool
 )
 
 logger = logging.getLogger(__name__)
@@ -424,3 +424,19 @@ admin.site.register(SalaryBenefit, SalaryBenefitAdmin)
 admin.site.register(ProfileInterest, ProfileInterestAdmin)
 admin.site.register(JobListingPrompt, JobListingPromptAdmin)
 admin.site.register(Vacancy, VacancyAdmin)
+
+class ExperienceCompanyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'sector')
+    search_fields = ('name',)
+    list_filter = ('sector',)
+    ordering = ('name',)
+    list_per_page = 25
+
+class ExperienceSchoolAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ('name',)
+    list_per_page = 25
+
+admin.site.register(ExperienceCompany, ExperienceCompanyAdmin)
+admin.site.register(ExperienceSchool, ExperienceSchoolAdmin)

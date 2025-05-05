@@ -17,12 +17,14 @@ from .views import (
     FavoriteVacancyViewSet,
     AIVacancySuggestionsView,
     JobListingPromptViewSet,
-    CompanyVacanciesView
+    CompanyVacanciesView,
+    InterestsViewSet
 )
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
 router.register(r'locations', LocationViewSet, basename='location')
+router.register(r'interests', InterestsViewSet, basename='interests')
 router.register(r'contracts', ContractTypeViewSet, basename='contract')
 router.register(r'functions', FunctionViewSet, basename='function')
 router.register(r'languages', LanguageViewSet, basename='language')

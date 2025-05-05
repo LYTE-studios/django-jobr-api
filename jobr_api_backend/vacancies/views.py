@@ -9,7 +9,7 @@ from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
     SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
-    ApplicationStatus, VacancyDateTime, JobListingPrompt
+    ApplicationStatus, VacancyDateTime, JobListingPrompt, ProfileInterest,
 )
 from .serializers import (
     LocationSerializer, ContractTypeSerializer,
@@ -18,7 +18,7 @@ from .serializers import (
     VacancySerializer, FunctionSkillSerializer,
     SalaryBenefitSerializer, SectorSerializer,
     ApplySerializer, FavoriteVacancySerializer,
-    JobListingPromptSerializer
+    JobListingPromptSerializer, ProfileInterestSerializer,
 )
 
 class SectorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -71,6 +71,12 @@ class QuestionViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing questions."""
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
+    permission_classes = [IsAuthenticated]
+
+class InterestsViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing questions."""
+    queryset = ProfileInterest.objects.all()
+    serializer_class = ProfileInterestSerializer
     permission_classes = [IsAuthenticated]
 
 class SkillViewSet(viewsets.ReadOnlyModelViewSet):

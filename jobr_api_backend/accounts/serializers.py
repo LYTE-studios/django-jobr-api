@@ -424,6 +424,7 @@ class UserSerializer(serializers.ModelSerializer):
                 skill_data = employee_profile_data.pop('skill', [])
                 function_data = employee_profile_data.pop('function', None)
                 contract_type_data = employee_profile_data.pop('contract_type', None)
+                prompts_data = employee_profile_data.pop('prompts', None)
 
                 # Process skill data
                 if isinstance(skill_data, list):
@@ -465,7 +466,7 @@ class UserSerializer(serializers.ModelSerializer):
                 # Update regular fields
                 for attr, value in employee_profile_data.items():
                     if value is not None:  # Only update non-None values
-                        if attr not in ['skill', 'language', 'function', 'contract_type']:
+                        if attr not in ['skill', 'language', 'function', 'contract_type', 'prompts']:
                             setattr(employee_profile, attr, value)
                 employee_profile.save()
 
@@ -494,6 +495,33 @@ class UserSerializer(serializers.ModelSerializer):
                         EmployeeLanguage.objects.filter(employee=employee_profile).delete()
                         if employee_languages:
                             EmployeeLanguage.objects.bulk_create(employee_languages)
+
+                # Handle prompts data
+                if prompts_data is not None:
+                    # Create new prompts
+                    new_prompts = []
+                    for prompt_data in prompts_data:
+                        if isinstance(prompt_data, dict):
+                            question_id = prompt_data.get('question', {}).get('id') if isinstance(prompt_data.get('question'), dict) else prompt_data.get('question')
+                            prompt_text = prompt_data.get('prompt')
+                            if question_id and prompt_text:
+                                try:
+                                    question = Question.objects.get(id=question_id)
+                                    new_prompts.append(
+                                        EmployeeQuestionPrompt(
+                                            employee=employee_profile,
+                                            question=question,
+                                            prompt=prompt_text
+                                        )
+                                    )
+                                except Question.DoesNotExist:
+                                    continue
+
+                    # Clear existing prompts and create new ones
+                    with transaction.atomic():
+                        EmployeeQuestionPrompt.objects.filter(employee=employee_profile).delete()
+                        if new_prompts:
+                            EmployeeQuestionPrompt.objects.bulk_create(new_prompts)
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

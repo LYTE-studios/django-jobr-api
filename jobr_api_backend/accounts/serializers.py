@@ -506,22 +506,13 @@ class UserSerializer(serializers.ModelSerializer):
 
                     # Create new prompts
                     for prompt_data in prompts_data:
-                        if isinstance(prompt_data, dict):
-                            question = prompt_data.get('question', None)
-                            prompt_text = prompt_data.get('prompt')
-                            if question and prompt_text:
-                                try:
-                                    EmployeeQuestionPrompt.objects.update_or_create(
-                                            employee=employee_profile,
-                                            defaults={
-                                                'question': question,
-                                                'prompt': prompt_text
-                                            }
-                                        )
-                                    
-                                except Question.DoesNotExist:
-                                    continue
-
+                        EmployeeQuestionPrompt.objects.update_or_create(
+                                employee=employee_profile,
+                                defaults={
+                                    'question': prompt_data.get('question', None),
+                                    'prompt': prompt_data.get('prompt')
+                                }
+                            )
 
                 # Handle gallery updates if present in the data
                 gallery_data = employee_profile_data.get('employee_gallery')

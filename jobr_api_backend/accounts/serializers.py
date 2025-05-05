@@ -502,11 +502,10 @@ class UserSerializer(serializers.ModelSerializer):
                     new_prompts = []
                     for prompt_data in prompts_data:
                         if isinstance(prompt_data, dict):
-                            question_id = prompt_data.get('question', {}).get('id') if isinstance(prompt_data.get('question'), dict) else prompt_data.get('question')
+                            question = prompt_data.get('question', None)
                             prompt_text = prompt_data.get('prompt')
-                            if question_id and prompt_text:
+                            if question and prompt_text:
                                 try:
-                                    question = Question.objects.get(id=question_id)
                                     new_prompts.append(
                                         EmployeeQuestionPrompt(
                                             employee=employee_profile,

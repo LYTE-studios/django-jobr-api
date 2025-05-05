@@ -433,25 +433,26 @@ class UserSerializer(serializers.ModelSerializer):
                 elif skill_data is None:
                     employee_profile.skill.clear()
 
-                                    # Handle prompts data
+                # Handle prompts data
                 if prompts_data:
                     
-                    current_prompts = employee_profile.prompts
+                    current_prompts = employee_profile.prompts.all().values()
 
                     # Delete all prompts not in the request
-                    for prompt in current_prompts.all():
+                    for prompt in current_prompts:
                         if prompt.question.id not in [item.get("question").id for item in prompts_data]:
-                            prompt.delete()
+                            current_prompts.remove(prompt)
 
                     # Create or update new prompts
                     for prompt_data in prompts_data:
 
-                        current_prompts.update_or_create(
+                        current_prompts.append( EmployeeQuestionPrompt(
                             question = prompt_data.get('question'),
-                            defaults={
-                                'prompt': prompt_data.get('prompt')
-                                }
-                            )
+                            prompt = prompt_data.get('prompt')
+                        )
+                        )
+                        
+                    employee_profile.set(current_prompts=current_prompts)
 
                 # Process function data
                 if function_data:

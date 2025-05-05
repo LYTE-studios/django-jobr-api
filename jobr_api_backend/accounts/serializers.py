@@ -125,12 +125,30 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
-    prompts = EmployeeQuestionPromptSerializer(many=True, read_only=True)
+    prompts = EmployeeQuestionPromptSerializer(many=True, required=False)
+    prompts_details = EmployeeQuestionPromptSerializer(source='employeequestionprompt_set', many=True, read_only=True)
     language_details = EmployeeLanguageSerializer(source='employeelanguage_set', many=True, read_only=True)
     employee_gallery = EmployeeGallerySerializer(many=True, read_only=True)
     function = FunctionSerializer(allow_null=True, required=False)
 
     def to_internal_value(self, data):
+        # Handle prompts data
+        if 'prompts' in data:
+            if data['prompts'] is None:
+                data['prompts'] = []
+            elif isinstance(data['prompts'], list):
+                prompts_data = []
+                for item in data['prompts']:
+                    if isinstance(item, dict):
+                        question_id = item.get('question', {}).get('id') if isinstance(item.get('question'), dict) else item.get('question')
+                        prompt_text = item.get('prompt')
+                        if question_id and prompt_text:
+                            prompts_data.append({
+                                'question': question_id,
+                                'prompt': prompt_text
+                            })
+                data['prompts'] = prompts_data
+
         # Handle skill data that might be a list of IDs or null
         if 'skill' in data:
             if data['skill'] is None:
@@ -201,7 +219,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                  'phone_session_counts', 'availability_date', 'availability_status',
                  'experience_description', 'skill', 'skill_details', 'language', 'language_details',
                  'function', 'contract_type', 'contract_type_details', 'profile_picture_url',
-                 'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery', 'prompts')
+                 'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery',
+                 'prompts', 'prompts_details')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
             for field in Employee._meta.get_fields()

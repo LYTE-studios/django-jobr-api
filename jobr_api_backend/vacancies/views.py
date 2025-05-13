@@ -1,15 +1,14 @@
-from rest_framework import viewsets, status, generics
+from rest_framework import viewsets, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError, PermissionDenied
-from django.db.models import Q, Count
 from accounts.models import ProfileOption
 from common.pagination import NoLimitPagination
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
     SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
-    ApplicationStatus, VacancyDateTime, JobListingPrompt, ProfileInterest,
+    ApplicationStatus, JobListingPrompt, ProfileInterest,
     ExperienceCompany, ExperienceSchool,
 )
 from .serializers import (

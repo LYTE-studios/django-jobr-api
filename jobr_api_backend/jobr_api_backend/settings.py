@@ -96,7 +96,8 @@ INSTALLED_APPS = [
     "chat",
     "channels",
     "storages",
-    "profiles",  # Add the profiles app
+    "profiles",
+    "suggestions",
 ]
 
 MIDDLEWARE = [
@@ -137,8 +138,12 @@ VATCHECKAPI_KEY = vatcheckapi
 # Database configuration
 DATABASES = {
     'default': database or  {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'test_jobr',
+        'USER': 'postgres',
+        'PASSWORD': '',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

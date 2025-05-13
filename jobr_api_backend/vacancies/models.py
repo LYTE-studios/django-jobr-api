@@ -350,3 +350,62 @@ class FavoriteVacancy(models.Model):
 
     def __str__(self):
         return f"{self.employee} favorited {self.vacancy}"
+    salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    languages = models.ManyToManyField(
+        VacancyLanguage, related_name="vacancy_languages"
+    )
+    descriptions = models.ManyToManyField(VacancyDescription)
+    questions = models.ManyToManyField(VacancyQuestion)
+    skill = models.ManyToManyField(Skill)
+    salary_benefits = models.ManyToManyField(SalaryBenefit, blank=True)
+    responsibilities = models.JSONField(default=list, blank=True, help_text="List of responsibilities for this vacancy")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    def __str__(self):
+        return self.title if self.title else "Untitled Vacancy"
+
+
+class ApplicationStatus(models.TextChoices):
+    """Status options for job applications."""
+    PENDING = 'pending', 'Pending'
+    UNDER_REVIEW = 'under_review', 'Under Review'
+    ACCEPTED = 'accepted', 'Accepted'
+    REJECTED = 'rejected', 'Rejected'
+    WITHDRAWN = 'withdrawn', 'Withdrawn'
+
+class ApplyVacancy(models.Model):
+    """
+    Represents an application for a job vacancy by an employee.
+    """
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=ApplicationStatus.choices,
+        default=ApplicationStatus.PENDING
+    )
+    applied_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-applied_at']
+
+    def __str__(self):
+        return f"{self.employee} applied to {self.vacancy} - {self.status}"
+
+class FavoriteVacancy(models.Model):
+    """
+    Represents a vacancy that has been favorited by an employee.
+    """
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE, related_name='favorite_vacancies')
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('employee', 'vacancy')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee} favorited {self.vacancy}"

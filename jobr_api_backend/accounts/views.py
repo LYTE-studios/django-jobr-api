@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
+from rest_framework.parsers import JSONParser
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.contrib.auth.tokens import default_token_generator
@@ -925,6 +926,36 @@ class AISuggestionsView(generics.ListAPIView):
             role=ProfileOption.EMPLOYEE,
             is_active=True
         ).order_by('-date_joined')[:5]
+
+class AppleNotificationView(APIView):
+    """Handle Apple Sign-In notifications."""
+    permission_classes = [AllowAny]
+    parser_classes = [JSONParser]
+
+    def post(self, request):
+        """Handle Apple Sign-In notification webhook."""
+        try:
+            # Process the notification from Apple
+            notification_type = request.data.get('type')
+            sub = request.data.get('sub')  # User identifier
+            email = request.data.get('email')
+
+            if notification_type == 'email-disabled':
+                # Handle email disabled notification
+                if email:
+                    user = CustomUser.objects.filter(email=email).first()
+                    if user:
+                        # You might want to mark the user's email as unverified
+                        user.is_active = False
+                        user.save()
+            
+            return Response({'status': 'success'}, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """Handle review operations."""

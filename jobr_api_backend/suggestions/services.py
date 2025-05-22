@@ -66,9 +66,12 @@ class SuggestionService:
     @staticmethod
     def get_llm_score(employee_data: Dict[str, Any], vacancy_data: Dict[str, Any]) -> tuple:
         """Get qualitative score and explanation from LLM."""
+        from django.conf import settings
+        from jobr_api_backend.my_secrets import open_ai_key
+
         prompt = f"""
         You are an expert HR professional. Analyze the following employee and vacancy data and provide:
-        1. A match score (0-100)
+        1. A match score (0-100) - this must be a number between 0 and 100, nothing else
         2. A brief explanation of why this match would be good or not good.
 
         Employee:
@@ -81,99 +84,146 @@ class SuggestionService:
         - Questions: {', '.join(vacancy_data['questions'])}
         - Company Description: {vacancy_data['company_description']}
 
-        Respond in the following format:
-        Score: [number]
+        You must respond in exactly this format:
+        Score: [a number between 0 and 100]
         Explanation: [your explanation]
+
+        If you cannot determine a score, use 50 as a default score.
         """
 
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert HR professional."},
-                {"role": "user", "content": prompt}
-            ]
-        )
+        try:
+            client = openai.OpenAI(api_key=open_ai_key)
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are an expert HR professional. Always respond with a Score and Explanation."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
 
-        text = response.choices[0].message.content
-        score_line = next(line for line in text.split('\n') if line.startswith('Score:'))
-        explanation_line = next(line for line in text.split('\n') if line.startswith('Explanation:'))
+            text = response.choices[0].message.content
+            
+            # Extract score
+            try:
+                score_line = next((line for line in text.split('\n') if line.startswith('Score:')), 'Score: 50')
+                score_text = score_line.split(':')[1].strip()
+                score = float(score_text)
+                # Ensure score is between 0 and 100
+                score = max(0, min(100, score))
+            except (ValueError, IndexError):
+                print(f"    Warning: Could not parse score from response: {text}")
+                score = 50.0
 
-        score = float(score_line.split(':')[1].strip())
-        explanation = explanation_line.split(':')[1].strip()
+            # Extract explanation
+            try:
+                explanation_line = next((line for line in text.split('\n') if line.startswith('Explanation:')), 'Explanation: No detailed explanation available')
+                explanation = explanation_line.split(':')[1].strip()
+            except (ValueError, IndexError):
+                explanation = "No detailed explanation available"
 
-        return score, explanation
+            return score, explanation
+        except Exception as e:
+            print(f"    Error in get_llm_score: {str(e)}")
+            return 50.0, "Error occurred while generating score"
 
     @classmethod
     def generate_suggestions(cls) -> None:
         """Generate AI suggestions for all employees and vacancies."""
-        # Get weights for current calculations
-        weights = {w.name: w.weight for w in SuggestionWeight.objects.all()}
-        default_weight = 20  # Default weight if not specified
+        try:
+            print("Starting suggestion generation process...")
+            
+            # Get weights for current calculations
+            weights = {w.name: w.weight for w in SuggestionWeight.objects.all()}
+            default_weight = 20  # Default weight if not specified
+            print(f"Loaded weights: {weights}")
 
-        # Clear existing suggestions
-        AISuggestion.objects.all().delete()
+            # Clear existing suggestions
+            AISuggestion.objects.all().delete()
+            print("Cleared existing suggestions")
 
-        # Get all active employees and vacancies
-        employees = Employee.objects.filter(user__is_active=True)
-        vacancies = Vacancy.objects.filter(is_active=True)
+            # Get all active employees and vacancies
+            employees = Employee.objects.filter(user__is_active=True)
+            vacancies = Vacancy.objects.all()
+            print(f"Found {employees.count()} active employees and {vacancies.count()} vacancies")
 
-        for employee in employees:
-            for vacancy in vacancies:
-                # Calculate quantitative scores
-                distance_score = cls.calculate_distance_score(
-                    (employee.latitude, employee.longitude),
-                    (vacancy.latitude, vacancy.longitude)
-                )
+            for employee in employees:
+                print(f"\nProcessing employee: {employee}")
+                for vacancy in vacancies:
+                    try:
+                        print(f"  Processing vacancy: {vacancy}")
+                        # Calculate quantitative scores
+                        # Skip distance calculation if location data is missing
+                        distance_score = 0
+                        if hasattr(employee, 'city_name') and vacancy.latitude and vacancy.longitude:
+                            # For now, skip distance score as employee doesn't have coordinates
+                            distance_score = 0
 
-                language_score = cls.calculate_language_score(
-                    employee.language.all(),
-                    vacancy.required_languages.all()
-                )
+                        language_score = cls.calculate_language_score(
+                            [{'language': l.language.name, 'mastery': l.mastery} for l in employee.language.all()],
+                            [{'language': l.language.name, 'mastery': l.mastery} for l in vacancy.languages.all()]
+                        )
+                        print(f"    Language score: {language_score}")
 
-                skills_score = cls.calculate_skills_score(
-                    [s.name for s in employee.skills.all()],
-                    [s.name for s in vacancy.required_skills.all()]
-                )
+                        skills_score = cls.calculate_skills_score(
+                            [s.name for s in employee.skill.all()],
+                            [s.name for s in vacancy.skill.all()]
+                        )
+                        print(f"    Skills score: {skills_score}")
 
-                # Calculate weighted quantitative score
-                quantitative_score = (
-                    distance_score * weights.get('distance', default_weight) +
-                    language_score * weights.get('language', default_weight) +
-                    skills_score * weights.get('skills', default_weight)
-                ) / (
-                    weights.get('distance', default_weight) +
-                    weights.get('language', default_weight) +
-                    weights.get('skills', default_weight)
-                )
+                        # Calculate weighted quantitative score
+                        quantitative_score = (
+                            distance_score * weights.get('distance', default_weight) +
+                            language_score * weights.get('language', default_weight) +
+                            skills_score * weights.get('skills', default_weight)
+                        ) / (
+                            weights.get('distance', default_weight) +
+                            weights.get('language', default_weight) +
+                            weights.get('skills', default_weight)
+                        )
+                        print(f"    Quantitative score: {quantitative_score}")
 
-                # Get qualitative score from LLM
-                employee_data = {
-                    'biography': employee.biography,
-                    'interests': employee.interests,
-                    'education': [e.name for e in employee.education.all()],
-                }
-                vacancy_data = {
-                    'description': vacancy.description,
-                    'questions': [q.text for q in vacancy.questions.all()],
-                    'company_description': vacancy.company.description,
-                }
-                qualitative_score, explanation = cls.get_llm_score(employee_data, vacancy_data)
+                        # Get qualitative score from LLM
+                        employee_data = {
+                            'biography': employee.biography or '',
+                            'interests': [i.name for i in employee.interests.all()] if employee.interests.exists() else [],
+                            'education': []  # Education field not available yet
+                        }
+                        vacancy_data = {
+                            'description': vacancy.description or '',
+                            'questions': [q.question for q in vacancy.questions.all()],
+                            'company_description': vacancy.company.description if vacancy.company else '',
+                        }
+                        print("    Getting LLM score...")
+                        qualitative_score, explanation = cls.get_llm_score(employee_data, vacancy_data)
+                        print(f"    Qualitative score: {qualitative_score}")
 
-                # Calculate total score
-                total_score = (
-                    quantitative_score * weights.get('quantitative', 50) +
-                    qualitative_score * weights.get('qualitative', 50)
-                ) / (
-                    weights.get('quantitative', 50) +
-                    weights.get('qualitative', 50)
-                )
+                        # Calculate total score
+                        total_score = (
+                            quantitative_score * weights.get('quantitative', 50) +
+                            qualitative_score * weights.get('qualitative', 50)
+                        ) / (
+                            weights.get('quantitative', 50) +
+                            weights.get('qualitative', 50)
+                        )
+                        print(f"    Total score: {total_score}")
 
-                # Create suggestion
-                AISuggestion.objects.create(
-                    employee=employee,
-                    vacancy=vacancy,
-                    quantitative_score=quantitative_score,
-                    qualitative_score=qualitative_score,
-                    total_score=total_score,
-                    message=explanation
-                )
+                        # Create suggestion
+                        suggestion = AISuggestion.objects.create(
+                            employee=employee,
+                            vacancy=vacancy,
+                            quantitative_score=quantitative_score,
+                            qualitative_score=qualitative_score,
+                            total_score=total_score,
+                            message=explanation
+                        )
+                        print(f"    Created suggestion with ID: {suggestion.id}")
+                    except Exception as e:
+                        print(f"    Error processing vacancy: {str(e)}")
+                        import traceback
+                        print(traceback.format_exc())
+                        continue  # Continue with next vacancy even if this one fails
+        except Exception as e:
+            print(f"Error in generate_suggestions: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            raise

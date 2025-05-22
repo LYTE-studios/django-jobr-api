@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
+    AppleNotificationView,
     UserViewSet,
     VATValidationView,
     EmployeeSearchView,
@@ -69,6 +70,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('login/google/', GoogleLoginView.as_view(), name='google-login'),
     path('login/apple/', AppleLoginView.as_view(), name='apple-login'),
+    path('login/apple/notifications/', AppleNotificationView.as_view(), name='apple-notifications'),
     path('register/', RegisterView.as_view(), name='register'),
     path('test-connection/', TestConnectionView.as_view(), name='test-connection'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),

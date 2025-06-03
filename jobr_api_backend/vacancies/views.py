@@ -84,6 +84,7 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing skills."""
     serializer_class = SkillSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         """

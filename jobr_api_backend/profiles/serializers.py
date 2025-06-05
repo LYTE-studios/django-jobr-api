@@ -69,9 +69,6 @@ class WorkExperienceSerializer(serializers.ModelSerializer):
         """
         if data.get('is_current_position') and data.get('end_date'):
             raise serializers.ValidationError("Current position cannot have an end date.")
-        
-        if not data.get('is_current_position') and not data.get('end_date'):
-            raise serializers.ValidationError("Past position must have an end date.")
 
         if data.get('end_date') and data.get('start_date') and data['end_date'] < data['start_date']:
             raise serializers.ValidationError("End date cannot be before start date.")

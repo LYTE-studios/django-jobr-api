@@ -93,9 +93,6 @@ class WorkExperience(models.Model):
         
         if self.is_current_position and self.end_date:
             raise ValidationError("Current position cannot have an end date.")
-        
-        if not self.is_current_position and not self.end_date:
-            raise ValidationError("Past position must have an end date.")
 
         if self.start_date and self.start_date > timezone.now().date():
             raise ValidationError("Start date cannot be in the future.")

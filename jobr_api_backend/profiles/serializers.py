@@ -20,25 +20,13 @@ class EducationSerializer(serializers.ModelSerializer):
         swagger_schema_fields = {
             "title": "Education",
             "description": "Educational qualification details",
-            "required": ["institution", "degree", "field_of_study", "start_date", "description"]
+            "required": ["institution", "degree", "field_of_study", "description"]
         }
 
     def validate(self, data):
         """
         Validate the education data.
         """
-        if data.get('is_ongoing') and data.get('end_date'):
-            raise serializers.ValidationError("Ongoing education cannot have an end date.")
-        
-        if not data.get('is_ongoing') and not data.get('end_date'):
-            raise serializers.ValidationError("Non-ongoing education must have an end date.")
-
-        if data.get('end_date') and data.get('start_date') and data['end_date'] < data['start_date']:
-            raise serializers.ValidationError("End date cannot be before start date.")
-
-        if data.get('start_date') and data['start_date'] > timezone.now().date():
-            raise serializers.ValidationError("Start date cannot be in the future.")
-
         return data
 
     def create(self, validated_data):

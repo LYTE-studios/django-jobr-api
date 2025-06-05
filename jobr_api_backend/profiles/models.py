@@ -12,8 +12,6 @@ class Education(models.Model):
     institution = models.CharField(max_length=255)
     degree = models.CharField(max_length=255)
     field_of_study = models.CharField(max_length=255)
-    start_date = models.DateField()
-    end_date = models.DateField(null=True, blank=True)
     is_ongoing = models.BooleanField(default=False)
     grade = models.FloatField(
         null=True, 
@@ -36,25 +34,11 @@ class Education(models.Model):
         self._achievements = json.dumps(value)
 
     class Meta:
-        ordering = ['-end_date', '-start_date']
         verbose_name = 'Education'
         verbose_name_plural = 'Education'
 
     def __str__(self):
         return f"{self.degree} in {self.field_of_study} at {self.institution}"
-
-    def clean(self):
-        if self.end_date and self.start_date and self.end_date < self.start_date:
-            raise ValidationError("End date cannot be before start date.")
-        
-        if self.is_ongoing and self.end_date:
-            raise ValidationError("Ongoing education cannot have an end date.")
-        
-        if not self.is_ongoing and not self.end_date:
-            raise ValidationError("Non-ongoing education must have an end date.")
-
-        if self.start_date and self.start_date > timezone.now().date():
-            raise ValidationError("Start date cannot be in the future.")
 
     def save(self, *args, **kwargs):
         self.full_clean()

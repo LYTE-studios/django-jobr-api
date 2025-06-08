@@ -4,6 +4,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
 from django.db import models
 
+from vacancies.serializers import WeekdaySerializer
+
 from .models import (
     Employee, CompanyGallery, ProfileOption, LikedEmployee, Review,
     Company, CompanyUser, EmployeeGallery, EmployeeLanguage, EmployeeQuestionPrompt
@@ -109,6 +111,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
+    week_day = WeekdaySerializer(many=True, read_only=True)
+
 
     interests = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -242,7 +246,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                  'experience_description', 'skill', 'skill_details', 'language', 'language_details',
                  'function', 'contract_type', 'contract_type_details', 'profile_picture_url',
                  'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery',
-                 'prompts', 'prompts_details', 'interests', 'interests_details')
+                 'prompts', 'prompts_details', 'interests', 'interests_details', 'week_day')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
             for field in Employee._meta.get_fields()

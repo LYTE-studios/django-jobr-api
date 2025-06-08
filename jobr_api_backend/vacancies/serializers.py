@@ -21,6 +21,7 @@ from .models import (
     Sector,
     ApplicationStatus,
     FavoriteVacancy,
+    LikedVacancy,
     VacancyDateTime,
     ExperienceCompany,
     ExperienceSchool
@@ -237,6 +238,7 @@ class VacancySerializer(serializers.ModelSerializer):
     )
     applicant_count = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
     application_status = serializers.SerializerMethodField()
 
     class Meta:
@@ -263,6 +265,7 @@ class VacancySerializer(serializers.ModelSerializer):
             "responsibilities",
             "applicant_count",
             "is_favorited",
+            "is_liked",
             "application_status",
             "latitude",
             "longitude",
@@ -272,6 +275,7 @@ class VacancySerializer(serializers.ModelSerializer):
             "created_by",
             "applicant_count",
             "is_favorited",
+            "is_liked",
             "application_status"
         ]
 
@@ -279,6 +283,15 @@ class VacancySerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated and hasattr(request.user, 'employee_profile'):
             return FavoriteVacancy.objects.filter(
+                employee=request.user.employee_profile,
+                vacancy=obj
+            ).exists()
+        return False
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and hasattr(request.user, 'employee_profile'):
+            return LikedVacancy.objects.filter(
                 employee=request.user.employee_profile,
                 vacancy=obj
             ).exists()
@@ -491,3 +504,33 @@ class FavoriteVacancySerializer(serializers.ModelSerializer):
         model = FavoriteVacancy
         fields = ['id', 'vacancy', 'vacancy_id', 'created_at']
         read_only_fields = ['created_at']
+
+class LikedVacancySerializer(serializers.ModelSerializer):
+    vacancy_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LikedVacancy
+        fields = ('id', 'vacancy_details', 'created_at')
+
+    def get_vacancy_details(self, obj):
+        if isinstance(obj, dict):
+            # Handle dictionary case (during creation)
+            return None
+        return {
+            'id': obj.vacancy.id,
+            'title': obj.vacancy.title,
+            'description': obj.vacancy.description,
+            'company': {
+                'id': obj.vacancy.company.id if obj.vacancy.company else None,
+                'name': obj.vacancy.company.name if obj.vacancy.company else None,
+            },
+            'function': {
+                'id': obj.vacancy.function.id if obj.vacancy.function else None,
+                'name': obj.vacancy.function.name if obj.vacancy.function else None,
+            },
+            'salary': obj.vacancy.salary,
+            'location': {
+                'id': obj.vacancy.location.id if obj.vacancy.location else None,
+                'name': obj.vacancy.location.name if obj.vacancy.location else None,
+            }
+        }

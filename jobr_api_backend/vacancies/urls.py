@@ -15,6 +15,7 @@ from .views import (
     SectorViewSet,
     JobApplicationViewSet,
     FavoriteVacancyViewSet,
+    LikedVacancyView,
     AIVacancySuggestionsView,
     JobListingPromptViewSet,
     CompanyVacanciesView,
@@ -50,4 +51,8 @@ urlpatterns = [
     path('filter/', VacancyFilterView.as_view(), name='vacancy-filter'),
     path('suggestions/', AIVacancySuggestionsView.as_view(), name='vacancy-suggestions'),
     path('company/<int:company_id>/vacancies/', CompanyVacanciesView.as_view(), name='company-vacancies'),
+    
+    # Liked vacancy endpoints
+    path('liked/', LikedVacancyView.as_view(), name='liked-vacancies-list'),
+    path('<int:vacancy_id>/like/', LikedVacancyView.as_view(), name='like-vacancy'),
 ]

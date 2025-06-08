@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
+from vacancies.models import Weekday
 from vacancies.models import Language, ContractType, Function, Skill, Sector, Question, ProfileInterest
 
 from common.utils import validate_image_size
@@ -39,6 +40,7 @@ class Employee(models.Model):
         related_name='employee_profile',
         null=True
     )
+    week_day = models.ManyToManyField(Weekday, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(
         max_length=10,

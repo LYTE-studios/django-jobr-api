@@ -1,4 +1,4 @@
-from rest_framework import viewsets, generics
+from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -7,7 +7,7 @@ from common.pagination import NoLimitPagination
 from .models import (
     Location, ContractType, Function, Language,
     Question, Skill, Vacancy, FunctionSkill,
-    SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy,
+    SalaryBenefit, Sector, ApplyVacancy, FavoriteVacancy, LikedVacancy,
     ApplicationStatus, JobListingPrompt, ProfileInterest,
     ExperienceCompany, ExperienceSchool,
 )
@@ -17,7 +17,7 @@ from .serializers import (
     QuestionSerializer, SkillSerializer,
     VacancySerializer, FunctionSkillSerializer,
     SalaryBenefitSerializer, SectorSerializer,
-    ApplySerializer, FavoriteVacancySerializer,
+    ApplySerializer, FavoriteVacancySerializer, LikedVacancySerializer,
     JobListingPromptSerializer, ProfileInterestSerializer,
     ExperienceCompanySerializer, ExperienceSchoolSerializer
 )
@@ -395,3 +395,56 @@ class AIVacancySuggestionsView(generics.ListAPIView):
         queryset = Vacancy.objects.all()
 
         return queryset[:10]  # Return top 10 matches
+
+class LikedVacancyView(generics.GenericAPIView):
+    """Handle liked vacancy operations."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """Get liked vacancies for the current employee."""
+        if request.user.role != ProfileOption.EMPLOYEE or not hasattr(request.user, 'employee_profile'):
+            return Response([])
+        
+        # Get the vacancies that the employee has liked
+        liked_vacancies = Vacancy.objects.filter(
+            liked_by_employees__employee=request.user.employee_profile
+        )
+        return Response(VacancySerializer(liked_vacancies, many=True, context={'request': request}).data)
+
+    def post(self, request, *args, **kwargs):
+        """Toggle like status for a vacancy."""
+        if request.user.role != ProfileOption.EMPLOYEE:
+            raise ValidationError("Only employees can like vacancies")
+        
+        if not hasattr(request.user, 'employee_profile'):
+            raise ValidationError("Employee profile not found")
+        
+        # Get vacancy_id from URL kwargs
+        vacancy_id = self.kwargs.get('vacancy_id')
+        if not vacancy_id:
+            raise ValidationError("Vacancy ID is required")
+            
+        # Get the vacancy instance
+        from django.shortcuts import get_object_or_404
+        vacancy = get_object_or_404(Vacancy, id=vacancy_id)
+        
+        # Check if the like already exists
+        existing_like = LikedVacancy.objects.filter(
+            employee=request.user.employee_profile,
+            vacancy=vacancy
+        ).first()
+        
+        if existing_like:
+            # Unlike if already liked
+            existing_like.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        # Like if not already liked
+        LikedVacancy.objects.create(
+            employee=request.user.employee_profile,
+            liked_by=request.user,
+            vacancy=vacancy
+        )
+        
+        # Return the updated vacancy data
+        return Response(VacancySerializer(vacancy, context={'request': request}).data, status=status.HTTP_201_CREATED)

@@ -581,7 +581,7 @@ class UserSerializer(serializers.ModelSerializer):
                     EmployeeGallery.objects.filter(employee=employee_profile).exclude(id__in=requested_ids).delete()
                     
                     # Update existing or create new gallery items
-                    for gallery_item in gallery_data:
+                    for gallery_item in gallery_data or []:
                         if 'gallery_url' in gallery_item:
                             relative_path = gallery_item['gallery_url'].split('/media/')[-1]
                             if 'id' in gallery_item:

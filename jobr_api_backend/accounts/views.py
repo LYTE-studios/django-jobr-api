@@ -628,7 +628,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # Handle gallery images if present
         gallery_data = request.data.get('company_gallery', [])
-        for gallery_item in gallery_data:
+        for gallery_item in gallery_data or []:
             if gallery_url := gallery_item.get('gallery_url'):
                 relative_path = gallery_url.split('/media/')[-1]
                 CompanyGallery.objects.create(

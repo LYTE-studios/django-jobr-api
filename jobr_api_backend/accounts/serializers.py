@@ -486,7 +486,11 @@ class UserSerializer(serializers.ModelSerializer):
                 elif skill_data is None:
                     employee_profile.skill.clear()
 
-
+                # Handle week days
+                week_day_data = self.initial_data.get('week_day', [])
+                if week_day_data:
+                    week_day_ids = [wd['id'] for wd in week_day_data if 'id' in wd]
+                    employee_profile.week_day.set(week_day_ids)
 
                 if prompts_data:
                     employee_profile.prompts.clear()  # Remove all existing

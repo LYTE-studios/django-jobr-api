@@ -198,11 +198,14 @@ FRONTEND_URL = 'https://jobr.lytestudios.be'
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 
 # Apple Sign In settings
-APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', '')  # Your app's bundle ID
-APPLE_TEAM_ID = os.environ.get('APPLE_TEAM_ID', '')  # Your Apple Developer Team ID
-APPLE_KEY_ID = os.environ.get('APPLE_KEY_ID', '')  # Your Apple Key ID
-APPLE_PRIVATE_KEY = os.environ.get('APPLE_PRIVATE_KEY', '')  # Your Apple private key
-APPLE_PUBLIC_KEY = os.environ.get('APPLE_PUBLIC_KEY', '')  # Your Apple public key for token verification
+APPLE_BUNDLE_ID = "jobr.app"
+APPLE_TEAM_ID = "W6NMF73SZX"
+
+from .my_secrets import APPLE_KEY_ID, APPLE_PUBLIC_KEY, APPLE_PRIVATE_KEY
+
+APPLE_KEY_ID = APPLE_KEY_ID
+APPLE_PRIVATE_KEY = APPLE_PRIVATE_KEY
+APPLE_PUBLIC_KEY = APPLE_PUBLIC_KEY
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",

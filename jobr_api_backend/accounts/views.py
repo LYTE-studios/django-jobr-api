@@ -41,6 +41,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import jwt
 from django.conf import settings
+from .utils import get_apple_public_key_for_token
 
 class GoogleLoginView(generics.GenericAPIView):
     """Handle Google Sign-In."""
@@ -101,9 +102,11 @@ class AppleLoginView(generics.GenericAPIView):
         
         try:
             # Verify the Apple ID token
+            id_token_value = serializer.validated_data['id_token']
+            apple_public_key = get_apple_public_key_for_token(id_token_value)
             decoded_token = jwt.decode(
-                serializer.validated_data['id_token'],
-                settings.APPLE_PUBLIC_KEY,
+                id_token_value,
+                apple_public_key,
                 algorithms=['RS256'],
                 audience=settings.APPLE_BUNDLE_ID
             )

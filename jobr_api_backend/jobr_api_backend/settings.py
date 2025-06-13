@@ -189,7 +189,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')  # Set this in environment
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Set this in environment
-DEFAULT_FROM_EMAIL = 'noreply@jobr.be'
+DEFAULT_FROM_EMAIL = 'noreply@jobr.app'
 
 # Frontend URL for password reset
 FRONTEND_URL = 'https://jobr.lytestudios.be'

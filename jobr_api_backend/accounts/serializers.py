@@ -146,6 +146,12 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     function = FunctionSerializer(allow_null=True, required=False)
 
     def to_internal_value(self, data):
+        # Handle week days
+        week_day_data = data.get('week_day', [])
+        if week_day_data:
+            week_day_ids = [wd['id'] for wd in week_day_data if 'id' in wd]
+            data['week_day'] = week_day_ids
+
         # Handle prompts data
         if 'prompts' in data:
             if data['prompts'] is None:

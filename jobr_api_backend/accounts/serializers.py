@@ -115,7 +115,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     week_day = WeekdaySerializer(many=True, read_only=True)
 
     educations = EducationSerializer(source='education_set', many=True, read_only=True)
-    work_experiences = WorkExperienceSerializer(source='workexperience_set', many=True, read_only=True)
+    work_experiences = WorkExperienceSerializer(source='work_experience_set', many=True, read_only=True)
 
     interests = serializers.PrimaryKeyRelatedField(
         many=True,

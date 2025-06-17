@@ -14,7 +14,7 @@ from .views import (
     TestConnectionView,
     AISuggestionsView,
     PasswordResetRequestView,
-    PasswordResetConfirmView,
+    PasswordResetConfirmCodeView,
     EmployeeFilterView,
     GoogleLoginView,
     AppleLoginView
@@ -75,8 +75,7 @@ urlpatterns = [
     path('test-connection/', TestConnectionView.as_view(), name='test-connection'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('password/reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
-    path('password/reset/<str:uidb64>/<str:token>/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
-    
+    path('password/reset/code/', PasswordResetConfirmCodeView.as_view(), name='password-reset-confirm-code'),
     # Profile endpoints
     path('users/', UserViewSet.as_view({'get': 'list', 'post': 'create'}), name='user-list'),
     path('users/<int:pk>/', UserViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='user-detail'),
@@ -98,3 +97,4 @@ urlpatterns = [
     path('users/<int:user_id>/reviews/given/', ReviewViewSet.as_view({'get': 'list'}), {'type': 'given'}, name='user-reviews-given'),
     path('users/<int:user_id>/reviews/received/', ReviewViewSet.as_view({'get': 'list'}), {'type': 'received'}, name='user-reviews-received'),
 ]
+

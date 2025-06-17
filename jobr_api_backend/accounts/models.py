@@ -29,7 +29,7 @@ class EmployeeQuestionPrompt(models.Model):
         verbose_name_plural = 'Employee Question Prompts'
 
     def __str__(self):
-        return f"{self.question.question} ({self.prompt})"
+        return f"{self.question} ({self.prompt})"
 
 
 class Employee(models.Model):

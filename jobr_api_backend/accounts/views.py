@@ -193,9 +193,11 @@ class TestConnectionView(generics.GenericAPIView):
             'user': self.get_serializer(request.user).data
         })
 
+import random
+
 class PasswordResetRequestView(generics.GenericAPIView):
     """
-    Request a password reset email.
+    Request a password reset code via email (new flow).
     """
     permission_classes = [AllowAny]
     serializer_class = PasswordResetRequestSerializer
@@ -206,54 +208,65 @@ class PasswordResetRequestView(generics.GenericAPIView):
         email = serializer.validated_data['email']
         user = CustomUser.objects.get(email=email)
 
-        # Generate password reset token
-        token = default_token_generator.make_token(user)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        # Generate a 6-digit code
+        reset_code = f"{random.randint(0, 999999):06d}"
 
-        # Send password reset email
-        reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
+        # Store code in cache (expires in 15 min)
+        cache_key = f"password_reset_code_{email}"
+        cache.set(cache_key, reset_code, timeout=15*60)
+
+        # Send code via email
         send_mail(
-            'Password Reset Request',
-            f'Click the following link to reset your password: {reset_url}',
+            'Your Password Reset Code',
+            f'Your password reset code is: {reset_code}\nThis code will expire in 15 minutes.',
             settings.DEFAULT_FROM_EMAIL,
             [email],
             fail_silently=False,
         )
 
         return Response(
-            {"detail": "Password reset email has been sent."},
+            {"detail": "A password reset code has been sent to your email."},
             status=status.HTTP_200_OK
         )
 
-class PasswordResetConfirmView(generics.GenericAPIView):
+from .serializers import PasswordResetConfirmCodeSerializer
+
+class PasswordResetConfirmCodeView(generics.GenericAPIView):
     """
-    Confirm password reset and set new password.
+    Confirm password reset with a 6-digit code and set new password.
     """
     permission_classes = [AllowAny]
-    serializer_class = PasswordResetConfirmSerializer
+    serializer_class = PasswordResetConfirmCodeSerializer
 
-    def post(self, request, uidb64, token):
-        try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = CustomUser.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
-            return Response(
-                {"detail": "Invalid reset link."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+    def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        code = serializer.validated_data['code']
+        new_password = serializer.validated_data['new_password']
 
-        if not default_token_generator.check_token(user, token):
+        cache_key = f"password_reset_code_{email}"
+        stored_code = cache.get(cache_key)
+
+        if not stored_code or stored_code != code:
             return Response(
-                {"detail": "Invalid or expired reset link."},
+                {"detail": "Invalid or expired code."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Set new password
-        user.set_password(serializer.validated_data['new_password'])
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"detail": "User with this email does not exist."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new_password)
         user.save()
+
+        # Invalidate code
+        cache.delete(cache_key)
 
         return Response(
             {"detail": "Password has been reset successfully."},

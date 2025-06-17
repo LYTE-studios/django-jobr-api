@@ -216,10 +216,6 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                             continue
                 data['language'] = language_data
 
-        # Handle contract_type data
-        if 'contract_type' in data and isinstance(data['contract_type'], dict) and 'id' in data['contract_type']:
-            data['contract_type'] = data['contract_type']['id']
-
         # Handle function data that might be just an ID
         if 'function' in data and not isinstance(data['function'], dict):
             try:
@@ -798,12 +794,12 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("No user found with this email address.")
         return value
 
-class PasswordResetConfirmSerializer(serializers.Serializer):
-    token = serializers.CharField()
+class PasswordResetConfirmCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
     new_password = serializers.CharField(min_length=8, write_only=True)
 
     def validate_new_password(self, value):
-        # Add password validation here if needed
         if len(value) < 8:
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         return value

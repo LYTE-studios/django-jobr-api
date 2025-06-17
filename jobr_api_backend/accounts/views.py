@@ -28,7 +28,7 @@ from .serializers import (
     VATValidationSerializer,
     ReviewSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer,
+    PasswordResetConfirmCodeSerializer,
     GoogleAuthSerializer,
     AppleAuthSerializer
 )

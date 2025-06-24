@@ -137,11 +137,11 @@ VATCHECKAPI_KEY = vatcheckapi
 
 # Database configuration
 DATABASES = {
-    'default': {
+    'default': database or  {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'test_jobr',
         'USER': 'postgres',
-        'PASSWORD': 'root',
+        'PASSWORD': '',
         'HOST': 'localhost',
         'PORT': '5432',
     }

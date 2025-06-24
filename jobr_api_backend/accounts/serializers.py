@@ -10,7 +10,7 @@ from .models import (
     Company, CompanyUser, EmployeeGallery, EmployeeLanguage, EmployeeQuestionPrompt
 )
 from profiles.serializers import WorkExperienceSerializer, EducationSerializer
-from chat.models import ChatRoom
+from chat.models import ChatRoom as ChatRoomModel
 
 from vacancies.models import Sector, Skill, Language, ContractType, ApplyVacancy, Question, Function, ProfileInterest
 
@@ -226,7 +226,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
     def get_chat_requests(self, obj):
-        return ChatRoom.objects.filter(
+        return ChatRoomModel.objects.filter(
             models.Q(employee=obj.user) | models.Q(employer=obj.user)
         ).count()
 
@@ -492,10 +492,15 @@ class UserSerializer(serializers.ModelSerializer):
                     employee_profile.skill.clear()
 
                 # Handle week days
-                week_day_data = self.initial_data.get('week_day', [])
-                if week_day_data:
-                    week_day_ids = [wd['id'] for wd in week_day_data if 'id' in wd]
-                    employee_profile.week_day.set(week_day_ids)
+                week_day_data = employee_profile_data.pop('week_day', None)
+                if week_day_data is not None:
+                    # Accept both list of IDs or list of dicts with 'id'
+                    if isinstance(week_day_data, list):
+                        week_day_ids = [wd['id'] if isinstance(wd, dict) and 'id' in wd else wd for wd in week_day_data]
+                        week_day_ids = [wid for wid in week_day_ids if wid]
+                        employee_profile.week_day.set(week_day_ids)
+                    else:
+                        employee_profile.week_day.clear()
 
                 if prompts_data:
                     employee_profile.prompts.clear()  # Remove all existing
@@ -586,12 +591,13 @@ class UserSerializer(serializers.ModelSerializer):
                                 )
 
                 # Set contract_type if provided
-                if isinstance(contract_type_data, dict):
-                    contract_type_id = contract_type_data.get('id')
-                else:
-                    contract_type_id = contract_type_data
-                employee_profile.contract_type_id = contract_type_id
-                employee_profile.save()
+                if contract_type_data is not None:
+                    if isinstance(contract_type_data, dict):
+                        contract_type_id = contract_type_data.get('id')
+                    else:
+                        contract_type_id = contract_type_data
+                    employee_profile.contract_type_id = contract_type_id
+                    employee_profile.save()
 
             # Update company profile for employers
             elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:
@@ -745,32 +751,6 @@ class EmployeeImageUploadSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
-
-class ReviewSerializer(serializers.ModelSerializer):
-    reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
-    reviewed_username = serializers.CharField(source='reviewed.username', read_only=True)
-
-    class Meta:
-        model = Review
-        fields = ('id', 'reviewer', 'reviewed', 'reviewer_username', 'reviewed_username',
-                 'rating', 'comment', 'created_at', 'updated_at')
-        read_only_fields = ('created_at', 'updated_at')
-
-    def validate(self, data):
-        reviewer = data.get('reviewer')
-        reviewed = data.get('reviewed')
-
-        if reviewer == reviewed:
-            raise serializers.ValidationError("Users cannot review themselves")
-        
-        if reviewer.role == reviewed.role:
-            raise serializers.ValidationError("Users can only review users of different roles")
-
-        # Check if review already exists
-        if Review.objects.filter(reviewer=reviewer, reviewed=reviewed).exists():
-            raise serializers.ValidationError("You have already reviewed this user")
-
-        return data
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()

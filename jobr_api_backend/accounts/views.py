@@ -913,13 +913,22 @@ class EmployeeFilterView(generics.ListAPIView):
         if gender:
             queryset = queryset.filter(employee_profile__gender=gender)
 
-        # Filter by languages
+        # Filter by languages (expecting a comma-separated list or repeated param)
         languages = self.request.query_params.getlist('languages')
+        if not languages:
+            # Try comma-separated fallback
+            languages_str = self.request.query_params.get('languages')
+            if languages_str:
+                languages = [lang.strip() for lang in languages_str.split(',') if lang.strip()]
         if languages:
             queryset = queryset.filter(employee_profile__language__id__in=languages)
 
-        # Filter by skills
+        # Filter by skills (expecting a comma-separated list or repeated param)
         skills = self.request.query_params.getlist('skills')
+        if not skills:
+            skills_str = self.request.query_params.get('skills')
+            if skills_str:
+                skills = [skill.strip() for skill in skills_str.split(',') if skill.strip()]
         if skills:
             queryset = queryset.filter(employee_profile__skill__id__in=skills)
 

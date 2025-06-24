@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model, authenticate
@@ -585,6 +584,14 @@ class UserSerializer(serializers.ModelSerializer):
                                     employee=employee_profile,
                                     gallery=relative_path
                                 )
+
+                # Set contract_type if provided
+                if isinstance(contract_type_data, dict):
+                    contract_type_id = contract_type_data.get('id')
+                else:
+                    contract_type_id = contract_type_data
+                employee_profile.contract_type_id = contract_type_id
+                employee_profile.save()
 
             # Update company profile for employers
             elif instance.role == ProfileOption.EMPLOYER and instance.selected_company:

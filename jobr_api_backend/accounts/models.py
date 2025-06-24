@@ -81,7 +81,7 @@ class Employee(models.Model):
         blank=True,
         related_name='employees'
     )
-    contract_type = models.OneToOneField(ContractType, on_delete=models.CASCADE, blank=True, null=True)
+    contract_type = models.ForeignKey(ContractType, on_delete=models.CASCADE, blank=True, null=True)
     function = models.OneToOneField(Function, on_delete=models.CASCADE, blank=True, null=True)
     skill = models.ManyToManyField(Skill, blank=True)
     prompts = models.ManyToManyField(EmployeeQuestionPrompt, blank=True)

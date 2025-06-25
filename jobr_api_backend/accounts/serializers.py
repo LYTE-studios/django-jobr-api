@@ -12,7 +12,7 @@ from .models import (
 from profiles.serializers import WorkExperienceSerializer, EducationSerializer
 from chat.models import ChatRoom as ChatRoomModel
 
-from vacancies.models import Sector, Skill, Language, ContractType, ApplyVacancy, Question, Function, ProfileInterest
+from vacancies.models import Sector, Skill, Language, ContractType, ApplyVacancy, Question, Function, ProfileInterest, Weekday
 
 User = get_user_model()
 
@@ -112,6 +112,13 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     chat_requests = serializers.SerializerMethodField()
     applications = serializers.SerializerMethodField()
     week_day = WeekdaySerializer(many=True, read_only=True)
+    week_day_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Weekday.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
 
     educations = EducationSerializer(source='education_set', many=True, read_only=True)
     work_experiences = WorkExperienceSerializer(source='work_experience_set', many=True, read_only=True)
@@ -152,7 +159,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
         week_day_data = data.get('week_day', [])
         if week_day_data:
             week_day_ids = [wd['id'] for wd in week_day_data if 'id' in wd]
-            data['week_day'] = week_day_ids
+            data['week_day_ids'] = week_day_ids
 
         # Handle prompts data
         if 'prompts' in data:
@@ -250,7 +257,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
                  'experience_description', 'skill', 'skill_details', 'language', 'language_details',
                  'function', 'contract_type', 'contract_type_details', 'profile_picture_url',
                  'profile_banner_url', 'is_liked', 'chat_requests', 'applications', 'employee_gallery',
-                 'prompts', 'prompts_details', 'interests', 'interests_details', 'week_day',
+                 'prompts', 'prompts_details', 'interests', 'interests_details', 'week_day', 'week_day_ids',
                  'educations', 'work_experiences')
         extra_kwargs = {
             field: {'allow_null': True, 'required': False}
@@ -476,6 +483,7 @@ class UserSerializer(serializers.ModelSerializer):
                 function_data = employee_profile_data.pop('function', None)
                 contract_type_data = employee_profile_data.pop('contract_type', None)
                 prompts_data = employee_profile_data.pop('prompts', None)
+                week_day_ids = employee_profile_data.pop('week_day_ids', None)
 
                 # Process interests data
                 if isinstance(interests_data, list):
@@ -492,12 +500,8 @@ class UserSerializer(serializers.ModelSerializer):
                     employee_profile.skill.clear()
 
                 # Handle week days
-                week_day_data = employee_profile_data.pop('week_day', None)
-                if week_day_data is not None:
-                    # Accept both list of IDs or list of dicts with 'id'
-                    if isinstance(week_day_data, list):
-                        week_day_ids = [wd['id'] if isinstance(wd, dict) and 'id' in wd else wd for wd in week_day_data]
-                        week_day_ids = [wid for wid in week_day_ids if wid]
+                if week_day_ids is not None:
+                    if isinstance(week_day_ids, list):
                         employee_profile.week_day.set(week_day_ids)
                     else:
                         employee_profile.week_day.clear()

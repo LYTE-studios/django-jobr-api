@@ -221,9 +221,16 @@ class VacancyFilterView(generics.ListAPIView):
             queryset = queryset.filter(contract_type__id=contract_type)
 
         # Filter by skills
-        skills = self.request.query_params.getlist('skills', None)
-        if skills:
+
+        skills_str = self.request.query_params.get('skills')
+        if skills_str:
+            skills = [skill.strip() for skill in skills_str.split(',') if skill.strip()]
             queryset = queryset.filter(skill__id__in=skills)
+
+        language_str = self.request.query_params.get('languages')
+        if language_str:
+            languages = [language.strip() for language in language_str.split(',') if language.strip()]
+            queryset = queryset.filter(languages__language__id__in=languages)
 
         # Filter by function
         function = self.request.query_params.get('function', None)
